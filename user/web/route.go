@@ -1,11 +1,11 @@
 package web
 
 import (
+	"github.com/gin-contrib/sessions/redis"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -45,8 +45,20 @@ func InitWeb() *gin.Engine {
 		MaxAge: 12 * time.Hour,
 	}))
 
-	store := cookie.NewStore([]byte("secret"))
-	router.Use(sessions.Sessions("mysession", store))
+	// 采用 memstore 进行数据存储
+
+	//store := memstore.NewStore([]byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"),
+	//	[]byte("8nGgE3Uz9EHMAgNr2PxFKCgM2V08SF2h"))
+
+	// 采用 redis 进行数据存储
+	store, err := redis.NewStore(16, "tcp", "172.21.21.73:8838", "",
+		[]byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"),
+		[]byte("8nGgE3Uz9EHMAgNr2PxFKCgM2V08SF2h"))
+	if err != nil {
+		panic(err)
+	}
+
+	router.Use(sessions.Sessions("sess_name", store))
 
 	router.Use(middleware.NewLoginMiddlewareBuilder().
 		IgnorePaths("/user/signup").
