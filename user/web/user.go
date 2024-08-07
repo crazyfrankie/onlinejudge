@@ -112,7 +112,6 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		req := Req{}
 
 		if err := c.Bind(&req); err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
 
