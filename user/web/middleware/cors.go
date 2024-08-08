@@ -19,6 +19,8 @@ func Cors() gin.HandlerFunc {
 			}
 			return strings.Contains(origin, "yourcompany.com")
 		},
-		MaxAge: 12 * time.Hour,
+		// 不加这一行 前端拿不到 token
+		ExposedHeaders: []string{"x-jwt-token"},
+		MaxAge:         12 * time.Hour,
 	})
 }

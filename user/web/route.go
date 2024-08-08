@@ -32,7 +32,12 @@ func InitWeb() *gin.Engine {
 	router.Use(middleware.SessStore())
 
 	// 登录校验
-	router.Use(middleware.NewLoginMiddlewareBuilder().
+	//router.Use(middleware.NewLoginMiddlewareBuilder().
+	//	IgnorePaths("/user/signup").
+	//	IgnorePaths("/user/login").
+	//	CheckLogin())
+	// 登录校验
+	router.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/user/signup").
 		IgnorePaths("/user/login").
 		CheckLogin())

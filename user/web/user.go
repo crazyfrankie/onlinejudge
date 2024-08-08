@@ -122,7 +122,8 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+		var token string
+		token, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		if errors.Is(err, service.ErrInvalidUserOrPassword) {
 			c.JSON(http.StatusInternalServerError, "identifier or password error")
 			return
@@ -136,22 +137,11 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		sess := sessions.Default(c)
-		sess.Set("identifier", req.Identifier)
-		sess.Options(sessions.Options{
-			// 用户无操作10分钟后过期
-			MaxAge: 60 * 10,
-		})
-
-		if err := sess.Save(); err != nil {
-			c.JSON(http.StatusInternalServerError, "failed to save session")
-			return
-		}
+		c.Header("x-jwt-token", token)
 
 		c.JSON(http.StatusOK, "login successfully!")
 	}
 }
-
 func (ctl *UserHandler) Logout(c *gin.Context) {
 	sess := sessions.Default(c)
 	sess.Options(sessions.Options{
