@@ -142,11 +142,13 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		c.JSON(http.StatusOK, "login successfully!")
 	}
 }
-func (ctl *UserHandler) Logout(c *gin.Context) {
-	sess := sessions.Default(c)
-	sess.Options(sessions.Options{
-		// 退出登录
-		MaxAge: -1,
-	})
-	c.JSON(http.StatusOK, "log out successfully!")
+func (ctl *UserHandler) Logout() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sess := sessions.Default(c)
+		sess.Options(sessions.Options{
+			// 退出登录
+			MaxAge: -1,
+		})
+		c.JSON(http.StatusOK, "log out successfully!")
+	}
 }

@@ -29,13 +29,8 @@ func InitWeb() *gin.Engine {
 	router.Use(middleware.Cors())
 
 	// session 设置
-	router.Use(middleware.SessStore())
+	//router.Use(middleware.SessStore())
 
-	// 登录校验
-	//router.Use(middleware.NewLoginMiddlewareBuilder().
-	//	IgnorePaths("/user/signup").
-	//	IgnorePaths("/user/login").
-	//	CheckLogin())
 	// 登录校验
 	router.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/user/signup").

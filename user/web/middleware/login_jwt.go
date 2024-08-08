@@ -5,8 +5,7 @@ import (
 	"net/http"
 )
 
-// 创建者模式
-
+// LoginJWTMiddlewareBuilder JWT 进行校验
 type LoginJWTMiddlewareBuilder struct {
 	paths []string
 }
@@ -22,28 +21,29 @@ func (l *LoginJWTMiddlewareBuilder) IgnorePaths(paths string) *LoginJWTMiddlewar
 
 func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
+		// 路径校验
+		for _, path := range l.paths {
+			if path == "/user/signup" ||
+				path == "/user/login" {
+				return
+			}
+		}
+
+		tokenHeader := c.GetHeader("Authorization")
 
 		// 检查请求头中是否包含 Token
-		if token == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": http.StatusNotFound,
-				"msg":    "require parameter error",
-				"data":   "lack of Token",
-			})
+		if tokenHeader == "" {
+			// 没登录
+			c.JSON(http.StatusBadRequest, "you need to login")
 
 			c.Abort()
 			return
 		}
 
-		_, err := ParseToken(token)
+		_, err := ParseToken(tokenHeader)
 		if err != nil {
 			code, msg := handleTokenError(err)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"status": code,
-				"msg":    "operate failed",
-				"data":   msg,
-			})
+			c.JSON(code, msg)
 			c.Abort()
 			return
 		}

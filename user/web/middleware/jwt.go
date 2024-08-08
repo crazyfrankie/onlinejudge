@@ -41,7 +41,7 @@ func GenerateToken(identifier, password string, authority int) (string, error) {
 
 func ParseToken(token string) (*Claims, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte("JWT_SECRET"), nil
+		return []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"), nil
 	})
 	if err != nil {
 		var ve *jwt.ValidationError
