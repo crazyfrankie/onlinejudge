@@ -1,11 +1,11 @@
 package web
 
 import (
-	"github.com/gin-contrib/sessions/redis"
 	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -51,12 +51,15 @@ func InitWeb() *gin.Engine {
 	//	[]byte("8nGgE3Uz9EHMAgNr2PxFKCgM2V08SF2h"))
 
 	// 采用 redis 进行数据存储
-	store, err := redis.NewStore(16, "tcp", "172.21.21.73:8838", "",
+	store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
 		[]byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"),
 		[]byte("8nGgE3Uz9EHMAgNr2PxFKCgM2V08SF2h"))
 	if err != nil {
 		panic(err)
 	}
+
+	//myStore := &sqlx_store.Store{}
+	//router.Use(sessions.Sessions("sess_name", myStore))
 
 	router.Use(sessions.Sessions("sess_name", store))
 

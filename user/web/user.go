@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
@@ -139,6 +140,11 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 
 		sess := sessions.Default(c)
 		sess.Set("identifier", req.Identifier)
+		sess.Options(sessions.Options{
+			// 用户无操作12小时后过期
+			MaxAge: int(12 * time.Hour),
+		})
+
 		if err := sess.Save(); err != nil {
 			c.JSON(http.StatusInternalServerError, "failed to save session")
 			return
@@ -146,4 +152,13 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, "login successfully!")
 	}
+}
+
+func (ctl *UserHandler) Logout(c *gin.Context) {
+	sess := sessions.Default(c)
+	sess.Options(sessions.Options{
+		// 退出登录
+		MaxAge: -1,
+	})
+	c.JSON(http.StatusOK, "log out successfully!")
 }
