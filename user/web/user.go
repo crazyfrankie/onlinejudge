@@ -2,12 +2,10 @@ package web
 
 import (
 	"errors"
-	"net/http"
-	"time"
-
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"net/http"
 
 	"oj/user/domain"
 	"oj/user/service"
@@ -141,8 +139,8 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		sess := sessions.Default(c)
 		sess.Set("identifier", req.Identifier)
 		sess.Options(sessions.Options{
-			// 用户无操作12小时后过期
-			MaxAge: int(12 * time.Hour),
+			// 用户无操作10分钟后过期
+			MaxAge: 60 * 10,
 		})
 
 		if err := sess.Save(); err != nil {
