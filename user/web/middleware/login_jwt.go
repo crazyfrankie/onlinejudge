@@ -22,6 +22,13 @@ func (l *LoginJWTMiddlewareBuilder) IgnorePaths(paths string) *LoginJWTMiddlewar
 
 func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 路径校验
+		for _, path := range l.paths {
+			if path == "/user/signup" ||
+				path == "/user/login" {
+				return
+			}
+		}
 		token := c.GetHeader("Authorization")
 
 		// 检查请求头中是否包含 Token
