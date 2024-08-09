@@ -15,18 +15,16 @@ var (
 )
 
 type Claims struct {
-	Identifier string `json:"identifier"`
-	Password   string `json:"password"`
+	Role uint8 `json:"role"`
 	jwt.StandardClaims
 }
 
-func GenerateToken(identifier, password string) (string, error) {
+func GenerateToken(role uint8) (string, error) {
 	gob.Register(time.Now())
 	nowTime := time.Now()
 	expireTime := nowTime.Add(24 * time.Hour)
 	claims := Claims{
-		Identifier: identifier,
-		Password:   password,
+		Role: role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "oj",
