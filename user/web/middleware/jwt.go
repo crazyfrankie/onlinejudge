@@ -17,21 +17,19 @@ var (
 type Claims struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
-	Authority  int    `json:"authority"`
 	jwt.StandardClaims
 }
 
-func GenerateToken(identifier, password string, authority int) (string, error) {
+func GenerateToken(identifier, password string) (string, error) {
 	gob.Register(time.Now())
 	nowTime := time.Now()
 	expireTime := nowTime.Add(24 * time.Hour)
 	claims := Claims{
 		Identifier: identifier,
 		Password:   password,
-		Authority:  authority,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
-			Issuer:    "todolist",
+			Issuer:    "oj",
 		},
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -41,7 +39,7 @@ func GenerateToken(identifier, password string, authority int) (string, error) {
 
 func ParseToken(token string) (*Claims, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte("JWT_SECRET"), nil
+		return []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"), nil
 	})
 	if err != nil {
 		var ve *jwt.ValidationError
