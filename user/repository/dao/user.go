@@ -21,6 +21,7 @@ type User struct {
 	Name     string `gorm:"unique;not null"`
 	Password string
 	Email    string `gorm:"unique;not null"`
+	Role     uint8
 	Ctime    int64
 	Uptime   int64
 }
