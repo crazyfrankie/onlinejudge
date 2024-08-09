@@ -28,9 +28,6 @@ func InitWeb() *gin.Engine {
 	// 跨域设置
 	router.Use(middleware.Cors())
 
-	// session 设置
-	//router.Use(middleware.SessStore())
-
 	// 登录校验
 	router.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/user/signup").

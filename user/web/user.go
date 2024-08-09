@@ -36,6 +36,7 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	{
 		userGroup.POST("/signup", ctl.Signup())
 		userGroup.POST("/login", ctl.Login())
+		userGroup.POST("/logout", ctl.Logout())
 	}
 }
 
@@ -46,6 +47,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			Password        string `json:"password"`
 			ConfirmPassword string `json:"confirmPassword"`
 			Email           string `json:"email"`
+			Role            uint8  `json:"role"`
 		}
 		req := Req{}
 		if err := c.Bind(&req); err != nil {
@@ -84,6 +86,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			Name:     req.Name,
 			Password: req.Password,
 			Email:    req.Email,
+			Role:     req.Role,
 		})
 		if errors.Is(err, service.ErrUserDuplicateEmail) {
 			c.JSON(http.StatusInternalServerError, "email conflict")

@@ -28,6 +28,7 @@ func (ur *UserRepository) Create(ctx context.Context, u domain.User) error {
 		Name:     u.Name,
 		Password: u.Password,
 		Email:    u.Email,
+		Role:     u.Role,
 	})
 }
 

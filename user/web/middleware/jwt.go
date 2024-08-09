@@ -12,42 +12,44 @@ import (
 var (
 	ErrTokenInvalid = errors.New("token is invalid")
 	ErrTokenExpired = errors.New("token is expired")
+	ErrLoginYet     = errors.New("have not logged in yet")
+	SecretKey       = []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE")
 )
 
 type Claims struct {
-	Identifier string `json:"identifier"`
-	Password   string `json:"password"`
+	Role uint8 `json:"role"`
 	jwt.StandardClaims
 }
 
-func GenerateToken(identifier, password string) (string, error) {
+func GenerateToken(role uint8) (string, error) {
 	gob.Register(time.Now())
 	nowTime := time.Now()
 	expireTime := nowTime.Add(24 * time.Hour)
 	claims := Claims{
-		Identifier: identifier,
-		Password:   password,
+		Role: role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "oj",
 		},
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token, err := tokenClaims.SignedString([]byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"))
+	token, err := tokenClaims.SignedString(SecretKey)
 	return token, err
 }
 
 func ParseToken(token string) (*Claims, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE"), nil
+		return SecretKey, nil
 	})
 	if err != nil {
 		var ve *jwt.ValidationError
 		if errors.As(err, &ve) {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
 				return nil, ErrTokenInvalid
-			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
+			} else if ve.Errors&(jwt.ValidationErrorExpired) != 0 {
 				return nil, ErrTokenExpired
+			} else if ve.Errors&(jwt.ValidationErrorNotValidYet) != 0 {
+				return nil, ErrLoginYet
 			}
 		}
 		return nil, err
@@ -70,6 +72,9 @@ func handleTokenError(err error) (int, string) {
 	case errors.Is(err, ErrTokenInvalid):
 		code = http.StatusUnauthorized
 		msg = "token is invalid"
+	case errors.Is(err, ErrLoginYet):
+		code = http.StatusUnauthorized
+		msg = "have not logged in yet"
 	default:
 		code = http.StatusInternalServerError
 		msg = "parse Token failed"
