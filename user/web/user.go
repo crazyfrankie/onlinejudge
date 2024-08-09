@@ -104,6 +104,53 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 	}
 }
 
+//func (ctl *UserHandler) Login() gin.HandlerFunc {
+//	return func(c *gin.Context) {
+//		type Req struct {
+//			Identifier string `json:"identifier"`
+//			Password   string `json:"password"`
+//		}
+//		req := Req{}
+//
+//		if err := c.Bind(&req); err != nil {
+//			return
+//		}
+//
+//		// 检查是否包含邮箱
+//		isEmail, err := ctl.emailRegexExp.MatchString(req.Identifier)
+//
+//		if err != nil {
+//			c.JSON(http.StatusBadRequest, "system error")
+//			return
+//		}
+//
+//		var token string
+//		token, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+//		if errors.Is(err, service.ErrInvalidUserOrPassword) {
+//			c.JSON(http.StatusInternalServerError, "identifier or password error")
+//			return
+//		}
+//		if errors.Is(err, service.ErrUserNotFound) {
+//			c.JSON(http.StatusInternalServerError, "identifier not found")
+//			return
+//		}
+//		if err != nil {
+//			c.JSON(http.StatusBadRequest, "system error")
+//			return
+//		}
+//
+//		sess := sessions.Default(c)
+//		sess.Set("identifier", req.Identifier)
+//        sess.Options(sessions.Options{
+//			MaxAge: 60 * 10,
+//		})
+//
+//		sess.Save()
+//
+//		c.JSON(http.StatusOK, "login successfully!")
+//	}
+//}
+
 func (ctl *UserHandler) Login() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
@@ -144,6 +191,7 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		c.JSON(http.StatusOK, "login successfully!")
 	}
 }
+
 func (ctl *UserHandler) Logout(c *gin.Context) {
 	sess := sessions.Default(c)
 	sess.Options(sessions.Options{
