@@ -3,9 +3,8 @@ package service
 import (
 	"context"
 	"errors"
-	"oj/user/web/middleware"
-
 	"golang.org/x/crypto/bcrypt"
+	"oj/user/web/middleware"
 
 	"oj/user/domain"
 	"oj/user/repository"
@@ -36,6 +35,27 @@ func (svc *UserService) Signup(ctx context.Context, u domain.User) error {
 	u.Password = string(hash)
 	return svc.repo.Create(ctx, u)
 }
+
+//func (svc *UserService) Login(ctx context.Context, identifier, password string, isEmail bool) error {
+//	var err error
+//	var user domain.User
+//
+//	if isEmail {
+//		user, err = svc.repo.FindByEmail(ctx, identifier)
+//	} else {
+//		user, err = svc.repo.FindByName(ctx, identifier)
+//	}
+//	if err != nil {
+//		return err
+//	}
+//
+//	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+//		// 打 DEBUG 日志
+//		return ErrInvalidUserOrPassword
+//	}
+//
+//	return nil
+//}
 
 func (svc *UserService) Login(ctx context.Context, identifier, password string, isEmail bool) (string, error) {
 	var err error

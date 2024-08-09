@@ -36,6 +36,7 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	{
 		userGroup.POST("/signup", ctl.Signup())
 		userGroup.POST("/login", ctl.Login())
+		userGroup.GET("/index", ctl.Index())
 	}
 }
 
@@ -124,8 +125,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 //			return
 //		}
 //
-//		var token string
-//		token, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+//		err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 //		if errors.Is(err, service.ErrInvalidUserOrPassword) {
 //			c.JSON(http.StatusInternalServerError, "identifier or password error")
 //			return
@@ -141,10 +141,9 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 //
 //		sess := sessions.Default(c)
 //		sess.Set("identifier", req.Identifier)
-//        sess.Options(sessions.Options{
-//			MaxAge: 60 * 10,
+//		sess.Options(sessions.Options{
+//			MaxAge: 60,
 //		})
-//
 //		sess.Save()
 //
 //		c.JSON(http.StatusOK, "login successfully!")
@@ -199,4 +198,10 @@ func (ctl *UserHandler) Logout(c *gin.Context) {
 		MaxAge: -1,
 	})
 	c.JSON(http.StatusOK, "log out successfully!")
+}
+
+func (ctl *UserHandler) Index() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, "this is index")
+	}
 }

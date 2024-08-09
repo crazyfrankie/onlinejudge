@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"encoding/gob"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 )
 
 // 创建者模式
@@ -58,7 +59,7 @@ func (l *LoginMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 
 		// update_time 是有的
 		updateTimeVal, _ := updateTime.(int64)
-		if (now - updateTimeVal) > 60*1000 {
+		if (now - updateTimeVal) > 10*1000 {
 			sess.Set("update_time", now)
 			sess.Save()
 		}
