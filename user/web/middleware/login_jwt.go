@@ -3,6 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 // 创建者模式
@@ -36,7 +37,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
-		_, err := ParseToken(token)
+		claims, err := ParseToken(token)
 		if err != nil {
 			code, msg := handleTokenError(err)
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -46,6 +47,21 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			})
 			c.Abort()
 			return
+		}
+
+		// 检查Token是否接近过期
+		if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) < 10*time.Minute {
+			// 生成新的Token
+			newToken, err := GenerateToken(claims.Role)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"status": http.StatusInternalServerError,
+					"msg":    "failed to generate new token",
+				})
+				return
+			}
+			// 将新的Token放入响应头中
+			c.Header("Authorization", newToken)
 		}
 	}
 }
