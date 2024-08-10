@@ -23,8 +23,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 路径校验
 		for _, path := range l.paths {
-			if path == "/user/signup" ||
-				path == "/user/login" {
+			if c.Request.URL.Path == path {
 				return
 			}
 		}
@@ -34,8 +33,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 		// 检查请求头中是否包含 Token
 		if tokenHeader == "" {
 			// 没登录
-			c.JSON(http.StatusBadRequest, "you need to login")
-
+			c.JSON(http.StatusUnauthorized, "you need to login")
 			c.Abort()
 			return
 		}
@@ -47,5 +45,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		c.Next()
 	}
 }

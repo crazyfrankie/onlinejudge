@@ -3,13 +3,12 @@ package web
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"oj/user/web/pkg/middlewares/ratelimit"
-	"time"
-
 	"oj/user/repository"
 	"oj/user/repository/dao"
 	"oj/user/service"
 	"oj/user/web/middleware"
+	"oj/user/web/pkg/middlewares/ratelimit"
+	"time"
 )
 
 // InitHandler Handler 对象的创建
