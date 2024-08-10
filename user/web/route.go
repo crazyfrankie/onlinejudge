@@ -2,6 +2,9 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"oj/user/web/pkg/middlewares/ratelimit"
+	"time"
 
 	"oj/user/repository"
 	"oj/user/repository/dao"
@@ -27,6 +30,14 @@ func InitWeb() *gin.Engine {
 
 	// 跨域设置
 	router.Use(middleware.Cors())
+
+	// 限流
+	cmd := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+	router.Use(ratelimit.NewBuilder(cmd, time.Second, 100).Build())
 
 	// 登录校验
 	router.Use(middleware.NewLoginJWTMiddlewareBuilder().
