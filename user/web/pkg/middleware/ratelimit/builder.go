@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	_ "embed"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -17,6 +18,7 @@ type Builder struct {
 	rate int
 }
 
+//go:embed slide_window.lua
 var luaScript string
 
 func NewBuilder(cmd redis.Cmdable, interval time.Duration, rate int) *Builder {
