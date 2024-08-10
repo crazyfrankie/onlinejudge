@@ -57,7 +57,7 @@ func (svc *UserService) Login(ctx context.Context, identifier, password string, 
 	}
 
 	var token string
-	token, err = middleware.GenerateToken(user.Role)
+	token, err = middleware.GenerateToken(user.Role, user.Id)
 	if err != nil {
 		return "", err
 	}

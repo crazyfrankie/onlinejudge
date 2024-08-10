@@ -24,12 +24,17 @@ func NewUserRepository(dao *dao.UserDao) *UserRepository {
 }
 
 func (ur *UserRepository) Create(ctx context.Context, u domain.User) error {
-	return ur.dao.Insert(ctx, dao.User{
+	newUser := dao.User{
 		Name:     u.Name,
 		Password: u.Password,
 		Email:    u.Email,
 		Role:     u.Role,
-	})
+	}
+	if err := ur.dao.Insert(ctx, newUser); err != nil {
+		return err
+	}
+	u.Id = newUser.Id
+	return nil
 }
 
 func (ur *UserRepository) FindByName(ctx context.Context, name string) (domain.User, error) {
