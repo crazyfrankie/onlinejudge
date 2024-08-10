@@ -37,6 +37,7 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("/signup", ctl.Signup())
 		userGroup.POST("/login", ctl.Login())
 		userGroup.POST("/logout", ctl.Logout())
+		userGroup.GET("/:id", ctl.GetInfo())
 	}
 }
 
@@ -153,5 +154,27 @@ func (ctl *UserHandler) Logout() gin.HandlerFunc {
 			MaxAge: -1,
 		})
 		c.JSON(http.StatusOK, "log out successfully!")
+	}
+}
+
+func (ctl *UserHandler) GetInfo() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, ok := c.Params.Get("id")
+		if !ok {
+			c.JSON(http.StatusBadRequest, "unable to get id")
+			return
+		}
+
+		user, err := ctl.svc.GetInfo(c.Request.Context(), id)
+		if errors.Is(err, service.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, "user not found")
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, "system error")
+			return
+		}
+
+		c.JSON(http.StatusOK, user)
 	}
 }

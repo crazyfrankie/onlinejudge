@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"oj/user/repository/dao"
 	"oj/user/web/middleware"
 
 	"golang.org/x/crypto/bcrypt"
@@ -62,4 +63,8 @@ func (svc *UserService) Login(ctx context.Context, identifier, password string, 
 	}
 
 	return token, nil
+}
+
+func (svc *UserService) GetInfo(ctx context.Context, id string) (dao.User, error) {
+	return svc.repo.FindByID(ctx, id)
 }
