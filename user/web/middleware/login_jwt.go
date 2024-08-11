@@ -38,7 +38,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
-		_, err := ParseToken(tokenHeader)
+		claims, err := ParseToken(tokenHeader)
 		if err != nil {
 			code, msg := handleTokenError(err)
 			c.JSON(code, msg)
@@ -46,6 +46,10 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
-		c.Next()
+		if claims.UserAgent != c.Request.UserAgent() {
+			// 严重的安全问题
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 	}
 }

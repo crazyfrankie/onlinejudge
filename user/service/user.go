@@ -56,8 +56,11 @@ func (svc *UserService) Login(ctx context.Context, identifier, password string, 
 		return "", ErrInvalidUserOrPassword
 	}
 
+	// 从上下文中取出 UserAgent
+	userAgent := ctx.Value("UserAgent").(string)
+
 	var token string
-	token, err = middleware.GenerateToken(user.Role, user.Id)
+	token, err = middleware.GenerateToken(user.Role, user.Id, userAgent)
 	if err != nil {
 		return "", err
 	}

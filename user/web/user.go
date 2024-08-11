@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
@@ -126,8 +127,11 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
+		// 创建带有UserAgent的context.Context
+		ctx := context.WithValue(c.Request.Context(), "UserAgent", c.Request.UserAgent())
+
 		var token string
-		token, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+		token, err = ctl.svc.Login(ctx, req.Identifier, req.Password, isEmail)
 		if errors.Is(err, service.ErrInvalidUserOrPassword) {
 			c.JSON(http.StatusInternalServerError, "identifier or password error")
 			return

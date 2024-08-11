@@ -17,12 +17,13 @@ var (
 )
 
 type Claims struct {
-	Role uint8  `json:"role"`
-	Id   uint64 `json:"id"`
+	Role      uint8  `json:"role"`
+	Id        uint64 `json:"id"`
+	UserAgent string `json:"userAgent"`
 	jwt.StandardClaims
 }
 
-func GenerateToken(role uint8, id uint64) (string, error) {
+func GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
 	gob.Register(time.Now())
 	nowTime := time.Now()
 	expireTime := nowTime.Add(24 * time.Hour)
@@ -33,6 +34,7 @@ func GenerateToken(role uint8, id uint64) (string, error) {
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "oj",
 		},
+		UserAgent: userAgent,
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(SecretKey)
