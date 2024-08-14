@@ -1,6 +1,7 @@
 package web
 
 import (
+	"oj/config"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,7 @@ func InitWeb() *gin.Engine {
 
 	// 限流
 	cmd := redis.NewClient(&redis.Options{
-		Addr:     "oj-redis:11409",
+		Addr:     config.Config.Redis.Addr,
 		Password: "",
 		DB:       0,
 	})
