@@ -1,4 +1,12 @@
 # Ignore .idea
 .idea/
 
-main
+docker-compose.yaml
+
+Dockerfile
+
+*.yaml
+
+onlinejudge
+
+.luarc.json

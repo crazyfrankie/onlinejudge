@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"oj/user/web"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,16 +14,10 @@ import (
 )
 
 func main() {
-	//router := web.InitWeb()
-
-	router := gin.Default()
-
-	router.GET("/hello", func(c *gin.Context) {
-		c.JSON(http.StatusOK, "hello")
-	})
+	router := web.InitWeb()
 
 	server := &http.Server{
-		Addr:    "localhost:9090",
+		Addr:    "0.0.0.0:9090",
 		Handler: router,
 	}
 

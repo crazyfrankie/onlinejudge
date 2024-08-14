@@ -32,7 +32,7 @@ func InitWeb() *gin.Engine {
 
 	// 限流
 	cmd := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "oj-redis:11409",
 		Password: "",
 		DB:       0,
 	})

@@ -39,6 +39,9 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("/login", ctl.Login())
 		userGroup.POST("/logout", ctl.Logout())
 		userGroup.GET("/:id", ctl.GetInfo())
+		userGroup.GET("/hello", func(c *gin.Context) {
+			c.JSON(http.StatusOK, "hello")
+		})
 	}
 }
 

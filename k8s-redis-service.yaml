@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: oj-redis
+spec:
+  selector:
+    app: oj-redis
+  ports:
+    - protocol: TCP
+      port: 11409
+      targetPort: 6379
+      nodePort: 30003
+  type: NodePort
+  
