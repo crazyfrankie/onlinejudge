@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: oj-mysql-storage
+# 这个指我的 MySQL 要什么样的持久化卷 但是我的 k8s 到底有什么呢？？？有这样的持久化卷吗？？？ -> 再新增一个文件进行声明
+spec:
+  storageClassName: crazyfrank
+# 决定这个持久化卷被读写的方式
+  accessModes:
+#   一个指的是：一个用户?一个线程？还是一个 Pod？还是一个数据库用户？ -> Pod
+#   一个读写
+    - ReadWriteOnce
+#   多个读 一个写
+#   - ReadOnlyMany
+#   多个读写
+#   - ReadWriteMany
+
+# 究竟需要什么样的资源
+  resources:
+    requests:
+#     1Gi 1024M
+      storage: 1Gi
