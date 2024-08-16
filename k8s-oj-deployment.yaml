@@ -5,7 +5,7 @@ metadata:
 # specification 描述我的 Pod 应该是怎样的
 spec:
 # 副本数量
-  replicas: 3
+  replicas: 0
 # 筛选器 从所有 Pod 中如何知道哪些是我要去管理的
   selector:
     matchLabels:
