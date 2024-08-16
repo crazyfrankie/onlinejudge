@@ -3,7 +3,6 @@ package dao
 import (
 	"context"
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
@@ -87,16 +86,21 @@ func (dao *UserDao) FindByEmail(ctx context.Context, email string) (domain.User,
 	return user, nil
 }
 
-func (dao *UserDao) FindById(ctx context.Context, id string) (User, error) {
+func (dao *UserDao) FindById(ctx context.Context, id uint64) (domain.User, error) {
 	var user User
 
-	Id, _ := strconv.Atoi(id)
-	result := dao.db.WithContext(ctx).Where("id = ?", uint64(Id)).First(&user)
+	result := dao.db.WithContext(ctx).Where("id = ?", id).First(&user)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return User{}, ErrUserNotFound
+			return domain.User{}, ErrUserNotFound
 		}
-		return User{}, result.Error
+		return domain.User{}, result.Error
 	}
-	return user, nil
+	u := domain.User{
+		Id:    user.Id,
+		Name:  user.Name,
+		Email: user.Email,
+		Role:  user.Role,
+	}
+	return u, nil
 }

@@ -2,6 +2,7 @@ package web
 
 import (
 	"oj/config"
+	"oj/user/repository/cache"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,12 +16,13 @@ import (
 )
 
 // InitHandler Handler 对象的创建
-func InitHandler() *UserHandler {
+func InitHandler(redisClient redis.Cmdable) *UserHandler {
 	db := dao.InitDB()
 	db.AutoMigrate(&dao.User{})
 
 	ud := dao.NewUserDao(db)
-	repo := repository.NewUserRepository(ud)
+	ce := cache.NewUserCache(redisClient, time.Minute*15)
+	repo := repository.NewUserRepository(ud, ce)
 	svc := service.NewUserService(repo)
 	u := NewUserHandler(svc)
 	return u
@@ -48,7 +50,7 @@ func InitWeb() *gin.Engine {
 		CheckLogin())
 
 	// 路由注册
-	u := InitHandler()
+	u := InitHandler(cmd)
 	u.RegisterRoute(router)
 
 	return router

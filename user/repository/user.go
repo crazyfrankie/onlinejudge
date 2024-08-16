@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
-
+	"errors"
+	"log"
 	"oj/user/domain"
+	"oj/user/repository/cache"
 	"oj/user/repository/dao"
 )
 
@@ -14,12 +16,14 @@ var (
 )
 
 type UserRepository struct {
-	dao *dao.UserDao
+	dao   *dao.UserDao
+	cache *cache.UserCache
 }
 
-func NewUserRepository(dao *dao.UserDao) *UserRepository {
+func NewUserRepository(dao *dao.UserDao, cache *cache.UserCache) *UserRepository {
 	return &UserRepository{
-		dao: dao,
+		dao:   dao,
+		cache: cache,
 	}
 }
 
@@ -53,10 +57,31 @@ func (ur *UserRepository) FindByEmail(ctx context.Context, email string) (domain
 	return user, nil
 }
 
-func (ur *UserRepository) FindByID(ctx context.Context, id string) (dao.User, error) {
-	user, err := ur.dao.FindById(ctx, id)
-	if err != nil {
-		return dao.User{}, ErrUserNotFound
+func (ur *UserRepository) FindByID(ctx context.Context, id uint64) (domain.User, error) {
+	// 先去缓存中找
+	user, err := ur.cache.Get(ctx, id)
+	if err == nil {
+		// 必然有数据
+		return user, nil
 	}
-	return user, nil
+
+	// 去数据库里面加载
+	user, err = ur.dao.FindById(ctx, id)
+	if errors.Is(err, ErrUserNotFound) {
+		return user, ErrUserNotFound
+	}
+	if err != nil {
+		return user, err
+	}
+
+	// 异步处理
+	go func() {
+		// 查询成功后更新缓存
+		err = ur.cache.Set(ctx, user)
+		if err != nil {
+			// 记录日志，做监控，但不影响返回的结果
+			log.Printf("failed to update cache for user %d: %v", user.Id, err)
+		}
+	}()
+	return user, err
 }
