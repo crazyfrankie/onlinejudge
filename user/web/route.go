@@ -35,13 +35,21 @@ func InitWeb() *gin.Engine {
 	// 跨域设置
 	router.Use(middleware.Cors())
 
-	// 限流
-	cmd := redis.NewClient(&redis.Options{
+	// 限流 Redis 客户端
+	rateLimitCmd := redis.NewClient(&redis.Options{
+		Addr:     config.Config.Redis.Addr,
+		Password: "",
+		DB:       1,
+	})
+
+	// 用户缓存 Redis 客户端
+	userCacheCmd := redis.NewClient(&redis.Options{
 		Addr:     config.Config.Redis.Addr,
 		Password: "",
 		DB:       0,
 	})
-	router.Use(ratelimit.NewBuilder(cmd, time.Second, 100).Build())
+
+	router.Use(ratelimit.NewBuilder(rateLimitCmd, time.Second, 100).Build())
 
 	// 登录校验
 	router.Use(middleware.NewLoginJWTMiddlewareBuilder().
@@ -50,7 +58,7 @@ func InitWeb() *gin.Engine {
 		CheckLogin())
 
 	// 路由注册
-	u := InitHandler(cmd)
+	u := InitHandler(userCacheCmd)
 	u.RegisterRoute(router)
 
 	return router
