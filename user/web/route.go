@@ -1,14 +1,14 @@
 package web
 
 import (
-	"oj/config"
-	"oj/user/repository/cache"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
+	"oj/config"
 	"oj/user/repository"
+	"oj/user/repository/cache"
 	"oj/user/repository/dao"
 	"oj/user/service"
 	"oj/user/web/middleware"

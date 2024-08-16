@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"oj/user/web/middleware"
 	"strconv"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"oj/user/domain"
 	"oj/user/repository"
+	"oj/user/web/middleware"
 )
 
 var (

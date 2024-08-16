@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redis/go-redis/v9"
-	"oj/user/domain"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+
+	"oj/user/domain"
 )
 
 type UserCache struct {
