@@ -9,7 +9,7 @@ local val = ARGV[1]
 
 -- 过期时间
 -- 验证码的有效时间是十分钟，600秒
-local ttl = tonumber(redis.call("ttl",Key))
+local ttl = tonumber(redis.call("ttl",key))
 local code = redis.call("get", key)
 
 
@@ -17,11 +17,11 @@ local code = redis.call("get", key)
 if ttl == -1 then
 --  有人误操作导致 key 冲突
     return -2
-elseif tll == -2 or ttl < 540 then
+elseif ttl == -2 or ttl < 540 then
 --  后续如果验证码有不同的过期时间，要在这里优化
     redis.call("set", key, val)
     redis.call("expire", key, 600)
-    redis.call("set", cntkey, 3)
+    redis.call("set", cntKey, 3)
     redis.call("expire", key, 600)
     return 0
 else

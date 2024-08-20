@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -12,23 +13,31 @@ import (
 
 const codeTplId = ""
 
+var (
+	ErrSendTooMany = repository.ErrSendTooMany
+)
+
 type CodeService struct {
 	repo *repository.CodeRepository
 	sms  smsSvc.Service
 }
 
-func NewCodeService(r *repository.CodeRepository) *CodeService {
+func NewCodeService(r *repository.CodeRepository, sms smsSvc.Service) *CodeService {
 	return &CodeService{
 		repo: r,
+		sms:  sms,
 	}
 }
 
-func (svc *CodeService) Send(ctx context.Context, biz, phone, code string) error {
+func (svc *CodeService) Send(ctx context.Context, biz, phone string) error {
 	// 生成一个验证码
-	svc.generateCode()
+	code := svc.generateCode()
 
 	// 塞进去 Redis
 	err := svc.repo.Store(ctx, biz, phone, code)
+	if errors.Is(err, ErrSendTooMany) {
+		return ErrSendTooMany
+	}
 	if err != nil {
 		return err
 	}

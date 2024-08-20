@@ -9,6 +9,6 @@ var Config = config{
 		DSN: "root:123456@tcp(localhost:3307)/onlinejudge?charset=utf8mb4&parseTime=true&loc=Local",
 	},
 	Redis: RedisConfig{
-		Addr: "172.21.21.73:8838",
+		Addr: "localhost:6379",
 	},
 }

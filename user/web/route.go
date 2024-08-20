@@ -1,6 +1,8 @@
 package web
 
 import (
+	"oj/user/service/biz"
+	"oj/user/service/sms/memory"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,11 +22,17 @@ func InitHandler(redisClient redis.Cmdable) *UserHandler {
 	db := dao.InitDB()
 	db.AutoMigrate(&dao.User{})
 
+	codeCache := cache.NewCodeCache(redisClient)
+	codeRepo := repository.NewCodeRepository(codeCache)
+	smsSvc := memory.NewService()
+	codeSvc := biz.NewCodeService(codeRepo, smsSvc)
+
 	ud := dao.NewUserDao(db)
 	ce := cache.NewUserCache(redisClient, time.Minute*15)
 	repo := repository.NewUserRepository(ud, ce)
 	svc := service.NewUserService(repo)
-	u := NewUserHandler(svc)
+	u := NewUserHandler(svc, codeSvc)
+
 	return u
 }
 
@@ -55,6 +63,7 @@ func InitWeb() *gin.Engine {
 	router.Use(middleware.NewLoginJWTMiddlewareBuilder().
 		IgnorePaths("/user/signup").
 		IgnorePaths("/user/login").
+		IgnorePaths("/user/login_sms/code/send").
 		CheckLogin())
 
 	// 路由注册

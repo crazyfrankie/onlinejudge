@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"oj/user/service/biz"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
@@ -15,11 +16,12 @@ import (
 
 type UserHandler struct {
 	svc              *service.UserService
+	codeSvc          *biz.CodeService
 	emailRegexExp    *regexp.Regexp
 	passwordRegexExp *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *biz.CodeService) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
@@ -28,6 +30,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 	passwordRegexExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
 	return &UserHandler{
 		svc:              svc,
+		codeSvc:          codeSvc,
 		emailRegexExp:    emailRegexExp,
 		passwordRegexExp: passwordRegexExp,
 	}
@@ -40,9 +43,8 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("/login", ctl.Login())
 		userGroup.POST("/logout", ctl.Logout())
 		userGroup.GET("/:id", ctl.GetInfo())
-		userGroup.GET("/hello", func(c *gin.Context) {
-			c.JSON(http.StatusOK, "hello")
-		})
+		userGroup.POST("/login_sms/code/send", ctl.LoginSendSMSCode())
+		userGroup.POST("/login_sms", ctl.LoginVerifySMSCode())
 	}
 }
 
@@ -152,6 +154,37 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		c.Header("x-jwt-token", token)
 
 		c.JSON(http.StatusOK, "login successfully!")
+	}
+}
+
+func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			Phone string `json:"phone"`
+		}
+		req := Req{}
+
+		if err := c.Bind(&req); err != nil {
+			return
+		}
+
+		const Biz = "login"
+		err := ctl.codeSvc.Send(c.Request.Context(), Biz, req.Phone)
+		if errors.Is(err, biz.ErrSendTooMany) {
+			c.JSON(http.StatusTooManyRequests, "send too many")
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		}
+		c.JSON(http.StatusOK, "send successfully")
+	}
+}
+
+func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctl.codeSvc.Verify(c.Request.Context())
 	}
 }
 
