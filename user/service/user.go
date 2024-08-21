@@ -98,5 +98,26 @@ func (svc *UserService) GetInfo(ctx context.Context, id string) (domain.User, er
 }
 
 func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
-	return svc.repo.FindOrCreate(ctx, phone)
+	user, err := svc.repo.FindByPhone(ctx, phone)
+	// 快路径
+	if !errors.Is(err, ErrUserNotFound) {
+		// 绝大部分请求都会进来这里
+		return user, nil
+	}
+	// 在系统资源不足后，触发降级策略
+	//if ctx.Value("降级") == "true" {
+	//	return domain.User{}, errors.New("系统降级了")
+	//}
+
+	// 慢路径
+	// 你明确知道，没有这个用户
+	user = domain.User{
+		Phone: phone,
+	}
+	err = svc.repo.Create(ctx, user)
+	if err != nil {
+		return user, err
+	}
+	// 有主从延迟的问题
+	return svc.repo.FindByPhone(ctx, phone)
 }

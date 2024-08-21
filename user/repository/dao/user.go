@@ -131,35 +131,14 @@ func (dao *UserDao) FindById(ctx context.Context, id uint64) (domain.User, error
 	return u, nil
 }
 
-func (dao *UserDao) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+func (dao *UserDao) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	var user User
 	result := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&user)
 
 	if result.Error != nil {
 		// 判断是不是因为没有创建才没找到
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			code := dao.generateCode()
-			newUser := User{
-				Name:  "用户" + code,
-				Phone: phone,
-				Email: sql.NullString{
-					String: "",
-					Valid:  false,
-				},
-			}
-			err := dao.Insert(ctx, &newUser)
-			if err != nil {
-				// 处理插入时的错误，例如数据库连接问题
-				return domain.User{}, err
-			}
-			u := domain.User{
-				Id:    newUser.Id,
-				Name:  newUser.Name,
-				Phone: newUser.Phone,
-				Email: newUser.Email.String,
-				Role:  0,
-			}
-			return u, nil
+			return domain.User{}, ErrUserNotFound
 		}
 		return domain.User{}, result.Error
 	}

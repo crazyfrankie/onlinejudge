@@ -92,6 +92,10 @@ func (ur *UserRepository) FindByID(ctx context.Context, id uint64) (domain.User,
 	return user, err
 }
 
-func (ur *UserRepository) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
-	return ur.dao.FindOrCreate(ctx, phone)
+func (ur *UserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+	user, err := ur.dao.FindByPhone(ctx, phone)
+	if errors.Is(err, ErrUserNotFound) {
+		return user, ErrUserNotFound
+	}
+	return user, err
 }
