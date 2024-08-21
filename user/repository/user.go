@@ -14,6 +14,7 @@ import (
 var (
 	ErrUserDuplicateEmail = dao.ErrUserDuplicateEmail
 	ErrUserDuplicateName  = dao.ErrUserDuplicateName
+	ErrUserDuplicatePhone = dao.ErrUserDuplicatePhone
 	ErrUserNotFound       = dao.ErrUserNotFound
 )
 
@@ -50,7 +51,7 @@ func (ur *UserRepository) Create(ctx context.Context, u domain.User) error {
 func (ur *UserRepository) FindByName(ctx context.Context, name string) (domain.User, error) {
 	user, err := ur.dao.FindByName(ctx, name)
 	if err != nil {
-		return domain.User{}, ErrUserNotFound
+		return domain.User{}, err
 	}
 	return user, nil
 }
@@ -58,7 +59,7 @@ func (ur *UserRepository) FindByName(ctx context.Context, name string) (domain.U
 func (ur *UserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
 	user, err := ur.dao.FindByEmail(ctx, email)
 	if err != nil {
-		return domain.User{}, ErrUserNotFound
+		return domain.User{}, err
 	}
 	return user, nil
 }
@@ -94,8 +95,8 @@ func (ur *UserRepository) FindByID(ctx context.Context, id uint64) (domain.User,
 
 func (ur *UserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	user, err := ur.dao.FindByPhone(ctx, phone)
-	if errors.Is(err, ErrUserNotFound) {
-		return user, ErrUserNotFound
+	if err != nil {
+		return domain.User{}, err
 	}
 	return user, err
 }

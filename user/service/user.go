@@ -115,7 +115,7 @@ func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.
 		Phone: phone,
 	}
 	err = svc.repo.Create(ctx, user)
-	if err != nil {
+	if err != nil || !errors.Is(err, repository.ErrUserDuplicatePhone) {
 		return user, err
 	}
 	// 有主从延迟的问题
