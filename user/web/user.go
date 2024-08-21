@@ -4,35 +4,40 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"oj/user/service/biz"
 
 	regexp "github.com/dlclark/regexp2"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 
 	"oj/user/domain"
 	"oj/user/service"
+	"oj/user/service/biz"
 )
+
+const Biz = "login"
 
 type UserHandler struct {
 	svc              *service.UserService
 	codeSvc          *biz.CodeService
 	emailRegexExp    *regexp.Regexp
 	passwordRegexExp *regexp.Regexp
+	phoneRegexExp    *regexp.Regexp
 }
 
 func NewUserHandler(svc *service.UserService, codeSvc *biz.CodeService) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
+		phoneRegexPattern    = `^1[3-9]\d{9}$`
 	)
 	emailRegexExp := regexp.MustCompile(emailRegexPattern, regexp.None)
 	passwordRegexExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
+	phoneRegexExp := regexp.MustCompile(phoneRegexPattern, regexp.None)
 	return &UserHandler{
 		svc:              svc,
 		codeSvc:          codeSvc,
 		emailRegexExp:    emailRegexExp,
 		passwordRegexExp: passwordRegexExp,
+		phoneRegexExp:    phoneRegexExp,
 	}
 }
 
@@ -41,10 +46,9 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	{
 		userGroup.POST("/signup", ctl.Signup())
 		userGroup.POST("/login", ctl.Login())
-		userGroup.POST("/logout", ctl.Logout())
 		userGroup.GET("/:id", ctl.GetInfo())
 		userGroup.POST("/login_sms/code/send", ctl.LoginSendSMSCode())
-		userGroup.POST("/login_sms", ctl.LoginVerifySMSCode())
+		userGroup.POST("/sms_login", ctl.LoginVerifySMSCode())
 	}
 }
 
@@ -55,6 +59,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			Password        string `json:"password"`
 			ConfirmPassword string `json:"confirmPassword"`
 			Email           string `json:"email"`
+			Phone           string `json:"phone"`
 			Role            uint8  `json:"role"`
 		}
 		req := Req{}
@@ -71,7 +76,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 		// 邮箱格式检查
 		ok, err := ctl.emailRegexExp.MatchString(req.Email)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error 1")
+			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
 		if !ok {
@@ -82,7 +87,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 		// 密码格式检查
 		ok, err = ctl.passwordRegexExp.MatchString(req.Password)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error 2")
+			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
 		if !ok {
@@ -90,26 +95,35 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			return
 		}
 
+		// 手机号格式检测
+		ok, err = ctl.phoneRegexExp.MatchString(req.Phone)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		}
+		if !ok {
+			c.JSON(http.StatusBadRequest, "your phone number does not fit the format")
+			return
+		}
+
 		err = ctl.svc.Signup(c.Request.Context(), domain.User{
 			Name:     req.Name,
 			Password: req.Password,
 			Email:    req.Email,
+			Phone:    req.Phone,
 			Role:     req.Role,
 		})
-		if errors.Is(err, service.ErrUserDuplicateEmail) {
-			c.JSON(http.StatusInternalServerError, "email conflict")
-			return
-		}
-		if errors.Is(err, service.ErrUserDuplicateName) {
-			c.JSON(http.StatusInternalServerError, "name conflict")
-			return
-		}
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, "system error")
-			return
-		}
 
-		c.JSON(http.StatusOK, "sign up successfully!")
+		switch {
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
+		case errors.Is(err, service.ErrUserDuplicateEmail):
+			c.JSON(http.StatusInternalServerError, "email conflict")
+		case errors.Is(err, service.ErrUserDuplicateName):
+			c.JSON(http.StatusInternalServerError, "name conflict")
+		default:
+			c.JSON(http.StatusOK, "sign up successfully!")
+		}
 	}
 }
 
@@ -138,22 +152,17 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 
 		var token string
 		token, err = ctl.svc.Login(ctx, req.Identifier, req.Password, isEmail)
-		if errors.Is(err, service.ErrInvalidUserOrPassword) {
-			c.JSON(http.StatusInternalServerError, "identifier or password error")
-			return
-		}
-		if errors.Is(err, service.ErrUserNotFound) {
-			c.JSON(http.StatusInternalServerError, "identifier not found")
-			return
-		}
-		if err != nil {
+		switch {
+		case err != nil:
 			c.JSON(http.StatusBadRequest, "system error")
-			return
+		case errors.Is(err, service.ErrInvalidUserOrPassword):
+			c.JSON(http.StatusInternalServerError, "identifier or password error")
+		case errors.Is(err, service.ErrUserNotFound):
+			c.JSON(http.StatusInternalServerError, "identifier not found")
+		default:
+			c.Header("x-jwt-token", token)
+			c.JSON(http.StatusOK, "login successfully!")
 		}
-
-		c.Header("x-jwt-token", token)
-
-		c.JSON(http.StatusOK, "login successfully!")
 	}
 }
 
@@ -168,34 +177,76 @@ func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 			return
 		}
 
-		const Biz = "login"
-		err := ctl.codeSvc.Send(c.Request.Context(), Biz, req.Phone)
-		if errors.Is(err, biz.ErrSendTooMany) {
-			c.JSON(http.StatusTooManyRequests, "send too many")
-			return
-		}
+		// 手机号格式检测
+		ok, err := ctl.phoneRegexExp.MatchString(req.Phone)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
-		c.JSON(http.StatusOK, "send successfully")
+		if !ok {
+			c.JSON(http.StatusBadRequest, "your phone number does not fit the format")
+			return
+		}
+
+		err = ctl.codeSvc.Send(c.Request.Context(), Biz, req.Phone)
+
+		switch {
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
+		case errors.Is(err, biz.ErrSendTooMany):
+			c.JSON(http.StatusTooManyRequests, "send too many")
+		default:
+			c.JSON(http.StatusOK, "send successfully")
+		}
 	}
 }
 
 func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctl.codeSvc.Verify(c.Request.Context())
-	}
-}
+		type Req struct {
+			Phone string `json:"phone"`
+			Code  string `json:"code"`
+		}
+		req := Req{}
 
-func (ctl *UserHandler) Logout() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		sess := sessions.Default(c)
-		sess.Options(sessions.Options{
-			// 退出登录
-			MaxAge: -1,
-		})
-		c.JSON(http.StatusOK, "log out successfully!")
+		if err := c.Bind(&req); err != nil {
+			return
+		}
+
+		ok, err := ctl.codeSvc.Verify(c.Request.Context(), Biz, req.Phone, req.Code)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, "system error")
+			return
+		}
+		if !ok {
+			c.JSON(http.StatusBadRequest, "verify code error")
+			return
+		}
+
+		// 设置 JWT
+		var user domain.User
+		user, err = ctl.svc.FindOrCreate(c.Request.Context(), req.Phone)
+		switch {
+		case err != nil:
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		case errors.Is(err, service.ErrUserNotFound):
+			c.JSON(http.StatusInternalServerError, "identifier not found")
+			return
+		}
+
+		// 从 Header 中取出 UserAgent
+		userAgent := c.GetHeader("User-Agent")
+
+		var token string
+		token, err = ctl.svc.GenerateToken(user.Role, user.Id, userAgent)
+		switch {
+		case err != nil:
+			c.JSON(http.StatusBadRequest, "system error")
+		default:
+			c.Header("x-jwt-token", token)
+			c.JSON(http.StatusOK, "login successfully")
+		}
 	}
 }
 
@@ -208,15 +259,14 @@ func (ctl *UserHandler) GetInfo() gin.HandlerFunc {
 		}
 
 		user, err := ctl.svc.GetInfo(c.Request.Context(), id)
-		if errors.Is(err, service.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, "user not found")
-			return
-		}
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, "system error")
-			return
-		}
 
-		c.JSON(http.StatusOK, user)
+		switch {
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
+		case errors.Is(err, service.ErrUserNotFound):
+			c.JSON(http.StatusNotFound, "user not found")
+		default:
+			c.JSON(http.StatusOK, user)
+		}
 	}
 }

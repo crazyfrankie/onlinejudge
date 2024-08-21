@@ -5,6 +5,7 @@ local cntKey = key..":cnt"
 
 -- 转成一个数字
 local cnt = tonumber(redis.call("get",cntKey))
+local code = redis.call("get", key)
 
 if cnt < 0 then
 -- 说明用户一直输错 ，有人搞你

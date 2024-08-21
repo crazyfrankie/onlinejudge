@@ -10,8 +10,6 @@ local val = ARGV[1]
 -- 过期时间
 -- 验证码的有效时间是十分钟，600秒
 local ttl = tonumber(redis.call("ttl",key))
-local code = redis.call("get", key)
-
 
 -- -1 是 key 存在但是没有过期时间
 if ttl == -1 then

@@ -5,5 +5,6 @@ type User struct {
 	Name     string
 	Password string
 	Email    string
+	Phone    string
 	Role     uint8
 }

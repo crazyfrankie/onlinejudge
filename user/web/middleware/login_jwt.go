@@ -1,10 +1,26 @@
 package middleware
 
 import (
+	"errors"
+	"github.com/golang-jwt/jwt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+var (
+	ErrTokenInvalid = errors.New("token is invalid")
+	ErrTokenExpired = errors.New("token is expired")
+	ErrLoginYet     = errors.New("have not logged in yet")
+	SecretKey       = []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE")
+)
+
+type Claims struct {
+	Role      uint8  `json:"role"`
+	Id        uint64 `json:"id"`
+	UserAgent string `json:"userAgent"`
+	jwt.StandardClaims
+}
 
 // LoginJWTMiddlewareBuilder JWT 进行校验
 type LoginJWTMiddlewareBuilder struct {
@@ -39,7 +55,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := ParseToken(tokenHeader)
+		claims, err := l.ParseToken(tokenHeader)
 		if err != nil {
 			code, msg := handleTokenError(err)
 			c.JSON(code, msg)
@@ -53,4 +69,49 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 	}
+}
+
+func (l *LoginJWTMiddlewareBuilder) ParseToken(token string) (*Claims, error) {
+	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return SecretKey, nil
+	})
+	if err != nil {
+		var ve *jwt.ValidationError
+		if errors.As(err, &ve) {
+			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+				return nil, ErrTokenInvalid
+			} else if ve.Errors&(jwt.ValidationErrorExpired) != 0 {
+				return nil, ErrTokenExpired
+			} else if ve.Errors&(jwt.ValidationErrorNotValidYet) != 0 {
+				return nil, ErrLoginYet
+			}
+		}
+		return nil, err
+	}
+	if tokenClaims != nil {
+		if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
+			return claims, nil
+		}
+	}
+	return nil, ErrTokenInvalid
+}
+
+func handleTokenError(err error) (int, string) {
+	var code int
+	var msg string
+	switch {
+	case errors.Is(err, ErrTokenExpired):
+		code = http.StatusUnauthorized
+		msg = "token is expired"
+	case errors.Is(err, ErrTokenInvalid):
+		code = http.StatusUnauthorized
+		msg = "token is invalid"
+	case errors.Is(err, ErrLoginYet):
+		code = http.StatusUnauthorized
+		msg = "have not logged in yet"
+	default:
+		code = http.StatusInternalServerError
+		msg = "parse Token failed"
+	}
+	return code, msg
 }

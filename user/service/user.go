@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"encoding/gob"
 	"errors"
+	"github.com/golang-jwt/jwt"
 	"strconv"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -60,12 +63,30 @@ func (svc *UserService) Login(ctx context.Context, identifier, password string, 
 	userAgent := ctx.Value("UserAgent").(string)
 
 	var token string
-	token, err = middleware.GenerateToken(user.Role, user.Id, userAgent)
+	token, err = svc.GenerateToken(user.Role, user.Id, userAgent)
 	if err != nil {
 		return "", err
 	}
 
 	return token, nil
+}
+
+func (svc *UserService) GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
+	gob.Register(time.Now())
+	nowTime := time.Now()
+	expireTime := nowTime.Add(24 * time.Hour)
+	claims := middleware.Claims{
+		Role: role,
+		Id:   id,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expireTime.Unix(),
+			Issuer:    "oj",
+		},
+		UserAgent: userAgent,
+	}
+	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token, err := tokenClaims.SignedString(middleware.SecretKey)
+	return token, err
 }
 
 func (svc *UserService) GetInfo(ctx context.Context, id string) (domain.User, error) {
@@ -74,4 +95,8 @@ func (svc *UserService) GetInfo(ctx context.Context, id string) (domain.User, er
 		return domain.User{}, err
 	}
 	return svc.repo.FindByID(ctx, uint64(Id))
+}
+
+func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+	return svc.repo.FindOrCreate(ctx, phone)
 }

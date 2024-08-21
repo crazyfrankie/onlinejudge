@@ -64,6 +64,7 @@ func InitWeb() *gin.Engine {
 		IgnorePaths("/user/signup").
 		IgnorePaths("/user/login").
 		IgnorePaths("/user/login_sms/code/send").
+		IgnorePaths("/user/sms_login").
 		CheckLogin())
 
 	// 路由注册

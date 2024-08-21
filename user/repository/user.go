@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 
@@ -32,10 +33,14 @@ func (ur *UserRepository) Create(ctx context.Context, u domain.User) error {
 	newUser := dao.User{
 		Name:     u.Name,
 		Password: u.Password,
-		Email:    u.Email,
-		Role:     u.Role,
+		Email: sql.NullString{
+			String: u.Email,
+			Valid:  u.Email != "",
+		},
+		Phone: u.Phone,
+		Role:  u.Role,
 	}
-	if err := ur.dao.Insert(ctx, newUser); err != nil {
+	if err := ur.dao.Insert(ctx, &newUser); err != nil {
 		return err
 	}
 	u.Id = newUser.Id
@@ -85,4 +90,8 @@ func (ur *UserRepository) FindByID(ctx context.Context, id uint64) (domain.User,
 		}
 	}()
 	return user, err
+}
+
+func (ur *UserRepository) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+	return ur.dao.FindOrCreate(ctx, phone)
 }

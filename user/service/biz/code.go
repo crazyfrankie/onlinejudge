@@ -57,5 +57,5 @@ func (svc *CodeService) generateCode() string {
 
 	randomNumber := rand.Intn(1000000)
 
-	return fmt.Sprintf("%6d", randomNumber)
+	return fmt.Sprintf("%06d", randomNumber)
 }
