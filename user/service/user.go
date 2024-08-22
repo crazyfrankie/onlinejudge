@@ -18,6 +18,7 @@ import (
 var (
 	ErrUserDuplicateEmail    = repository.ErrUserDuplicateEmail
 	ErrUserDuplicateName     = repository.ErrUserDuplicateName
+	ErrUserDuplicatePhone    = repository.ErrUserDuplicatePhone
 	ErrUserNotFound          = repository.ErrUserNotFound
 	ErrInvalidUserOrPassword = errors.New("identifier or password error")
 )

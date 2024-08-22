@@ -1,8 +1,6 @@
 package web
 
 import (
-	"oj/user/service/biz"
-	"oj/user/service/sms/memory"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,19 +11,20 @@ import (
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"
 	"oj/user/service"
+	"oj/user/service/sms/memory"
 	"oj/user/web/middleware"
 	"oj/user/web/pkg/middlewares/ratelimit"
 )
 
-// InitHandler Handler 对象的创建
-func InitHandler(redisClient redis.Cmdable) *UserHandler {
+// InitUserHandler Handler 对象的创建
+func InitUserHandler(redisClient redis.Cmdable) *UserHandler {
 	db := dao.InitDB()
 	db.AutoMigrate(&dao.User{})
 
 	codeCache := cache.NewCodeCache(redisClient)
 	codeRepo := repository.NewCodeRepository(codeCache)
 	smsSvc := memory.NewService()
-	codeSvc := biz.NewCodeService(codeRepo, smsSvc)
+	codeSvc := service.NewCodeService(codeRepo, smsSvc)
 
 	ud := dao.NewUserDao(db)
 	ce := cache.NewUserCache(redisClient, time.Minute*15)
@@ -57,6 +56,7 @@ func InitWeb() *gin.Engine {
 		DB:       0,
 	})
 
+	// 限流
 	router.Use(ratelimit.NewBuilder(rateLimitCmd, time.Second, 100).Build())
 
 	// 登录校验
@@ -68,7 +68,7 @@ func InitWeb() *gin.Engine {
 		CheckLogin())
 
 	// 路由注册
-	u := InitHandler(userCacheCmd)
+	u := InitUserHandler(userCacheCmd)
 	u.RegisterRoute(router)
 
 	return router

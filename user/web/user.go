@@ -10,20 +10,22 @@ import (
 
 	"oj/user/domain"
 	"oj/user/service"
-	"oj/user/service/biz"
 )
 
-const Biz = "login"
+const (
+	signUpBiz = "signup"
+	loginBiz  = "login"
+)
 
 type UserHandler struct {
 	svc              *service.UserService
-	codeSvc          *biz.CodeService
+	codeSvc          *service.CodeService
 	emailRegexExp    *regexp.Regexp
 	passwordRegexExp *regexp.Regexp
 	phoneRegexExp    *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService, codeSvc *biz.CodeService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
@@ -44,11 +46,47 @@ func NewUserHandler(svc *service.UserService, codeSvc *biz.CodeService) *UserHan
 func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	userGroup := r.Group("user")
 	{
+		userGroup.POST("/signup/send-code", ctl.SignupSendSMSCode())
+		userGroup.POST("/signup/verify-code", ctl.SignupVerifySMSCode())
 		userGroup.POST("/signup", ctl.Signup())
 		userGroup.POST("/login", ctl.Login())
+		userGroup.POST("/login/send-code", ctl.LoginSendSMSCode())
+		userGroup.POST("/login-sms", ctl.LoginVerifySMSCode())
 		userGroup.GET("/:id", ctl.GetInfo())
-		userGroup.POST("/login_sms/code/send", ctl.LoginSendSMSCode())
-		userGroup.POST("/sms_login", ctl.LoginVerifySMSCode())
+	}
+}
+
+func (ctl *UserHandler) SignupSendSMSCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		phone := c.PostForm("phone")
+
+		err := ctl.codeSvc.Send(c.Request.Context(), signUpBiz, phone)
+		switch {
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
+		case errors.Is(err, service.ErrSendTooMany):
+			c.JSON(http.StatusTooManyRequests, "send too many")
+		default:
+			c.JSON(http.StatusOK, "send successfully")
+		}
+	}
+}
+
+func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		phone := c.PostForm("phone")
+		code := c.PostForm("code")
+
+		ok, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, phone, code)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, "system error")
+			return
+		}
+		if !ok {
+			c.JSON(http.StatusBadRequest, "verify code error")
+			return
+		}
+		c.JSON(http.StatusOK, "verification successfully")
 	}
 }
 
@@ -116,11 +154,13 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 
 		switch {
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusBadRequest, "system error")
 		case errors.Is(err, service.ErrUserDuplicateEmail):
 			c.JSON(http.StatusInternalServerError, "email conflict")
 		case errors.Is(err, service.ErrUserDuplicateName):
 			c.JSON(http.StatusInternalServerError, "name conflict")
+		case errors.Is(err, service.ErrUserDuplicatePhone):
+			c.JSON(http.StatusInternalServerError, "phone conflict")
 		default:
 			c.JSON(http.StatusOK, "sign up successfully!")
 		}
@@ -188,12 +228,12 @@ func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.codeSvc.Send(c.Request.Context(), Biz, req.Phone)
+		err = ctl.codeSvc.Send(c.Request.Context(), loginBiz, req.Phone)
 
 		switch {
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, "system error")
-		case errors.Is(err, biz.ErrSendTooMany):
+		case errors.Is(err, service.ErrSendTooMany):
 			c.JSON(http.StatusTooManyRequests, "send too many")
 		default:
 			c.JSON(http.StatusOK, "send successfully")
@@ -213,7 +253,7 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 			return
 		}
 
-		ok, err := ctl.codeSvc.Verify(c.Request.Context(), Biz, req.Phone, req.Code)
+		ok, err := ctl.codeSvc.Verify(c.Request.Context(), loginBiz, req.Phone, req.Code)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, "system error")
 			return
