@@ -5,6 +5,7 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
+	"oj/user/repository/memory"
 
 	"oj/user/repository"
 	"oj/user/repository/cache"
@@ -16,12 +17,13 @@ import (
 func InitGin() *gin.Engine {
 	wire.Build(
 		// 最底层的第三方依赖
-		InitDB, InitRedis,
+		InitDB, InitRedis, InitGoMem,
 
 		dao.NewUserDao,
 
 		cache.NewUserCache,
 		cache.NewCodeCache,
+		memory.NewCodeMem,
 
 		repository.NewUserRepository,
 		repository.NewCodeRepository,

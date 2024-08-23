@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"oj/user/repository/memory"
 
 	"oj/user/repository/cache"
 )
@@ -13,11 +14,13 @@ var (
 
 type CodeRepository struct {
 	cache *cache.CodeCache
+	mem   *memory.CodeMem
 }
 
-func NewCodeRepository(c *cache.CodeCache) *CodeRepository {
+func NewCodeRepository(c *cache.CodeCache, mem *memory.CodeMem) *CodeRepository {
 	return &CodeRepository{
 		cache: c,
+		mem:   mem,
 	}
 }
 

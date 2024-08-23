@@ -6,8 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 
 	"oj/user/repository"
@@ -20,7 +21,8 @@ const (
 )
 
 var (
-	ErrSendTooMany = repository.ErrSendTooMany
+	ErrSendTooMany   = repository.ErrSendTooMany
+	ErrVerifyTooMany = repository.ErrVerifyTooMany
 )
 
 type CodeService struct {
@@ -67,9 +69,12 @@ func (svc *CodeService) Verify(ctx context.Context, biz, phone, inputCode string
 func (svc *CodeService) generateCode() string {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	randomNumber := rand.Intn(1000000)
-
-	return fmt.Sprintf("%06d", randomNumber)
+	var code strings.Builder
+	for i := 0; i < 6; i++ {
+		digit := rand.Intn(10)
+		code.WriteString(strconv.Itoa(digit))
+	}
+	return code.String()
 }
 
 func (svc *CodeService) generateHMAC(code, key string) string {

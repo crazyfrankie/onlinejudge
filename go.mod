@@ -9,6 +9,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/wire v0.6.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.0.985
 	golang.org/x/crypto v0.23.0

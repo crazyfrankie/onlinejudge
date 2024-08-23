@@ -8,10 +8,10 @@ package ioc
 
 import (
 	"github.com/gin-gonic/gin"
-
 	"oj/user/repository"
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"
+	"oj/user/repository/memory"
 	"oj/user/service"
 	"oj/user/web"
 )
@@ -27,7 +27,9 @@ func InitGin() *gin.Engine {
 	userRepository := repository.NewUserRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
 	codeCache := cache.NewCodeCache(cmdable)
-	codeRepository := repository.NewCodeRepository(codeCache)
+	cacheCache := InitGoMem()
+	codeMem := memory.NewCodeMem(cacheCache)
+	codeRepository := repository.NewCodeRepository(codeCache, codeMem)
 	smsService := InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService)

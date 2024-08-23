@@ -77,13 +77,13 @@ func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
 		phone := c.PostForm("phone")
 		code := c.PostForm("code")
 
-		ok, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, phone, code)
-		if err != nil {
+		_, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, phone, code)
+		switch {
+		case err != nil:
 			c.JSON(http.StatusInternalServerError, "system error")
 			return
-		}
-		if !ok {
-			c.JSON(http.StatusBadRequest, "verify code error")
+		case errors.Is(err, service.ErrVerifyTooMany):
+			c.JSON(http.StatusBadRequest, "too many verifications")
 			return
 		}
 		c.JSON(http.StatusOK, "verification successfully")
@@ -253,13 +253,13 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 			return
 		}
 
-		ok, err := ctl.codeSvc.Verify(c.Request.Context(), loginBiz, req.Phone, req.Code)
-		if err != nil {
+		_, err := ctl.codeSvc.Verify(c.Request.Context(), loginBiz, req.Phone, req.Code)
+		switch {
+		case err != nil:
 			c.JSON(http.StatusInternalServerError, "system error")
 			return
-		}
-		if !ok {
-			c.JSON(http.StatusBadRequest, "verify code error")
+		case errors.Is(err, service.ErrVerifyTooMany):
+			c.JSON(http.StatusBadRequest, "too many verifications")
 			return
 		}
 
