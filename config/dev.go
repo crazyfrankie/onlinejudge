@@ -6,9 +6,9 @@ package config
 
 var Config = config{
 	DB: DBConfig{
-		DSN: "root:123456@tcp(localhost:3307)/onlinejudge?charset=utf8mb4&parseTime=true&loc=Local",
+		DSN: "root:123456@tcp(localhost:3306)/onlinejudge?charset=utf8mb4&parseTime=true&loc=Local",
 	},
 	Redis: RedisConfig{
-		Addr: "localhost:6379",
+		Addr: "localhost:8838",
 	},
 }

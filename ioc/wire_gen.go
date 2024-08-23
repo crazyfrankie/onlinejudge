@@ -11,14 +11,13 @@ import (
 	"oj/user/repository"
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"
-	"oj/user/repository/memory"
 	"oj/user/service"
 	"oj/user/web"
 )
 
 // Injectors from wire.go:
 
-func InitGin() *gin.Engine {
+func InitGinWithRedis() *gin.Engine {
 	cmdable := InitRedis()
 	v := GinMiddlewares(cmdable)
 	db := InitDB()
@@ -26,10 +25,26 @@ func InitGin() *gin.Engine {
 	userCache := cache.NewUserCache(cmdable)
 	userRepository := repository.NewUserRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewCodeCache(cmdable)
+	codeCache := cache.NewRedisCodeCache(cmdable)
+	codeRepository := repository.NewCodeRepository(codeCache)
+	smsService := InitSMSService()
+	codeService := service.NewCodeService(codeRepository, smsService)
+	userHandler := web.NewUserHandler(userService, codeService)
+	engine := InitWebServer(v, userHandler)
+	return engine
+}
+
+func InitGinWithMem() *gin.Engine {
+	cmdable := InitRedis()
+	v := GinMiddlewares(cmdable)
+	db := InitDB()
+	userDao := dao.NewUserDao(db)
+	userCache := cache.NewUserCache(cmdable)
+	userRepository := repository.NewUserRepository(userDao, userCache)
+	userService := service.NewUserService(userRepository)
 	cacheCache := InitGoMem()
-	codeMem := memory.NewCodeMem(cacheCache)
-	codeRepository := repository.NewCodeRepository(codeCache, codeMem)
+	codeCache := cache.NewMemCodeCache(cacheCache)
+	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService)

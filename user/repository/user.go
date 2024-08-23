@@ -18,19 +18,27 @@ var (
 	ErrUserNotFound       = dao.ErrUserNotFound
 )
 
-type UserRepository struct {
-	dao   *dao.UserDao
-	cache *cache.UserCache
+type UserRepository interface {
+	Create(ctx context.Context, u domain.User) error
+	FindByName(ctx context.Context, name string) (domain.User, error)
+	FindByEmail(ctx context.Context, email string) (domain.User, error)
+	FindByID(ctx context.Context, id uint64) (domain.User, error)
+	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 }
 
-func NewUserRepository(dao *dao.UserDao, cache *cache.UserCache) *UserRepository {
-	return &UserRepository{
+type CacheUserRepository struct {
+	dao   dao.UserDao
+	cache cache.UserCache
+}
+
+func NewUserRepository(dao dao.UserDao, cache cache.UserCache) UserRepository {
+	return &CacheUserRepository{
 		dao:   dao,
 		cache: cache,
 	}
 }
 
-func (ur *UserRepository) Create(ctx context.Context, u domain.User) error {
+func (ur *CacheUserRepository) Create(ctx context.Context, u domain.User) error {
 	newUser := dao.User{
 		Name:     u.Name,
 		Password: u.Password,
@@ -48,7 +56,7 @@ func (ur *UserRepository) Create(ctx context.Context, u domain.User) error {
 	return nil
 }
 
-func (ur *UserRepository) FindByName(ctx context.Context, name string) (domain.User, error) {
+func (ur *CacheUserRepository) FindByName(ctx context.Context, name string) (domain.User, error) {
 	user, err := ur.dao.FindByName(ctx, name)
 	if err != nil {
 		return domain.User{}, err
@@ -56,7 +64,7 @@ func (ur *UserRepository) FindByName(ctx context.Context, name string) (domain.U
 	return user, nil
 }
 
-func (ur *UserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
+func (ur *CacheUserRepository) FindByEmail(ctx context.Context, email string) (domain.User, error) {
 	user, err := ur.dao.FindByEmail(ctx, email)
 	if err != nil {
 		return domain.User{}, err
@@ -64,7 +72,7 @@ func (ur *UserRepository) FindByEmail(ctx context.Context, email string) (domain
 	return user, nil
 }
 
-func (ur *UserRepository) FindByID(ctx context.Context, id uint64) (domain.User, error) {
+func (ur *CacheUserRepository) FindByID(ctx context.Context, id uint64) (domain.User, error) {
 	// 先去缓存中找
 	user, err := ur.cache.Get(ctx, id)
 	if err == nil {
@@ -93,7 +101,7 @@ func (ur *UserRepository) FindByID(ctx context.Context, id uint64) (domain.User,
 	return user, err
 }
 
-func (ur *UserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+func (ur *CacheUserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	user, err := ur.dao.FindByPhone(ctx, phone)
 	if err != nil {
 		return domain.User{}, err

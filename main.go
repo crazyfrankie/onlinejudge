@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	router := ioc.InitGin()
+	router := ioc.InitGinWithRedis()
 
 	server := &http.Server{
 		Addr:    "0.0.0.0:9090",

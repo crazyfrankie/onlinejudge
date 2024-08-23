@@ -11,17 +11,23 @@ import (
 	"oj/user/domain"
 )
 
-type UserCache struct {
+type UserCache interface {
+	Get(ctx context.Context, id uint64) (domain.User, error)
+	Set(ctx context.Context, user domain.User) error
+	key(id uint64) string
+}
+
+type RedisUserCache struct {
 	client redis.Cmdable
 }
 
-func NewUserCache(client redis.Cmdable) *UserCache {
-	return &UserCache{
+func NewUserCache(client redis.Cmdable) UserCache {
+	return &RedisUserCache{
 		client: client,
 	}
 }
 
-func (cache *UserCache) Get(ctx context.Context, id uint64) (domain.User, error) {
+func (cache *RedisUserCache) Get(ctx context.Context, id uint64) (domain.User, error) {
 	key := cache.key(id)
 	val, err := cache.client.Get(ctx, key).Result()
 	if err != nil {
@@ -33,7 +39,7 @@ func (cache *UserCache) Get(ctx context.Context, id uint64) (domain.User, error)
 	return user, err
 }
 
-func (cache *UserCache) Set(ctx context.Context, user domain.User) error {
+func (cache *RedisUserCache) Set(ctx context.Context, user domain.User) error {
 	val, err := json.Marshal(user)
 	if err != nil {
 		return err
@@ -44,6 +50,6 @@ func (cache *UserCache) Set(ctx context.Context, user domain.User) error {
 	return cache.client.Set(ctx, key, val, time.Minute*10).Err()
 }
 
-func (cache *UserCache) key(id uint64) string {
+func (cache *RedisUserCache) key(id uint64) string {
 	return fmt.Sprintf("user:info:%d", id)
 }

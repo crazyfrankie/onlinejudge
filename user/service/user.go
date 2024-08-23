@@ -23,17 +23,25 @@ var (
 	ErrInvalidUserOrPassword = errors.New("identifier or password error")
 )
 
-type UserService struct {
-	repo *repository.UserRepository
+type UserService interface {
+	Signup(ctx context.Context, u domain.User) error
+	Login(ctx context.Context, identifier, password string, isEmail bool) (string, error)
+	GenerateToken(role uint8, id uint64, userAgent string) (string, error)
+	GetInfo(ctx context.Context, id string) (domain.User, error)
+	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
-	return &UserService{
+type UserSvc struct {
+	repo repository.UserRepository
+}
+
+func NewUserService(repo repository.UserRepository) UserService {
+	return &UserSvc{
 		repo: repo,
 	}
 }
 
-func (svc *UserService) Signup(ctx context.Context, u domain.User) error {
+func (svc *UserSvc) Signup(ctx context.Context, u domain.User) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -42,7 +50,7 @@ func (svc *UserService) Signup(ctx context.Context, u domain.User) error {
 	return svc.repo.Create(ctx, u)
 }
 
-func (svc *UserService) Login(ctx context.Context, identifier, password string, isEmail bool) (string, error) {
+func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEmail bool) (string, error) {
 	var err error
 	var user domain.User
 
@@ -72,7 +80,7 @@ func (svc *UserService) Login(ctx context.Context, identifier, password string, 
 	return token, nil
 }
 
-func (svc *UserService) GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
+func (svc *UserSvc) GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
 	gob.Register(time.Now())
 	nowTime := time.Now()
 	expireTime := nowTime.Add(24 * time.Hour)
@@ -90,7 +98,7 @@ func (svc *UserService) GenerateToken(role uint8, id uint64, userAgent string) (
 	return token, err
 }
 
-func (svc *UserService) GetInfo(ctx context.Context, id string) (domain.User, error) {
+func (svc *UserSvc) GetInfo(ctx context.Context, id string) (domain.User, error) {
 	Id, err := strconv.Atoi(id)
 	if err != nil {
 		return domain.User{}, err
@@ -98,7 +106,7 @@ func (svc *UserService) GetInfo(ctx context.Context, id string) (domain.User, er
 	return svc.repo.FindByID(ctx, uint64(Id))
 }
 
-func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
 	user, err := svc.repo.FindByPhone(ctx, phone)
 	// 快路径
 	if !errors.Is(err, ErrUserNotFound) {

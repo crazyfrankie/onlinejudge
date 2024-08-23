@@ -25,19 +25,26 @@ var (
 	ErrVerifyTooMany = repository.ErrVerifyTooMany
 )
 
-type CodeService struct {
-	repo *repository.CodeRepository
+type CodeService interface {
+	Send(ctx context.Context, biz, phone string) error
+	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
+	generateCode() string
+	generateHMAC(code, key string) string
+}
+
+type CodeSvc struct {
+	repo repository.CodeRepository
 	sms  smsSvc.Service
 }
 
-func NewCodeService(r *repository.CodeRepository, sms smsSvc.Service) *CodeService {
-	return &CodeService{
+func NewCodeService(r repository.CodeRepository, sms smsSvc.Service) CodeService {
+	return &CodeSvc{
 		repo: r,
 		sms:  sms,
 	}
 }
 
-func (svc *CodeService) Send(ctx context.Context, biz, phone string) error {
+func (svc *CodeSvc) Send(ctx context.Context, biz, phone string) error {
 	// 生成一个验证码
 	code := svc.generateCode()
 
@@ -59,14 +66,14 @@ func (svc *CodeService) Send(ctx context.Context, biz, phone string) error {
 	return err
 }
 
-func (svc *CodeService) Verify(ctx context.Context, biz, phone, inputCode string) (bool, error) {
+func (svc *CodeSvc) Verify(ctx context.Context, biz, phone, inputCode string) (bool, error) {
 	// 拿到 code 后加密再去跟 redis 中的 code 进行对比
 	enCode := svc.generateHMAC(inputCode, secretKey)
 
 	return svc.repo.Verify(ctx, biz, phone, enCode)
 }
 
-func (svc *CodeService) generateCode() string {
+func (svc *CodeSvc) generateCode() string {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	var code strings.Builder
@@ -77,7 +84,7 @@ func (svc *CodeService) generateCode() string {
 	return code.String()
 }
 
-func (svc *CodeService) generateHMAC(code, key string) string {
+func (svc *CodeSvc) generateHMAC(code, key string) string {
 	// 创建一个新的 HMAC 哈希对象，使用 SHA-256 哈希算法，并以 key 作为密钥。
 	h := hmac.New(sha256.New, []byte(key))
 

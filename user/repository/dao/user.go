@@ -15,10 +15,6 @@ import (
 	"oj/user/domain"
 )
 
-type UserDao struct {
-	db *gorm.DB
-}
-
 type User struct {
 	Id       uint64 `gorm:"primaryKey,autoIncrement"`
 	Name     string `gorm:"unique;not null"`
@@ -30,8 +26,21 @@ type User struct {
 	Uptime   int64
 }
 
-func NewUserDao(db *gorm.DB) *UserDao {
-	return &UserDao{
+type UserDao interface {
+	Insert(ctx context.Context, u *User) error
+	FindByName(ctx context.Context, name string) (domain.User, error)
+	FindByEmail(ctx context.Context, email string) (domain.User, error)
+	FindById(ctx context.Context, id uint64) (domain.User, error)
+	FindByPhone(ctx context.Context, phone string) (domain.User, error)
+	generateCode() string
+}
+
+type GormUserDao struct {
+	db *gorm.DB
+}
+
+func NewUserDao(db *gorm.DB) UserDao {
+	return &GormUserDao{
 		db: db,
 	}
 }
@@ -59,7 +68,7 @@ func handleDBError(err error) error {
 	return err
 }
 
-func (dao *UserDao) generateCode() string {
+func (dao *GormUserDao) generateCode() string {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	randomNumber := rand.Intn(1000000)
@@ -67,7 +76,7 @@ func (dao *UserDao) generateCode() string {
 	return fmt.Sprintf("%6d", randomNumber)
 }
 
-func (dao *UserDao) Insert(ctx context.Context, u *User) error {
+func (dao *GormUserDao) Insert(ctx context.Context, u *User) error {
 	now := time.Now().UnixMilli()
 	u.Ctime = now
 	u.Uptime = now
@@ -75,7 +84,7 @@ func (dao *UserDao) Insert(ctx context.Context, u *User) error {
 	return handleDBError(err)
 }
 
-func (dao *UserDao) FindByName(ctx context.Context, name string) (domain.User, error) {
+func (dao *GormUserDao) FindByName(ctx context.Context, name string) (domain.User, error) {
 	var user User
 
 	result := dao.db.WithContext(ctx).Where("name = ?", name).First(&user)
@@ -93,7 +102,7 @@ func (dao *UserDao) FindByName(ctx context.Context, name string) (domain.User, e
 	return u, nil
 }
 
-func (dao *UserDao) FindByEmail(ctx context.Context, email string) (domain.User, error) {
+func (dao *GormUserDao) FindByEmail(ctx context.Context, email string) (domain.User, error) {
 	var user User
 
 	result := dao.db.WithContext(ctx).Where("email = ?", email).First(&user)
@@ -111,7 +120,7 @@ func (dao *UserDao) FindByEmail(ctx context.Context, email string) (domain.User,
 	return u, nil
 }
 
-func (dao *UserDao) FindById(ctx context.Context, id uint64) (domain.User, error) {
+func (dao *GormUserDao) FindById(ctx context.Context, id uint64) (domain.User, error) {
 	var user User
 
 	result := dao.db.WithContext(ctx).Where("id = ?", id).First(&user)
@@ -131,7 +140,7 @@ func (dao *UserDao) FindById(ctx context.Context, id uint64) (domain.User, error
 	return u, nil
 }
 
-func (dao *UserDao) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+func (dao *GormUserDao) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	var user User
 	result := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&user)
 
