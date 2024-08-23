@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"oj/user/web"
+	"oj/ioc"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	router := web.InitWeb()
+	router := ioc.InitGin()
 
 	server := &http.Server{
 		Addr:    "0.0.0.0:9090",

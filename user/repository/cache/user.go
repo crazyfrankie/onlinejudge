@@ -12,14 +12,12 @@ import (
 )
 
 type UserCache struct {
-	client     redis.Cmdable
-	expiration time.Duration
+	client redis.Cmdable
 }
 
-func NewUserCache(client redis.Cmdable, expiration time.Duration) *UserCache {
+func NewUserCache(client redis.Cmdable) *UserCache {
 	return &UserCache{
-		client:     client,
-		expiration: expiration,
+		client: client,
 	}
 }
 
@@ -43,7 +41,7 @@ func (cache *UserCache) Set(ctx context.Context, user domain.User) error {
 
 	key := cache.key(user.Id)
 
-	return cache.client.Set(ctx, key, val, cache.expiration).Err()
+	return cache.client.Set(ctx, key, val, time.Minute*10).Err()
 }
 
 func (cache *UserCache) key(id uint64) string {
