@@ -1,14 +1,16 @@
 package ioc
 
 import (
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+
 	"oj/user/web"
 	"oj/user/web/middleware"
 	"oj/user/web/pkg/middlewares/ratelimit"
-	"strings"
-	"time"
 )
 
 func InitWebServer(mdl []gin.HandlerFunc, userHdl *web.UserHandler) *gin.Engine {

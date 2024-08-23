@@ -5,6 +5,7 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
+
 	"oj/user/repository"
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"

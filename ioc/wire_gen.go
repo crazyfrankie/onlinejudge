@@ -8,6 +8,7 @@ package ioc
 
 import (
 	"github.com/gin-gonic/gin"
+
 	"oj/user/repository"
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"
