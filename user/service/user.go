@@ -5,7 +5,9 @@ import (
 	"encoding/gob"
 	"errors"
 	"github.com/golang-jwt/jwt"
+	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -27,8 +29,9 @@ type UserService interface {
 	Signup(ctx context.Context, u domain.User) error
 	Login(ctx context.Context, identifier, password string, isEmail bool) (string, error)
 	GenerateToken(role uint8, id uint64, userAgent string) (string, error)
-	GetInfo(ctx context.Context, id string) (domain.User, error)
+	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	generateCode() string
 }
 
 type UserSvc struct {
@@ -98,12 +101,8 @@ func (svc *UserSvc) GenerateToken(role uint8, id uint64, userAgent string) (stri
 	return token, err
 }
 
-func (svc *UserSvc) GetInfo(ctx context.Context, id string) (domain.User, error) {
-	Id, err := strconv.Atoi(id)
-	if err != nil {
-		return domain.User{}, err
-	}
-	return svc.repo.FindByID(ctx, uint64(Id))
+func (svc *UserSvc) GetInfo(ctx context.Context, id uint64) (domain.User, error) {
+	return svc.repo.FindByID(ctx, id)
 }
 
 func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
@@ -120,7 +119,9 @@ func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User
 
 	// 慢路径
 	// 你明确知道，没有这个用户
+	code := svc.generateCode()
 	user = domain.User{
+		Name:  "用户" + code,
 		Phone: phone,
 	}
 	err = svc.repo.Create(ctx, user)
@@ -129,4 +130,15 @@ func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User
 	}
 	// 有主从延迟的问题
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *UserSvc) generateCode() string {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	var code strings.Builder
+	for i := 0; i < 6; i++ {
+		digit := rand.Intn(10)
+		code.WriteString(strconv.Itoa(digit))
+	}
+	return code.String()
 }

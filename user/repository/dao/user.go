@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -22,6 +20,8 @@ type User struct {
 	Email    sql.NullString `gorm:"unique"`
 	Phone    string         `gorm:"unique"`
 	Role     uint8
+	AboutMe  string
+	Birthday sql.NullTime
 	Ctime    int64
 	Uptime   int64
 }
@@ -32,7 +32,6 @@ type UserDao interface {
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindById(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
-	generateCode() string
 }
 
 type GormUserDao struct {
@@ -66,14 +65,6 @@ func handleDBError(err error) error {
 		}
 	}
 	return err
-}
-
-func (dao *GormUserDao) generateCode() string {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	randomNumber := rand.Intn(1000000)
-
-	return fmt.Sprintf("%6d", randomNumber)
 }
 
 func (dao *GormUserDao) Insert(ctx context.Context, u *User) error {
@@ -125,17 +116,16 @@ func (dao *GormUserDao) FindById(ctx context.Context, id uint64) (domain.User, e
 
 	result := dao.db.WithContext(ctx).Where("id = ?", id).First(&user)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return domain.User{}, ErrUserNotFound
-		}
 		return domain.User{}, result.Error
 	}
 	u := domain.User{
-		Id:    user.Id,
-		Name:  user.Name,
-		Email: user.Email.String,
-		Phone: user.Phone,
-		Role:  user.Role,
+		Id:       user.Id,
+		Name:     user.Name,
+		Email:    user.Email.String,
+		Phone:    user.Phone,
+		Birthday: user.Birthday.Time,
+		AboutMe:  user.AboutMe,
+		Role:     user.Role,
 	}
 	return u, nil
 }

@@ -2,10 +2,9 @@ package middleware
 
 import (
 	"errors"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -24,25 +23,24 @@ type Claims struct {
 
 // LoginJWTMiddlewareBuilder JWT 进行校验
 type LoginJWTMiddlewareBuilder struct {
-	paths []string
+	paths map[string]struct{}
 }
 
 func NewLoginJWTMiddlewareBuilder() *LoginJWTMiddlewareBuilder {
-	return &LoginJWTMiddlewareBuilder{paths: make([]string, 0)}
+	return &LoginJWTMiddlewareBuilder{paths: make(map[string]struct{})}
 }
 
-func (l *LoginJWTMiddlewareBuilder) IgnorePaths(paths string) *LoginJWTMiddlewareBuilder {
-	l.paths = append(l.paths, paths)
+func (l *LoginJWTMiddlewareBuilder) IgnorePaths(path string) *LoginJWTMiddlewareBuilder {
+	l.paths[path] = struct{}{}
 	return l
 }
 
 func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 路径校验
-		for _, path := range l.paths {
-			if c.Request.URL.Path == path {
-				return
-			}
+		if _, ok := l.paths[c.Request.URL.Path]; ok {
+			c.Next()
+			return
 		}
 
 		tokenHeader := c.GetHeader("Authorization")
@@ -68,6 +66,11 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+
+		// 将解析出来的 Claims 存入上下文
+		c.Set("claims", claims)
+		// 继续后续的处理
+		c.Next()
 	}
 }
 

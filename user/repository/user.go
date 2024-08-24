@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"log"
 
 	"oj/user/domain"
@@ -82,17 +81,15 @@ func (ur *CacheUserRepository) FindByID(ctx context.Context, id uint64) (domain.
 
 	// 去数据库里面加载
 	user, err = ur.dao.FindById(ctx, id)
-	if errors.Is(err, ErrUserNotFound) {
-		return user, ErrUserNotFound
-	}
 	if err != nil {
 		return user, err
 	}
 
 	// 异步处理
 	go func() {
+		newCtx := context.Background()
 		// 查询成功后更新缓存
-		err = ur.cache.Set(ctx, user)
+		err = ur.cache.Set(newCtx, user)
 		if err != nil {
 			// 记录日志，做监控，但不影响返回的结果
 			log.Printf("failed to update cache for user %d: %v", user.Id, err)

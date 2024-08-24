@@ -43,9 +43,11 @@ func GinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 
 		middleware.NewLoginJWTMiddlewareBuilder().
 			IgnorePaths("/user/signup").
+			IgnorePaths("/user/signup/send-code").
+			IgnorePaths("/user/signup/verify-code").
 			IgnorePaths("/user/login").
-			IgnorePaths("/user/login_sms/code/send").
-			IgnorePaths("/user/sms_login").
+			IgnorePaths("/user/login/send-code").
+			IgnorePaths("/user/login-sms").
 			CheckLogin(),
 	}
 }

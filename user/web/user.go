@@ -3,10 +3,11 @@ package web
 import (
 	"context"
 	"errors"
-	"net/http"
-
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"net/http"
+	"oj/user/web/middleware"
+	"time"
 
 	"oj/user/domain"
 	"oj/user/service"
@@ -52,7 +53,8 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("/login", ctl.Login())
 		userGroup.POST("/login/send-code", ctl.LoginSendSMSCode())
 		userGroup.POST("/login-sms", ctl.LoginVerifySMSCode())
-		userGroup.GET("/:id", ctl.GetInfo())
+		userGroup.GET("/info", ctl.GetUserInfo())
+		userGroup.POST("/info/edit")
 	}
 }
 
@@ -290,23 +292,49 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) GetInfo() gin.HandlerFunc {
+func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, ok := c.Params.Get("id")
+		type User struct {
+			Name     string
+			Email    string
+			Phone    string
+			Birthday string
+			AboutMe  string
+			Role     uint8
+		}
+
+		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusBadRequest, "unable to get id")
+			c.JSON(http.StatusInternalServerError, "system error")
 			return
 		}
 
-		user, err := ctl.svc.GetInfo(c.Request.Context(), id)
+		claim := claims.(*middleware.Claims)
+
+		user, err := ctl.svc.GetInfo(c.Request.Context(), claim.Id)
 
 		switch {
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, "system error")
-		case errors.Is(err, service.ErrUserNotFound):
-			c.JSON(http.StatusNotFound, "user not found")
 		default:
-			c.JSON(http.StatusOK, user)
+			c.JSON(http.StatusOK, User{
+				Name:     user.Name,
+				Email:    user.Email,
+				Phone:    user.Phone,
+				Birthday: user.Birthday.Format(time.DateOnly),
+				AboutMe:  user.AboutMe,
+				Role:     user.Role,
+			})
+		}
+	}
+}
+
+func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			Name     string `json:"name"`
+			Birthday string `json:"birthday"`
+			AboutMe  string `json:"aboutMe"`
 		}
 	}
 }

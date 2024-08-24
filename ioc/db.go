@@ -4,7 +4,6 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-
 	"oj/config"
 )
 
@@ -18,6 +17,5 @@ func InitDB() *gorm.DB {
 	if err != nil {
 		panic("failed to connect database")
 	}
-
 	return db
 }
