@@ -332,9 +332,33 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Name     string `json:"name"`
-			Birthday string `json:"birthday"`
-			AboutMe  string `json:"aboutMe"`
+			Name     string    `json:"name"`
+			Birthday time.Time `json:"birthday"`
+			AboutMe  string    `json:"aboutMe"`
 		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		}
+
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, "system error")
+			return
+		}
+		claim := claims.(*middleware.Claims)
+
+		err := ctl.svc.EditInfo(c.Request.Context(), claim.Id, domain.User{
+			Name:     req.Name,
+			Birthday: req.Birthday,
+			AboutMe:  req.AboutMe,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, "update failed")
+			return
+		}
+		c.JSON(http.StatusOK, req)
 	}
 }

@@ -23,6 +23,7 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindByID(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
+	UpdateInfo(ctx context.Context, id uint64, user domain.User) error
 }
 
 type CacheUserRepository struct {
@@ -104,4 +105,24 @@ func (ur *CacheUserRepository) FindByPhone(ctx context.Context, phone string) (d
 		return domain.User{}, err
 	}
 	return user, err
+}
+
+func (ur *CacheUserRepository) UpdateInfo(ctx context.Context, id uint64, user domain.User) error {
+	// 先更新数据库
+	u, err := ur.dao.UpdateInfo(ctx, id, user)
+	if err != nil {
+		return err
+	}
+
+	// 更新缓存中的数据 直接覆盖即可
+	go func() {
+		newCtx := context.Background()
+		err = ur.cache.Set(newCtx, u)
+		if err != nil {
+			// 记录日志，做监控，但不影响返回的结果
+			log.Printf("failed to update cache for user %d: %v", user.Id, err)
+		}
+	}()
+
+	return err
 }

@@ -32,6 +32,7 @@ type UserDao interface {
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindById(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
+	UpdateInfo(ctx context.Context, id uint64, user domain.User) (domain.User, error)
 }
 
 type GormUserDao struct {
@@ -150,5 +151,43 @@ func (dao *GormUserDao) FindByPhone(ctx context.Context, phone string) (domain.U
 		Phone:    user.Phone,
 		Role:     user.Role,
 	}
+	return newUser, nil
+}
+
+func (dao *GormUserDao) UpdateInfo(ctx context.Context, id uint64, user domain.User) (domain.User, error) {
+	var u User
+	result := dao.db.WithContext(ctx).Where("id = ?", id).First(&u)
+	if result.Error != nil {
+		return domain.User{}, result.Error
+	}
+
+	var birthday sql.NullTime
+	if !user.Birthday.IsZero() {
+		birthday = sql.NullTime{
+			Time:  user.Birthday,
+			Valid: true,
+		}
+	}
+
+	result = dao.db.Model(&u).Updates(User{
+		Name:     user.Name,
+		AboutMe:  user.AboutMe,
+		Birthday: birthday,
+	})
+	if result.Error != nil {
+		return domain.User{}, result.Error
+	}
+
+	newUser := domain.User{
+		Id:       u.Id,
+		Password: u.Password,
+		Role:     u.Role,
+		Email:    u.Email.String,
+		Phone:    u.Phone,
+		Name:     user.Name,
+		AboutMe:  user.AboutMe,
+		Birthday: user.Birthday,
+	}
+
 	return newUser, nil
 }

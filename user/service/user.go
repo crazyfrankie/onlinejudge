@@ -31,6 +31,7 @@ type UserService interface {
 	GenerateToken(role uint8, id uint64, userAgent string) (string, error)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	EditInfo(ctx context.Context, id uint64, user domain.User) error
 	generateCode() string
 }
 
@@ -130,6 +131,27 @@ func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User
 	}
 	// 有主从延迟的问题
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *UserSvc) EditInfo(ctx context.Context, id uint64, user domain.User) error {
+	// 可以考虑删除，因为整体业务逻辑保证了这个用户一定存在
+	existingUser, err := svc.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// 只有非空字段才会更新
+	if user.Name != "" {
+		existingUser.Name = user.Name
+	}
+	if user.AboutMe != "" {
+		existingUser.AboutMe = user.AboutMe
+	}
+	if !user.Birthday.IsZero() {
+		existingUser.Birthday = user.Birthday
+	}
+
+	return svc.repo.UpdateInfo(ctx, id, existingUser)
 }
 
 func (svc *UserSvc) generateCode() string {
