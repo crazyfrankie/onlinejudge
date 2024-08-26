@@ -1,9 +1,12 @@
 package middleware
 
 import (
+	"encoding/gob"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"time"
+
 	"net/http"
 )
 
@@ -53,7 +56,7 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := l.ParseToken(tokenHeader)
+		claims, err := ParseToken(tokenHeader)
 		if err != nil {
 			code, msg := handleTokenError(err)
 			c.JSON(code, msg)
@@ -74,7 +77,81 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	}
 }
 
-func (l *LoginJWTMiddlewareBuilder) ParseToken(token string) (*Claims, error) {
+type ProblemJWTMiddlewareBuilder struct {
+	paths map[string]struct{}
+}
+
+func NewProblemJWTMiddlewareBuilder() *ProblemJWTMiddlewareBuilder {
+	return &ProblemJWTMiddlewareBuilder{paths: make(map[string]struct{})}
+}
+
+func (l *ProblemJWTMiddlewareBuilder) SecretPaths(path string) *ProblemJWTMiddlewareBuilder {
+	l.paths[path] = struct{}{}
+	return l
+}
+
+func (l *ProblemJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, ok := l.paths[c.Request.URL.Path]; !ok {
+			c.Next()
+			return
+		}
+
+		tokenHeader := c.GetHeader("Authorization")
+
+		// 检查请求头中是否包含 Token
+		if tokenHeader == "" {
+			// 没登录
+			c.JSON(http.StatusUnauthorized, "you need to login")
+			c.Abort()
+			return
+		}
+
+		claims, err := ParseToken(tokenHeader)
+		if err != nil {
+			code, msg := handleTokenError(err)
+			c.JSON(code, msg)
+			c.Abort()
+			return
+		}
+
+		if claims.UserAgent != c.Request.UserAgent() {
+			// 严重的安全问题
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		if claims.Role != 1 {
+			c.AbortWithStatusJSON(http.StatusForbidden, "access denied")
+			return
+		}
+
+		// 将解析出来的 Claims 存入上下文
+		c.Set("claims", claims)
+		// 继续后续的处理
+		c.Next()
+	}
+}
+
+func GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
+	gob.Register(time.Now())
+	nowTime := time.Now()
+	expireTime := nowTime.Add(24 * time.Hour)
+	claims := Claims{
+		Role: role,
+		Id:   id,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expireTime.Unix(),
+			Issuer:    "oj",
+		},
+		UserAgent: userAgent,
+	}
+	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token, err := tokenClaims.SignedString(SecretKey)
+	return token, err
+}
+
+func ParseToken(token string) (*Claims, error) {
 	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return SecretKey, nil
 	})

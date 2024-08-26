@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"encoding/gob"
 	"errors"
-	"github.com/golang-jwt/jwt"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -12,9 +10,9 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"oj/middleware"
 	"oj/user/domain"
 	"oj/user/repository"
-	"oj/user/web/middleware"
 )
 
 var (
@@ -28,7 +26,6 @@ var (
 type UserService interface {
 	Signup(ctx context.Context, u domain.User) error
 	Login(ctx context.Context, identifier, password string, isEmail bool) (string, error)
-	GenerateToken(role uint8, id uint64, userAgent string) (string, error)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
 	EditInfo(ctx context.Context, id uint64, user domain.User) error
@@ -76,30 +73,12 @@ func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEm
 	userAgent := ctx.Value("UserAgent").(string)
 
 	var token string
-	token, err = svc.GenerateToken(user.Role, user.Id, userAgent)
+	token, err = middleware.GenerateToken(user.Role, user.Id, userAgent)
 	if err != nil {
 		return "", err
 	}
 
 	return token, nil
-}
-
-func (svc *UserSvc) GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
-	gob.Register(time.Now())
-	nowTime := time.Now()
-	expireTime := nowTime.Add(24 * time.Hour)
-	claims := middleware.Claims{
-		Role: role,
-		Id:   id,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expireTime.Unix(),
-			Issuer:    "oj",
-		},
-		UserAgent: userAgent,
-	}
-	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token, err := tokenClaims.SignedString(middleware.SecretKey)
-	return token, err
 }
 
 func (svc *UserSvc) GetInfo(ctx context.Context, id uint64) (domain.User, error) {

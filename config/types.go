@@ -6,9 +6,14 @@ type config struct {
 }
 
 type DBConfig struct {
-	DSN string
+	DSN             string
+	MaxIdleConns    int
+	MaxOpenConns    int
+	ConnMaxLifetime int
 }
 
 type RedisConfig struct {
-	Addr string
+	Addr         string
+	PoolSize     int
+	MinIdleConns int
 }

@@ -1,14 +1,15 @@
-package web
+package uwb
 
 import (
 	"context"
 	"errors"
-	regexp "github.com/dlclark/regexp2"
-	"github.com/gin-gonic/gin"
 	"net/http"
-	"oj/user/web/middleware"
 	"time"
 
+	regexp "github.com/dlclark/regexp2"
+	"github.com/gin-gonic/gin"
+
+	"oj/middleware"
 	"oj/user/domain"
 	"oj/user/service"
 )
@@ -281,7 +282,7 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 		userAgent := c.GetHeader("User-Agent")
 
 		var token string
-		token, err = ctl.svc.GenerateToken(user.Role, user.Id, userAgent)
+		token, err = middleware.GenerateToken(user.Role, user.Id, userAgent)
 		switch {
 		case err != nil:
 			c.JSON(http.StatusBadRequest, "system error")

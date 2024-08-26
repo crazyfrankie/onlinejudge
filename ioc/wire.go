@@ -10,7 +10,7 @@ import (
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"
 	"oj/user/service"
-	"oj/user/web"
+	"oj/user/uwb"
 )
 
 func InitGinWithRedis() *gin.Engine {
@@ -30,7 +30,7 @@ func InitGinWithRedis() *gin.Engine {
 		service.NewCodeService,
 		InitSMSService,
 
-		web.NewUserHandler,
+		uwb.NewUserHandler,
 
 		// gin 的中间件
 		GinMiddlewares,
@@ -58,7 +58,7 @@ func InitGinWithMem() *gin.Engine {
 		service.NewCodeService,
 		InitSMSService,
 
-		web.NewUserHandler,
+		uwb.NewUserHandler,
 
 		// gin 的中间件
 		GinMiddlewares,

@@ -12,7 +12,7 @@ import (
 	"oj/user/repository/cache"
 	"oj/user/repository/dao"
 	"oj/user/service"
-	"oj/user/web"
+	"oj/user/uwb"
 )
 
 // Injectors from wire.go:
@@ -29,7 +29,7 @@ func InitGinWithRedis() *gin.Engine {
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := web.NewUserHandler(userService, codeService)
+	userHandler := uwb.NewUserHandler(userService, codeService)
 	engine := InitWebServer(v, userHandler)
 	return engine
 }
@@ -47,7 +47,7 @@ func InitGinWithMem() *gin.Engine {
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := InitSMSService()
 	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := web.NewUserHandler(userService, codeService)
+	userHandler := uwb.NewUserHandler(userService, codeService)
 	engine := InitWebServer(v, userHandler)
 	return engine
 }

@@ -7,6 +7,11 @@ local cntKey = key..":cnt"
 local cnt = tonumber(redis.call("get",cntKey))
 local code = redis.call("get", key)
 
+if not cnt then
+    return -2
+    -- 处理 cnt 为 nil 的情况，例如初始化 cnt 为 0 或者执行某种错误处理逻辑
+end
+
 if cnt < 0 then
 -- 说明用户一直输错 ，有人搞你
     return -1
