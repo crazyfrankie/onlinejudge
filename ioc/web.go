@@ -1,15 +1,15 @@
 package ioc
 
 import (
-	"oj/problem/pwb"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
-	"oj/middleware"
-	"oj/user/uwb"
-	"oj/user/uwb/pkg/middlewares/ratelimit"
+	"oj/internal/middleware"
+	pwb "oj/internal/problem/web"
+	uwb "oj/internal/user/web"
+	"oj/internal/user/web/pkg/middlewares/ratelimit"
 )
 
 func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler) *gin.Engine {

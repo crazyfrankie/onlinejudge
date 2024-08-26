@@ -8,46 +8,22 @@ package ioc
 
 import (
 	"github.com/gin-gonic/gin"
-	"oj/user/repository"
-	"oj/user/repository/cache"
-	"oj/user/repository/dao"
-	"oj/user/service"
-	"oj/user/uwb"
+	"github.com/google/wire"
+	"oj/internal/problem/web"
 )
 
 // Injectors from wire.go:
 
-func InitGinWithRedis() *gin.Engine {
+func InitGin() *gin.Engine {
 	cmdable := InitRedis()
 	v := GinMiddlewares(cmdable)
 	db := InitDB()
-	userDao := dao.NewUserDao(db)
-	userCache := cache.NewUserCache(cmdable)
-	userRepository := repository.NewUserRepository(userDao, userCache)
-	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewRedisCodeCache(cmdable)
-	codeRepository := repository.NewCodeRepository(codeCache)
-	smsService := InitSMSService()
-	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := uwb.NewUserHandler(userService, codeService)
-	engine := InitWebServer(v, userHandler)
+	userHandler := InitUserHandler(db, cmdable)
+	problemHandler := web.NewProblemHandler()
+	engine := InitWebServer(v, userHandler, problemHandler)
 	return engine
 }
 
-func InitGinWithMem() *gin.Engine {
-	cmdable := InitRedis()
-	v := GinMiddlewares(cmdable)
-	db := InitDB()
-	userDao := dao.NewUserDao(db)
-	userCache := cache.NewUserCache(cmdable)
-	userRepository := repository.NewUserRepository(userDao, userCache)
-	userService := service.NewUserService(userRepository)
-	cacheCache := InitGoMem()
-	codeCache := cache.NewMemCodeCache(cacheCache)
-	codeRepository := repository.NewCodeRepository(codeCache)
-	smsService := InitSMSService()
-	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := uwb.NewUserHandler(userService, codeService)
-	engine := InitWebServer(v, userHandler)
-	return engine
-}
+// wire.go:
+
+var BaseSet = wire.NewSet(InitDB, InitRedis)

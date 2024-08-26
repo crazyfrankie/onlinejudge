@@ -1,4 +1,4 @@
-package uwb
+package web
 
 import (
 	"context"
@@ -9,9 +9,9 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 
-	"oj/middleware"
-	"oj/user/domain"
-	"oj/user/service"
+	"oj/internal/middleware"
+	"oj/internal/user/domain"
+	"oj/internal/user/service"
 )
 
 const (

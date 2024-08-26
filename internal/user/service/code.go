@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"oj/user/repository"
-	smsSvc "oj/user/service/sms"
+	"oj/internal/user/repository"
+	smsSvc "oj/internal/user/service/sms"
 )
 
 const (

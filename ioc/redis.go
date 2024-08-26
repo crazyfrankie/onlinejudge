@@ -2,8 +2,10 @@ package ioc
 
 import (
 	"github.com/redis/go-redis/v9"
-	"oj/config"
+
 	"time"
+
+	"oj/config"
 )
 
 func InitRedis() redis.Cmdable {

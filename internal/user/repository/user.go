@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"log"
 
-	"oj/user/domain"
-	"oj/user/repository/cache"
-	"oj/user/repository/dao"
+	"oj/internal/user/domain"
+	"oj/internal/user/repository/cache"
+	"oj/internal/user/repository/dao"
 )
 
 var (

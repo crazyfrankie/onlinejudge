@@ -10,9 +10,9 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"oj/middleware"
-	"oj/user/domain"
-	"oj/user/repository"
+	"oj/internal/middleware"
+	"oj/internal/user/domain"
+	"oj/internal/user/repository"
 )
 
 var (

@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"oj/user/repository/cache"
+	"oj/internal/user/repository/cache"
 )
 
 var (
