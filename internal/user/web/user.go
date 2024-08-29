@@ -65,10 +65,10 @@ func (ctl *UserHandler) SignupSendSMSCode() gin.HandlerFunc {
 
 		err := ctl.codeSvc.Send(c.Request.Context(), signUpBiz, phone)
 		switch {
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
 		case errors.Is(err, service.ErrSendTooMany):
 			c.JSON(http.StatusTooManyRequests, "send too many")
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
 		default:
 			c.JSON(http.StatusOK, "send successfully")
 		}
@@ -82,11 +82,11 @@ func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
 
 		_, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, phone, code)
 		switch {
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
-			return
 		case errors.Is(err, service.ErrVerifyTooMany):
 			c.JSON(http.StatusBadRequest, "too many verifications")
+			return
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
 			return
 		}
 		c.JSON(http.StatusOK, "verification successfully")
@@ -110,7 +110,7 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 
 		// 两次密码不一致
 		if req.Password != req.ConfirmPassword {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Passwords do not match"})
+			c.JSON(http.StatusBadRequest, "password does not match")
 			return
 		}
 
@@ -156,14 +156,14 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 		})
 
 		switch {
-		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
 		case errors.Is(err, service.ErrUserDuplicateEmail):
 			c.JSON(http.StatusInternalServerError, "email conflict")
 		case errors.Is(err, service.ErrUserDuplicateName):
 			c.JSON(http.StatusInternalServerError, "name conflict")
 		case errors.Is(err, service.ErrUserDuplicatePhone):
 			c.JSON(http.StatusInternalServerError, "phone conflict")
+		case err != nil:
+			c.JSON(http.StatusBadRequest, "system error")
 		default:
 			c.JSON(http.StatusOK, "sign up successfully!")
 		}
@@ -196,12 +196,12 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		var token string
 		token, err = ctl.svc.Login(ctx, req.Identifier, req.Password, isEmail)
 		switch {
-		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
 			c.JSON(http.StatusInternalServerError, "identifier or password error")
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusInternalServerError, "identifier not found")
+		case err != nil:
+			c.JSON(http.StatusBadRequest, "system error")
 		default:
 			c.Header("x-jwt-token", token)
 			c.JSON(http.StatusOK, "login successfully!")
@@ -234,10 +234,10 @@ func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 		err = ctl.codeSvc.Send(c.Request.Context(), loginBiz, req.Phone)
 
 		switch {
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
 		case errors.Is(err, service.ErrSendTooMany):
 			c.JSON(http.StatusTooManyRequests, "send too many")
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
 		default:
 			c.JSON(http.StatusOK, "send successfully")
 		}
@@ -258,11 +258,11 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 
 		_, err := ctl.codeSvc.Verify(c.Request.Context(), loginBiz, req.Phone, req.Code)
 		switch {
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
-			return
 		case errors.Is(err, service.ErrVerifyTooMany):
 			c.JSON(http.StatusBadRequest, "too many verifications")
+			return
+		case err != nil:
+			c.JSON(http.StatusInternalServerError, "system error")
 			return
 		}
 
@@ -270,11 +270,11 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 		var user domain.User
 		user, err = ctl.svc.FindOrCreate(c.Request.Context(), req.Phone)
 		switch {
-		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
-			return
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusInternalServerError, "identifier not found")
+			return
+		case err != nil:
+			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
 

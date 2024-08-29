@@ -29,7 +29,7 @@ type UserService interface {
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
 	EditInfo(ctx context.Context, id uint64, user domain.User) error
-	generateCode() string
+	GenerateCode() string
 }
 
 type UserSvc struct {
@@ -99,7 +99,7 @@ func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User
 
 	// 慢路径
 	// 你明确知道，没有这个用户
-	code := svc.generateCode()
+	code := svc.GenerateCode()
 	user = domain.User{
 		Name:  "用户" + code,
 		Phone: phone,
@@ -133,7 +133,7 @@ func (svc *UserSvc) EditInfo(ctx context.Context, id uint64, user domain.User) e
 	return svc.repo.UpdateInfo(ctx, id, existingUser)
 }
 
-func (svc *UserSvc) generateCode() string {
+func (svc *UserSvc) GenerateCode() string {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	var code strings.Builder
