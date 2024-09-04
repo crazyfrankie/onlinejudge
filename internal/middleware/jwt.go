@@ -133,7 +133,17 @@ func (l *ProblemJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	}
 }
 
-func GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
+type TokenGenerator interface {
+	GenerateToken(role uint8, id uint64, userAgent string) (string, error)
+}
+
+type JWTService struct{}
+
+func NewJWTService() TokenGenerator {
+	return &JWTService{}
+}
+
+func (js *JWTService) GenerateToken(role uint8, id uint64, userAgent string) (string, error) {
 	gob.Register(time.Now())
 	nowTime := time.Now()
 	expireTime := nowTime.Add(24 * time.Hour)

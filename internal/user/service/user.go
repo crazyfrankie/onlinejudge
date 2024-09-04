@@ -73,7 +73,8 @@ func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEm
 	userAgent := ctx.Value("UserAgent").(string)
 
 	var token string
-	token, err = middleware.GenerateToken(user.Role, user.Id, userAgent)
+	jwtGen := middleware.NewJWTService()
+	token, err = jwtGen.GenerateToken(user.Role, user.Id, userAgent)
 	if err != nil {
 		return "", err
 	}

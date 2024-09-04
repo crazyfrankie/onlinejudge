@@ -22,12 +22,13 @@ const (
 type UserHandler struct {
 	svc              service.UserService
 	codeSvc          service.CodeService
+	tokenGen         middleware.TokenGenerator
 	emailRegexExp    *regexp.Regexp
 	passwordRegexExp *regexp.Regexp
 	phoneRegexExp    *regexp.Regexp
 }
 
-func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenGen middleware.TokenGenerator) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
@@ -39,6 +40,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserH
 	return &UserHandler{
 		svc:              svc,
 		codeSvc:          codeSvc,
+		tokenGen:         tokenGen,
 		emailRegexExp:    emailRegexExp,
 		passwordRegexExp: passwordRegexExp,
 		phoneRegexExp:    phoneRegexExp,
@@ -282,7 +284,7 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 		userAgent := c.GetHeader("User-Agent")
 
 		var token string
-		token, err = middleware.GenerateToken(user.Role, user.Id, userAgent)
+		token, err = ctl.tokenGen.GenerateToken(user.Role, user.Id, userAgent)
 		switch {
 		case err != nil:
 			c.JSON(http.StatusBadRequest, "system error")
