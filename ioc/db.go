@@ -39,7 +39,7 @@ func InitDB() *gorm.DB {
 
 func Migrate(db *gorm.DB) error {
 	// 自动迁移，创建表
-	if err := db.AutoMigrate(&dao.Problem{}, &dao.Tag{}, &dao.ProblemTag{}); err != nil {
+	if err := db.AutoMigrate(&dao.Problem{}); err != nil {
 		return err
 	}
 	return nil

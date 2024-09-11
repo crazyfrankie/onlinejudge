@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -50,14 +49,14 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenG
 func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	userGroup := r.Group("user")
 	{
-		userGroup.POST("/signup/send-code", ctl.SignupSendSMSCode())
-		userGroup.POST("/signup/verify-code", ctl.SignupVerifySMSCode())
-		userGroup.POST("/signup", ctl.Signup())
-		userGroup.POST("/login", ctl.Login())
-		userGroup.POST("/login/send-code", ctl.LoginSendSMSCode())
-		userGroup.POST("/login-sms", ctl.LoginVerifySMSCode())
-		userGroup.GET("/info", ctl.GetUserInfo())
-		userGroup.POST("/info/edit")
+		userGroup.POST("signup/send-code", ctl.SignupSendSMSCode())
+		userGroup.POST("signup/verify-code", ctl.SignupVerifySMSCode())
+		userGroup.POST("signup", ctl.Signup())
+		userGroup.POST("login", ctl.Login())
+		userGroup.POST("login/send-code", ctl.LoginSendSMSCode())
+		userGroup.POST("login-sms", ctl.LoginVerifySMSCode())
+		userGroup.GET("info", ctl.GetUserInfo())
+		userGroup.POST("info/edit")
 	}
 }
 
@@ -186,28 +185,33 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 
 		// 检查是否包含邮箱
 		isEmail, err := ctl.emailRegexExp.MatchString(req.Identifier)
-
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
 
-		// 创建带有UserAgent的context.Context
-		ctx := context.WithValue(c.Request.Context(), "UserAgent", c.Request.UserAgent())
-
-		var token string
-		token, err = ctl.svc.Login(ctx, req.Identifier, req.Password, isEmail)
+		var user domain.User
+		user, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		switch {
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
 			c.JSON(http.StatusInternalServerError, "identifier or password error")
+			return
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusInternalServerError, "identifier not found")
+			return
 		case err != nil:
 			c.JSON(http.StatusBadRequest, "system error")
-		default:
-			c.Header("x-jwt-token", token)
-			c.JSON(http.StatusOK, "login successfully!")
+			return
 		}
+
+		var token string
+		token, err = ctl.tokenGen.GenerateToken(user.Role, user.Id, c.GetHeader("User-Agent"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		}
+		c.Header("x-jwt-token", token)
+		c.JSON(http.StatusOK, "login successfully!")
 	}
 }
 

@@ -1,15 +1,13 @@
 package ioc
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 
 	"oj/internal/middleware"
 	pwb "oj/internal/problem/web"
 	uwb "oj/internal/user/web"
 	"oj/internal/user/web/pkg/middlewares/ratelimit"
+	rate "oj/pkg/ratelimit"
 )
 
 func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler) *gin.Engine {
@@ -21,11 +19,11 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.
 	return server
 }
 
-func GinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
+func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		middleware.CORS(),
 
-		ratelimit.NewBuilder(redisClient, time.Second, 100).Build(),
+		ratelimit.NewBuilder(limiter).Build(),
 
 		middleware.NewLoginJWTMiddlewareBuilder().
 			IgnorePaths("/user/signup").
@@ -37,9 +35,12 @@ func GinMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 			CheckLogin(),
 
 		middleware.NewProblemJWTMiddlewareBuilder().
-			SecretPaths("/problem/create").
-			SecretPaths("/problem/delete").
-			SecretPaths("/problem/update").
+			SecretPaths("/admin/problem/create").
+			SecretPaths("/admin/problem").
+			SecretPaths("/admin/problem/update").
+			SecretPaths("/admin/tags/create").
+			SecretPaths("/admin/tags/modify").
+			SecretPaths("/admin/tags").
 			CheckLogin(),
 	}
 }

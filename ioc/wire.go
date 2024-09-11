@@ -5,7 +5,6 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
-	"oj/internal/problem/web"
 )
 
 var BaseSet = wire.NewSet(InitDB, InitRedis)
@@ -14,8 +13,11 @@ func InitGin() *gin.Engine {
 	wire.Build(
 		BaseSet,
 
-		InitUserHandler,
-		web.NewProblemHandler,
+		UserSet,
+
+		ProblemSet,
+
+		InitSlideWindow,
 
 		// gin 的中间件
 		GinMiddlewares,

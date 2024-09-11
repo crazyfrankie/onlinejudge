@@ -25,7 +25,7 @@ var (
 
 type UserService interface {
 	Signup(ctx context.Context, u domain.User) error
-	Login(ctx context.Context, identifier, password string, isEmail bool) (string, error)
+	Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
 	EditInfo(ctx context.Context, id uint64, user domain.User) error
@@ -33,12 +33,14 @@ type UserService interface {
 }
 
 type UserSvc struct {
-	repo repository.UserRepository
+	repo   repository.UserRepository
+	jwtGen middleware.TokenGenerator
 }
 
-func NewUserService(repo repository.UserRepository) UserService {
+func NewUserService(repo repository.UserRepository, jwtGen middleware.TokenGenerator) UserService {
 	return &UserSvc{
-		repo: repo,
+		repo:   repo,
+		jwtGen: jwtGen,
 	}
 }
 
@@ -51,7 +53,7 @@ func (svc *UserSvc) Signup(ctx context.Context, u domain.User) error {
 	return svc.repo.Create(ctx, u)
 }
 
-func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEmail bool) (string, error) {
+func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error) {
 	var err error
 	var user domain.User
 
@@ -61,25 +63,15 @@ func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEm
 		user, err = svc.repo.FindByName(ctx, identifier)
 	}
 	if err != nil {
-		return "", err
+		return domain.User{}, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		// 打 DEBUG 日志
-		return "", ErrInvalidUserOrPassword
+		return domain.User{}, ErrInvalidUserOrPassword
 	}
 
-	// 从上下文中取出 UserAgent
-	userAgent := ctx.Value("UserAgent").(string)
-
-	var token string
-	jwtGen := middleware.NewJWTService()
-	token, err = jwtGen.GenerateToken(user.Role, user.Id, userAgent)
-	if err != nil {
-		return "", err
-	}
-
-	return token, nil
+	return user, nil
 }
 
 func (svc *UserSvc) GetInfo(ctx context.Context, id uint64) (domain.User, error) {

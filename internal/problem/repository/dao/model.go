@@ -6,6 +6,10 @@ type Problem struct {
 	Content    string
 	Difficulty uint8
 	UserId     uint64
+	Prompt     string
+	PassRate   string
+	MaxMem     int
+	MaxRuntime int
 	Ctime      int64
 	Uptime     int64
 	Deltime    int64

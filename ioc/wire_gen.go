@@ -9,17 +9,41 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
-	"oj/internal/problem/web"
+	"oj/internal/middleware"
+	repository2 "oj/internal/problem/repository"
+	cache2 "oj/internal/problem/repository/cache"
+	dao2 "oj/internal/problem/repository/dao"
+	service2 "oj/internal/problem/service"
+	web2 "oj/internal/problem/web"
+	"oj/internal/user/repository"
+	"oj/internal/user/repository/cache"
+	"oj/internal/user/repository/dao"
+	"oj/internal/user/service"
+	"oj/internal/user/web"
 )
 
 // Injectors from wire.go:
 
 func InitGin() *gin.Engine {
 	cmdable := InitRedis()
-	v := GinMiddlewares(cmdable)
+	limiter := InitSlideWindow(cmdable)
+	v := GinMiddlewares(limiter)
 	db := InitDB()
-	userHandler := InitUserHandler(db, cmdable)
-	problemHandler := web.NewProblemHandler()
+	userDao := dao.NewUserDao(db)
+	userCache := cache.NewUserCache(cmdable)
+	userRepository := repository.NewUserRepository(userDao, userCache)
+	tokenGenerator := middleware.NewJWTService()
+	userService := service.NewUserService(userRepository, tokenGenerator)
+	codeCache := cache.NewRedisCodeCache(cmdable)
+	codeRepository := repository.NewCodeRepository(codeCache)
+	smsService := InitSMSService()
+	codeService := service.NewCodeService(codeRepository, smsService)
+	userHandler := web.NewUserHandler(userService, codeService, tokenGenerator)
+	problemDao := dao2.NewProblemDao(db)
+	problemCache := cache2.NewProblemCache(cmdable)
+	problemRepository := repository2.NewProblemRepository(problemDao, problemCache)
+	problemService := service2.NewProblemService(problemRepository)
+	problemHandler := web2.NewProblemHandler(problemService)
 	engine := InitWebServer(v, userHandler, problemHandler)
 	return engine
 }

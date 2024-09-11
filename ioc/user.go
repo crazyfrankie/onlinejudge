@@ -1,12 +1,28 @@
 package ioc
 
 import (
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
-	"oj/internal/user"
+	"github.com/google/wire"
+	"oj/internal/middleware"
+	"oj/internal/user/repository"
+	"oj/internal/user/repository/cache"
+	"oj/internal/user/repository/dao"
+	"oj/internal/user/service"
 	"oj/internal/user/web"
 )
 
-func InitUserHandler(db *gorm.DB, cmdable redis.Cmdable) *web.UserHandler {
-	return user.InitHandler(db, cmdable)
-}
+var UserSet = wire.NewSet(
+	dao.NewUserDao,
+	cache.NewUserCache,
+	cache.NewRedisCodeCache,
+
+	repository.NewUserRepository,
+	repository.NewCodeRepository,
+
+	service.NewUserService,
+	service.NewCodeService,
+	InitSMSService,
+
+	middleware.NewJWTService,
+
+	web.NewUserHandler,
+)
