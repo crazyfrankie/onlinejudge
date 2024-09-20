@@ -36,7 +36,7 @@ func InitGin() *gin.Engine {
 	userService := service.NewUserService(userRepository, tokenGenerator)
 	codeCache := cache.NewRedisCodeCache(cmdable)
 	codeRepository := repository.NewCodeRepository(codeCache)
-	smsService := InitSMSService()
+	smsService := InitSMSService(limiter)
 	codeService := service.NewCodeService(codeRepository, smsService)
 	userHandler := web.NewUserHandler(userService, codeService, tokenGenerator)
 	problemDao := dao2.NewProblemDao(db)

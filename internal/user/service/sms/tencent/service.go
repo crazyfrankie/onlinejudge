@@ -3,14 +3,15 @@ package tencent
 import (
 	"context"
 	"fmt"
-
 	sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
+	"oj/pkg/ratelimit"
 )
 
 type Service struct {
 	client   *sms.Client
 	appId    *string
 	signName *string
+	limiter  ratelimit.Limiter
 }
 
 func ToPtr(c string) *string {
@@ -25,11 +26,12 @@ func (s *Service) ToStringPtrSlice(strings []string) []*string {
 	return pointers
 }
 
-func NewService(c *sms.Client, appId string, signName string) *Service {
+func NewService(c *sms.Client, appId string, signName string, limiter ratelimit.Limiter) *Service {
 	return &Service{
 		client:   c,
 		appId:    ToPtr(appId),
 		signName: ToPtr(signName),
+		limiter:  limiter,
 	}
 }
 
