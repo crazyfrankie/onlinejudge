@@ -17,6 +17,8 @@ func InitGin() *gin.Engine {
 
 		ProblemSet,
 
+		JudgeSet,
+
 		InitSlideWindow,
 
 		// gin 的中间件

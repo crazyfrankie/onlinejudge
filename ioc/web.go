@@ -3,6 +3,7 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 
+	jwb "oj/internal/judgement/web"
 	"oj/internal/middleware"
 	pwb "oj/internal/problem/web"
 	uwb "oj/internal/user/web"
@@ -10,12 +11,14 @@ import (
 	rate "oj/pkg/ratelimit"
 )
 
-func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler) *gin.Engine {
+func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler, oauthHdl *uwb.OAuthWeChatHandler, judgeHdl *jwb.SubmissionHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdl...)
 	// 注册路由
 	userHdl.RegisterRoute(server)
 	proHdl.RegisterRoute(server)
+	oauthHdl.RegisterRoute(server)
+	judgeHdl.RegisterRoute(server)
 	return server
 }
 
@@ -32,6 +35,8 @@ func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
 			IgnorePaths("/user/login").
 			IgnorePaths("/user/login/send-code").
 			IgnorePaths("/user/login-sms").
+			IgnorePaths("/oauth/wechat/authurl").
+			IgnorePaths("/submit").
 			CheckLogin(),
 
 		middleware.NewProblemJWTMiddlewareBuilder().

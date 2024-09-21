@@ -9,6 +9,10 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
+	repository3 "oj/internal/judgement/repository"
+	cache3 "oj/internal/judgement/repository/cache"
+	service3 "oj/internal/judgement/service"
+	web3 "oj/internal/judgement/web"
 	"oj/internal/middleware"
 	repository2 "oj/internal/problem/repository"
 	cache2 "oj/internal/problem/repository/cache"
@@ -44,7 +48,13 @@ func InitGin() *gin.Engine {
 	problemRepository := repository2.NewProblemRepository(problemDao, problemCache)
 	problemService := service2.NewProblemService(problemRepository)
 	problemHandler := web2.NewProblemHandler(problemService)
-	engine := InitWebServer(v, userHandler, problemHandler)
+	wechatService := InitWechatService()
+	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, tokenGenerator)
+	submitCache := cache3.NewSubmitCache(cmdable)
+	submitRepository := repository3.NewSubmitRepository(submitCache)
+	submitService := service3.NewSubmitService(submitRepository)
+	submissionHandler := web3.NewSubmissionHandler(submitService)
+	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler)
 	return engine
 }
 
