@@ -4,7 +4,6 @@ import (
 	"github.com/google/wire"
 	"oj/internal/judgement/repository"
 	"oj/internal/judgement/repository/cache"
-	"oj/internal/judgement/service"
 	"oj/internal/judgement/web"
 )
 
@@ -13,7 +12,7 @@ var JudgeSet = wire.NewSet(
 
 	repository.NewSubmitRepository,
 
-	service.NewSubmitService,
+	InitJudgeService,
 
 	web.NewSubmissionHandler,
 )

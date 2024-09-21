@@ -8,7 +8,7 @@ import (
 func InitWechatService() wechat.Service {
 	appId, ok := os.LookupEnv("WECHAT_APP_ID")
 	if !ok {
-		panic("environment variable appId not fount")
+		panic("environment variable appId not found")
 	}
 
 	var appKey string

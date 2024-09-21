@@ -11,7 +11,6 @@ import (
 	"github.com/google/wire"
 	repository3 "oj/internal/judgement/repository"
 	cache3 "oj/internal/judgement/repository/cache"
-	service3 "oj/internal/judgement/service"
 	web3 "oj/internal/judgement/web"
 	"oj/internal/middleware"
 	repository2 "oj/internal/problem/repository"
@@ -52,7 +51,7 @@ func InitGin() *gin.Engine {
 	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, tokenGenerator)
 	submitCache := cache3.NewSubmitCache(cmdable)
 	submitRepository := repository3.NewSubmitRepository(submitCache)
-	submitService := service3.NewSubmitService(submitRepository)
+	submitService := InitJudgeService(submitRepository)
 	submissionHandler := web3.NewSubmissionHandler(submitService)
 	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler)
 	return engine

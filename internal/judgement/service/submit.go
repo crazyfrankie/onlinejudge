@@ -36,11 +36,12 @@ type SubmitService interface {
 }
 
 type SubmissionSvc struct {
-	repo     repository.SubmitRepository
-	language map[string]int8
+	repo        repository.SubmitRepository
+	language    map[string]int8
+	rapidapiKey string
 }
 
-func NewSubmitService(repo repository.SubmitRepository) SubmitService {
+func NewSubmitService(repo repository.SubmitRepository, key string) SubmitService {
 	lang := map[string]int8{
 		"Go":     95,
 		"Java":   26,
@@ -48,8 +49,9 @@ func NewSubmitService(repo repository.SubmitRepository) SubmitService {
 		"C++":    10,
 	}
 	return &SubmissionSvc{
-		repo:     repo,
-		language: lang,
+		repo:        repo,
+		language:    lang,
+		rapidapiKey: key,
 	}
 }
 
@@ -96,7 +98,7 @@ func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Subm
 		}
 
 		// 设置请求头
-		req.Header.Add("x-rapidapi-key", "25e41db1b0msh5c2309187a14807p13cc02jsn21fce91931ce")
+		req.Header.Add("x-rapidapi-key", svc.rapidapiKey)
 		req.Header.Add("x-rapidapi-host", "judge0-ce.p.rapidapi.com")
 		req.Header.Add("Content-Type", "application/json")
 
