@@ -49,17 +49,23 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		type TestCaseReq struct {
+			Input       string `json:"input"`
+			Output      string `json:"output"`
+			IsPermanent int8   `json:"isPermanent"`
+		}
+
 		type Req struct {
-			Id         uint64   `json:"id"`
-			UserId     uint64   `json:"userId"`
-			Title      string   `json:"title"`
-			Tag        string   `json:"tag"`
-			Content    string   `json:"content"`
-			Prompt     []string `json:"prompt"`
-			PassRate   string   `json:"passRate"`
-			MaxMem     int      `json:"maxMem"`
-			MaxRunTime int      `json:"maxRunTime"`
-			Difficulty string   `json:"difficulty"`
+			UserId     uint64        `json:"userId"`
+			Title      string        `json:"title"`
+			Tag        string        `json:"tag"`
+			Content    string        `json:"content"`
+			Prompt     []string      `json:"prompt"`
+			TestCases  []TestCaseReq `json:"testCases"`
+			PassRate   string        `json:"passRate"`
+			MaxMem     int           `json:"maxMem"`
+			MaxRunTime int           `json:"maxRunTime"`
+			Difficulty uint8         `json:"difficulty"`
 		}
 
 		var req Req
@@ -67,17 +73,26 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 			return
 		}
 
+		domainTestCases := make([]domain.TestCase, len(req.TestCases))
+		for i, tc := range req.TestCases {
+			domainTestCases[i] = domain.TestCase{
+				Input:       tc.Input,
+				Output:      tc.Output,
+				IsPermanent: tc.IsPermanent,
+			}
+		}
+
 		pm := domain.Problem{
-			Id:         req.Id,
 			UserId:     req.UserId,
 			Title:      req.Title,
 			Tag:        req.Tag,
 			Content:    req.Content,
 			Prompt:     make([]string, len(req.Prompt)),
+			TestCases:  domainTestCases,
 			PassRate:   req.PassRate,
 			MaxMem:     req.MaxMem,
 			MaxRuntime: req.MaxRunTime,
-			Difficulty: domain.Difficulty(req.Difficulty),
+			Difficulty: req.Difficulty,
 		}
 		copy(pm.Prompt, req.Prompt)
 
@@ -96,7 +111,7 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 		type Req struct {
 			Title      string `json:"title"`
 			Content    string `json:"content"`
-			Difficulty string `json:"difficulty"`
+			Difficulty uint8  `json:"difficulty"`
 		}
 
 		var req Req
@@ -109,7 +124,7 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 		pm, err := ctl.svc.ModifyProblem(c.Request.Context(), id, domain.Problem{
 			Title:      req.Title,
 			Content:    req.Content,
-			Difficulty: domain.Difficulty(req.Difficulty),
+			Difficulty: req.Difficulty,
 		})
 
 		switch {

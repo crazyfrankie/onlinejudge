@@ -51,7 +51,7 @@ func InitGin() *gin.Engine {
 	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, tokenGenerator)
 	submitCache := cache3.NewSubmitCache(cmdable)
 	submitRepository := repository3.NewSubmitRepository(submitCache)
-	submitService := InitJudgeService(submitRepository)
+	submitService := InitJudgeService(submitRepository, problemRepository)
 	submissionHandler := web3.NewSubmissionHandler(submitService)
 	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler)
 	return engine

@@ -40,7 +40,7 @@ func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
 			CheckLogin(),
 
 		middleware.NewProblemJWTMiddlewareBuilder().
-			SecretPaths("/admin/problem/create").
+			//SecretPaths("/admin/problem/create").
 			SecretPaths("/admin/problem").
 			SecretPaths("/admin/problem/update").
 			SecretPaths("/admin/tags/create").

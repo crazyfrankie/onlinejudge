@@ -26,6 +26,7 @@ type ProblemRepository interface {
 	FindCountInTag(ctx context.Context) ([]domain.TagWithCount, error)
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, id uint64, tag, title string) (domain.Problem, error)
+	FindById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 }
 
 type CacheProblemRepo struct {
@@ -106,4 +107,8 @@ func (repo *CacheProblemRepo) FindByTitle(ctx context.Context, id uint64, tag, t
 	}()
 
 	return pm, nil
+}
+
+func (repo *CacheProblemRepo) FindById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+	return repo.dao.FindById(ctx, id)
 }

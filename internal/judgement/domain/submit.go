@@ -10,9 +10,7 @@ type Submission struct {
 }
 
 type Evaluation struct {
-	SubmissionId uint64 `json:"submissionId"`
-	Status       string `json:"status"`
-	RunTime      uint64 `json:"runTime"`
-	RunMem       uint64 `json:"runMem"`
-	TestFields   []bool `json:"testFields"`
+	Status  string `json:"status"`
+	RunTime string `json:"runTime"`
+	RunMem  int    `json:"runMem"`
 }

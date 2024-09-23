@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // 示例使用MySQL驱动
+	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 
 	"oj/internal/problem/domain"
@@ -30,11 +30,7 @@ type ProblemDao interface {
 	FindCountInTag(ctx context.Context) ([]domain.TagWithCount, error)
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
-
-	getDifficulty(diff uint8) string
-	setDifficulty(diff string) uint8
-	GetPrompt(p string) []string
-	SetPrompt(prompt []string) string
+	FindById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 }
 
 type GormProblemDao struct {
@@ -47,58 +43,33 @@ func NewProblemDao(db *gorm.DB) ProblemDao {
 	}
 }
 
-func (dao *GormProblemDao) SetPrompt(prompt []string) string {
-	data, err := json.Marshal(prompt)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(data)
-}
-
-func (dao *GormProblemDao) GetPrompt(p string) []string {
-	var prompt []string
-	err := json.Unmarshal([]byte(p), &prompt)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return prompt
-}
-
-func (dao *GormProblemDao) getDifficulty(diff uint8) string {
-	diffMap := map[uint8]string{
-		0: "Easy",
-		1: "Medium",
-		2: "Hard",
-	}
-	diffString := diffMap[diff]
-	return diffString
-}
-
-func (dao *GormProblemDao) setDifficulty(diff string) uint8 {
-	diffMap := map[string]uint8{
-		"Easy":   0,
-		"Medium": 1,
-		"Hard":   2,
-	}
-	dif := diffMap[diff]
-	return dif
-}
-
 func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Problem) error {
 	now := time.Now().UnixMilli()
+
+	testCasesJSON, err := json.Marshal(problem.TestCases)
+	if err != nil {
+		return err
+	}
+
+	promptJSON, err := json.Marshal(problem.Prompt)
+	if err != nil {
+		return err
+	}
 
 	pm := Problem{
 		Title:      problem.Title,
 		Content:    problem.Content,
-		Difficulty: dao.setDifficulty(string(problem.Difficulty)),
+		Difficulty: problem.Difficulty,
 		UserId:     problem.UserId,
 		PassRate:   problem.PassRate,
-		Prompt:     dao.SetPrompt(problem.Prompt),
+		Prompt:     string(promptJSON),
+		TestCases:  string(testCasesJSON),
 		Ctime:      now,
 		Uptime:     now,
 	}
 
-	err := dao.db.WithContext(ctx).Create(&pm).Error
+	err = dao.db.WithContext(ctx).Create(&pm).Error
+
 	return err
 }
 
@@ -132,16 +103,22 @@ func (dao *GormProblemDao) UpdateProblem(ctx context.Context, id uint64, problem
 		return domain.Problem{}, err
 	}
 
+	var prompts []string
+	err := json.Unmarshal([]byte(pm.Prompt), &prompts)
+	if err != nil {
+		return domain.Problem{}, err
+	}
+
 	updatePm := domain.Problem{
 		Id:         pm.ID,
 		UserId:     pm.UserId,
 		Title:      pm.Title,
 		Content:    pm.Content,
-		Prompt:     dao.GetPrompt(pm.Prompt),
+		Prompt:     prompts,
 		PassRate:   pm.PassRate,
 		MaxRuntime: pm.MaxRuntime,
 		MaxMem:     pm.MaxMem,
-		Difficulty: domain.Difficulty(dao.getDifficulty(pm.Difficulty)),
+		Difficulty: pm.Difficulty,
 	}
 
 	return updatePm, nil
@@ -260,18 +237,45 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 		return domain.Problem{}, err
 	}
 
+	var prompts []string
+	err = json.Unmarshal([]byte(problem.Prompt), &prompts)
+	if err != nil {
+		return domain.Problem{}, err
+	}
+
 	pm := domain.Problem{
 		Id:         problem.ID,
 		UserId:     problem.UserId,
 		Title:      problem.Title,
 		Content:    problem.Content,
 		Tag:        tag,
-		Prompt:     dao.GetPrompt(problem.Prompt),
+		Prompt:     prompts,
 		PassRate:   problem.PassRate,
 		MaxMem:     problem.MaxMem,
 		MaxRuntime: problem.MaxRuntime,
-		Difficulty: domain.Difficulty(dao.getDifficulty(problem.Difficulty)),
+		Difficulty: problem.Difficulty,
 	}
 
 	return pm, nil
+}
+
+func (dao *GormProblemDao) FindById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+	var problem Problem
+
+	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []domain.TestCase{}, ErrProblemNotFound
+		}
+		return []domain.TestCase{}, err
+	}
+
+	var testCases []domain.TestCase
+	err = json.Unmarshal([]byte(problem.TestCases), &testCases)
+	if err != nil {
+		return testCases, err
+	}
+
+	fmt.Println(len(testCases))
+	return testCases, nil
 }

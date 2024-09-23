@@ -1,24 +1,17 @@
 package domain
 
-type Difficulty string
-
-const (
-	Easy   Difficulty = "Easy"
-	Medium Difficulty = "Medium"
-	Hard   Difficulty = "Hard"
-)
-
 type Problem struct {
 	Id         uint64     `json:"id"`
 	UserId     uint64     `json:"userId"`
 	Title      string     `json:"title"`
 	Tag        string     `json:"tag"`
 	Content    string     `json:"content"`
-	Prompt     []string   `json:"prompt"`
 	PassRate   string     `json:"passRate"`
+	Prompt     []string   `json:"prompt"`
+	TestCases  []TestCase `json:"testCases"`
 	MaxMem     int        `json:"maxMem"`
 	MaxRuntime int        `json:"maxRuntime"`
-	Difficulty Difficulty `json:"difficulty"`
+	Difficulty uint8      `json:"difficulty"`
 }
 
 type RoughProblem struct {
@@ -37,4 +30,10 @@ type TagWithCount struct {
 type Tag struct {
 	Id   uint64 `json:"id"`
 	Name string `json:"name"`
+}
+
+type TestCase struct {
+	Input       string `json:"input"`
+	Output      string `json:"output"`
+	IsPermanent int8   `json:"isPermanent"`
 }

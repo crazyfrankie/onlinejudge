@@ -25,7 +25,7 @@ func NewFailOver(svc []sms.Service) sms.Service {
 
 func (f *SMSFailOver) Send(ctx context.Context, tplId string, args []string, numbers ...string) error {
 	// 原子操作，并发安全
-	idx := atomic.AddUint64(&f.idx, 1)
+	idx := atomic.AddUint64(&f.idx, 0)
 	length := uint64(len(f.svc))
 	for i := idx; i < length+idx; i++ {
 		svc := f.svc[int(i%length)]

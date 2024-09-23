@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"oj/internal/problem/repository/dao"
 	"time"
 
 	"gorm.io/driver/mysql"
@@ -8,7 +9,6 @@ import (
 	"gorm.io/gorm/schema"
 
 	"oj/config"
-	"oj/internal/problem/repository/dao"
 )
 
 func InitDB() *gorm.DB {
@@ -39,7 +39,7 @@ func InitDB() *gorm.DB {
 
 func Migrate(db *gorm.DB) error {
 	// 自动迁移，创建表
-	if err := db.AutoMigrate(&dao.Problem{}); err != nil {
+	if err := db.AutoMigrate(&dao.TestCase{}, &dao.Problem{}); err != nil {
 		return err
 	}
 	return nil
