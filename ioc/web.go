@@ -36,11 +36,11 @@ func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
 			IgnorePaths("/user/login/send-code").
 			IgnorePaths("/user/login-sms").
 			IgnorePaths("/oauth/wechat/authurl").
-			IgnorePaths("/submit").
+			IgnorePaths("run").
 			CheckLogin(),
 
 		middleware.NewProblemJWTMiddlewareBuilder().
-			//SecretPaths("/admin/problem/create").
+			SecretPaths("/admin/problem/create").
 			SecretPaths("/admin/problem").
 			SecretPaths("/admin/problem/update").
 			SecretPaths("/admin/tags/create").

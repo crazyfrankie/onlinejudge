@@ -27,7 +27,6 @@ type ProblemTag struct {
 }
 
 type TestCase struct {
-	Input       string `json:"input"`
-	Output      string `json:"output"`
-	IsPermanent int8   `json:"isPermanent"`
+	Input  string `json:"input"`
+	Output string `json:"output"`
 }

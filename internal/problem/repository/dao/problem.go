@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -31,6 +30,7 @@ type ProblemDao interface {
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
 	FindById(ctx context.Context, id uint64) ([]domain.TestCase, error)
+	FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 }
 
 type GormProblemDao struct {
@@ -273,9 +273,28 @@ func (dao *GormProblemDao) FindById(ctx context.Context, id uint64) ([]domain.Te
 	var testCases []domain.TestCase
 	err = json.Unmarshal([]byte(problem.TestCases), &testCases)
 	if err != nil {
+		return testCases[:3], err
+	}
+
+	return testCases[:3], nil
+}
+
+func (dao *GormProblemDao) FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+	var problem Problem
+
+	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return []domain.TestCase{}, ErrProblemNotFound
+		}
+		return []domain.TestCase{}, err
+	}
+
+	var testCases []domain.TestCase
+	err = json.Unmarshal([]byte(problem.TestCases), &testCases)
+	if err != nil {
 		return testCases, err
 	}
 
-	fmt.Println(len(testCases))
 	return testCases, nil
 }

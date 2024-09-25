@@ -28,6 +28,7 @@ type UserService interface {
 	Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	FindOrCreateByWechat(ctx context.Context, wechatInfo domain.WeChatInfo) (domain.User, error)
 	EditInfo(ctx context.Context, id uint64, user domain.User) error
 	GenerateCode() string
 }
@@ -91,18 +92,38 @@ func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User
 	//}
 
 	// 慢路径
-	// 你明确知道，没有这个用户
+	// 明确知道，没有这个用户
 	code := svc.GenerateCode()
 	user = domain.User{
 		Name:  "用户" + code,
 		Phone: phone,
 	}
 	err = svc.repo.Create(ctx, user)
-	if err != nil || !errors.Is(err, repository.ErrUserDuplicatePhone) {
+	if err != nil && !errors.Is(err, repository.ErrUserDuplicatePhone) {
 		return user, err
 	}
 	// 有主从延迟的问题
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *UserSvc) FindOrCreateByWechat(ctx context.Context, info domain.WeChatInfo) (domain.User, error) {
+	user, err := svc.repo.FindByWechat(ctx, info.OpenID)
+	if errors.Is(err, ErrUserNotFound) {
+		return user, nil
+	}
+
+	code := svc.GenerateCode()
+	user = domain.User{
+		Name:       "用户" + code,
+		WeChatInfo: info,
+	}
+
+	err = svc.repo.Create(ctx, user)
+	if err != nil && !errors.Is(err, repository.ErrUserDuplicateWechat) {
+		return user, err
+	}
+
+	return svc.repo.FindByWechat(ctx, info.OpenID)
 }
 
 func (svc *UserSvc) EditInfo(ctx context.Context, id uint64, user domain.User) error {

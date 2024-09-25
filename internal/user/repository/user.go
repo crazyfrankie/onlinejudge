@@ -11,10 +11,11 @@ import (
 )
 
 var (
-	ErrUserDuplicateEmail = dao.ErrUserDuplicateEmail
-	ErrUserDuplicateName  = dao.ErrUserDuplicateName
-	ErrUserDuplicatePhone = dao.ErrUserDuplicatePhone
-	ErrUserNotFound       = dao.ErrUserNotFound
+	ErrUserDuplicateEmail  = dao.ErrUserDuplicateEmail
+	ErrUserDuplicateName   = dao.ErrUserDuplicateName
+	ErrUserDuplicatePhone  = dao.ErrUserDuplicatePhone
+	ErrUserNotFound        = dao.ErrUserNotFound
+	ErrUserDuplicateWechat = dao.ErrUserDuplicateWechat
 )
 
 type UserRepository interface {
@@ -23,6 +24,7 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindByID(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
+	FindByWechat(ctx context.Context, openId string) (domain.User, error)
 	UpdateInfo(ctx context.Context, id uint64, user domain.User) error
 }
 
@@ -101,6 +103,14 @@ func (ur *CacheUserRepository) FindByID(ctx context.Context, id uint64) (domain.
 
 func (ur *CacheUserRepository) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	user, err := ur.dao.FindByPhone(ctx, phone)
+	if err != nil {
+		return domain.User{}, err
+	}
+	return user, err
+}
+
+func (ur *CacheUserRepository) FindByWechat(ctx context.Context, openId string) (domain.User, error) {
+	user, err := ur.dao.FindByWechat(ctx, openId)
 	if err != nil {
 		return domain.User{}, err
 	}

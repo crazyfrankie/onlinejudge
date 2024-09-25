@@ -3,19 +3,22 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"oj/internal/judgement/domain"
 	"oj/internal/judgement/repository"
+	domain2 "oj/internal/problem/domain"
 	repository2 "oj/internal/problem/repository"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync/atomic"
 )
 
 var (
@@ -23,19 +26,22 @@ var (
 )
 
 type SubmitService interface {
-	RunCode(ctx context.Context, submission domain.Submission, language string) ([]string, error)
-	RunResult(ctx context.Context, tokens []string) ([]domain.Evaluation, error)
-	SetSubmission(id int8, code, stdin, stdout string) Submission
-	SubmitResult(ctx context.Context, tokens []string) ([]domain.Evaluation, error)
+	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
+	//SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
 
-	CodeFormat(language string, submission domain.Submission) (error, bool)
-	GoFormat(code string, userId uint64) bool
-	JavaFormat(code string, userId uint64) bool
-	CppFormat(code string, userId uint64) bool
-	PythonFormat(code string, userId uint64) bool
-
-	GetFileWithUser(userId uint64, suffix string) string
 	GetEvaluation(eval map[string]interface{}) (domain.Evaluation, error)
+
+	GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.Evaluation) ([]domain.Evaluation, error)
+	SetSubmission(id int8, code, stdin, stdout string) Submission
+
+	CodeFormat(language, way string, submission domain.Submission) (error, bool)
+	GoFormat(code, way string, userId, problemId uint64) bool
+	JavaFormat(code, way string, userId, problemId uint64) bool
+	CppFormat(code, way string, userId, problemId uint64) bool
+	PythonFormat(code, way string, userId, problemId uint64) bool
+
+	GetRunFileWithUser(userId, problemId uint64, suffix string) string
+	GetSubmitFileWithUser(userId, problemId uint64, suffix string) string
 }
 
 type SubmissionSvc struct {
@@ -67,17 +73,27 @@ type Submission struct {
 	StdOut     string `json:"stdout"` // 接收多个期望输出
 }
 
-func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]string, error) {
-	// 判断语言类型
+func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
+	//先查缓存 如果有则直接返回
+	hash := sha256.Sum256([]byte(submission.Code))
+	hashString := hex.EncodeToString(hash[:])
+
+	evals, err := svc.repo.AcquireEvaluation(ctx, submission.UserId, hashString)
+	if err == nil {
+		return evals, err
+	}
+
+	//判断语言类型
 	id, ok := svc.language[language]
 	if !ok {
-		return []string{}, errors.New("no language to fit")
+		return evals, errors.New("no language to fit")
 	}
 
 	// 代码格式检查
-	err, done := svc.CodeFormat(language, submission)
+	err, done := svc.CodeFormat(language, "run", submission)
+
 	if !done {
-		return []string{}, err
+		return evals, err
 	}
 
 	// base64 编码
@@ -86,28 +102,74 @@ func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submiss
 	// 获取测试用例
 	testCases, err := svc.pmRepo.FindById(ctx, submission.ProblemID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get test cases: %w", err)
+		return evals, fmt.Errorf("failed to get test cases: %w", err)
 	}
 
-	// 返回结果
-	var results []string
+	// 获取返回结果
+	evals, err = svc.GetResult(ctx, testCases, id, encodedCode, evals)
 
-	client := &http.Client{}
+	// 更新缓存
+	var updating int32
+
+	if atomic.LoadInt32(&updating) == 0 {
+		if atomic.CompareAndSwapInt32(&updating, 0, 1) {
+			go func() {
+				// 更新逻辑
+				svc.repo.StoreEvaluation(ctx, submission.UserId, hashString, evals)
+				atomic.StoreInt32(&updating, 0) // 更新完成，重置状态
+			}()
+		}
+	}
+
+	return evals, err
+}
+
+func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
+	var evals []domain.Evaluation
+
+	//判断语言类型
+	id, ok := svc.language[language]
+	if !ok {
+		return evals, errors.New("no language to fit")
+	}
+
+	// 代码格式检查
+	err, done := svc.CodeFormat(language, "submit", submission)
+	if !done {
+		return evals, err
+	}
+
+	// base64 编码
+	encodedCode := base64.StdEncoding.EncodeToString([]byte(submission.Code))
+
+	// 获取测试用例
+	testCases, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
+	if err != nil {
+		return evals, fmt.Errorf("failed to get test cases: %w", err)
+	}
+
+	// 获取返回结果
+	evals, err = svc.GetResult(ctx, testCases, id, encodedCode, evals)
+
+	return evals, err
+}
+
+func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.Evaluation) ([]domain.Evaluation, error) {
 	// 逐个提交测试用例
 	for _, tc := range testCases {
 		// 设置提交代码以及单个测试用例
-		submit := svc.SetSubmission(id, encodedCode, base64.StdEncoding.EncodeToString([]byte(tc.Input)), base64.StdEncoding.EncodeToString([]byte(tc.Output)))
+		submit := svc.SetSubmission(langId, encodedCode, base64.StdEncoding.EncodeToString([]byte(tc.Input)), base64.StdEncoding.EncodeToString([]byte(tc.Output)))
 
 		jsonData, err := json.Marshal(submit)
 		if err != nil {
-			return results, fmt.Errorf("failed to marshal submission: %w", err)
+			return result, fmt.Errorf("failed to marshal submission: %w", err)
 		}
 
 		// 调用Judge0 API
-		url := "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=false&fields=*"
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+		url := "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true&fields=*"
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return results, err
+			return result, err
 		}
 
 		// 设置请求头
@@ -116,76 +178,228 @@ func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submiss
 		req.Header.Add("Content-Type", "application/json")
 
 		// 发送请求
+		client := http.Client{}
 		res, err := client.Do(req)
 		if err != nil {
-			return results, err
+			return result, err
 		}
 
 		// 读取返回结果
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return results, err
-		}
-		res.Body.Close() // 将 Close 移到这里
-
-		// 将每次的结果返回
-		results = append(results, string(body))
-	}
-
-	return results, nil
-}
-
-func (svc *SubmissionSvc) RunResult(ctx context.Context, tokens []string) ([]domain.Evaluation, error) {
-	var evals []domain.Evaluation
-
-	client := &http.Client{}
-	for _, token := range tokens {
-		url := fmt.Sprintf("https://judge0-ce.p.rapidapi.com/submissions/%s?base64_encoded=true&fields=*", token)
-		fmt.Println(url)
-
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			return evals, err
+		var eval map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&eval); err != nil {
+			return result, fmt.Errorf("failed to decode response: %w", err)
 		}
 
-		req.Header.Add("x-rapidapi-key", "25e41db1b0msh5c2309187a14807p13cc02jsn21fce91931ce")
-		req.Header.Add("x-rapidapi-host", "judge0-ce.p.rapidapi.com")
-
-		res, err := client.Do(req)
-		if err != nil {
-			return evals, err
-		}
-
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return evals, err
-		}
 		res.Body.Close() // 确保响应体在函数结束时关闭
 
-		var eval map[string]interface{}
-		err = json.Unmarshal(body, &eval)
-		if err != nil {
-			return evals, err
-		}
-
-		// 获取所需字段
-		evaluation, err2 := svc.GetEvaluation(eval)
-		if err2 != nil {
-			return evals, err2
-		}
-
-		evals = append(evals, evaluation)
+		evaluation, err := svc.GetEvaluation(eval)
+		result = append(result, evaluation)
 	}
 
-	return evals, nil
+	return result, nil
 }
 
-func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]string, error) {
-
+func (svc *SubmissionSvc) SetSubmission(id int8, code, stdin, stdout string) Submission {
+	submit := Submission{
+		LanguageId: id,
+		Code:       code,
+		Stdin:      stdin,  // 标准输入
+		StdOut:     stdout, // 期望输出
+	}
+	return submit
 }
 
-func (svc *SubmissionSvc) SubmitResult(ctx context.Context, tokens []string) ([]domain.Evaluation, error) {
+func (svc *SubmissionSvc) CodeFormat(language, way string, submission domain.Submission) (error, bool) {
+	// 代码格式检查
+	var formatOk bool
+	switch language {
+	case "Go":
+		formatOk = svc.GoFormat(submission.Code, way, submission.ProblemID, submission.UserId)
+	case "Java":
+		formatOk = svc.JavaFormat(submission.Code, way, submission.ProblemID, submission.UserId)
+	case "Python":
+		formatOk = svc.PythonFormat(submission.Code, way, submission.ProblemID, submission.UserId)
+	case "C++":
+		formatOk = svc.CppFormat(submission.Code, way, submission.ProblemID, submission.UserId)
+	}
+	if !formatOk {
+		return ErrSyntax, false
+	}
+	return nil, true
+}
 
+func (svc *SubmissionSvc) GoFormat(code, way string, userId, problemId uint64) bool {
+	// 定义目标文件夹路径
+	currDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建路径
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "go")
+
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建 temp.go 文件的完整路径
+	// 构建文件的完整路径
+	var filePath string
+	if way == "run" {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "go"))
+	} else {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "go"))
+	}
+
+	// 将代码写入 temp.go 文件中
+	err = os.WriteFile(filePath, []byte(code), 0644)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 使用 go vet 或 go build 来检测语法
+	cmd := exec.Command("go", "vet", filePath)
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (svc *SubmissionSvc) JavaFormat(code, way string, userId, problemId uint64) bool {
+	// 定义目标文件夹路径
+	currDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建路径
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "java")
+
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建文件的完整路径
+	var filePath string
+	if way == "run" {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "java"))
+	} else {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "java"))
+	}
+
+	// 将代码写入文件中
+	err = os.WriteFile(filePath, []byte(code), 0644)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	cmd := exec.Command("javac", filePath)
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (svc *SubmissionSvc) CppFormat(code, way string, userId, problemId uint64) bool {
+	// 定义目标文件夹路径
+	currDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建路径
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "cpp")
+
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建文件的完整路径
+	var filePath string
+	if way == "run" {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "cpp"))
+	} else {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "cpp"))
+	}
+
+	// 将代码写入文件中
+	err = os.WriteFile(filePath, []byte(code), 0644)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	cmd := exec.Command("g++", "-fsyntax-only", filePath)
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (svc *SubmissionSvc) PythonFormat(code, way string, userId, problemId uint64) bool {
+	// 定义目标文件夹路径
+	currDir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建路径
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "python")
+
+	err = os.MkdirAll(dir, 0755)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	// 构建文件的完整路径
+	var filePath string
+	if way == "run" {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "py"))
+	} else {
+		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "py"))
+	}
+
+	// 将代码写入文件中
+	err = os.WriteFile(filePath, []byte(code), 0644)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+
+	cmd := exec.Command("python3", "-m", "py_compile", filePath)
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (svc *SubmissionSvc) GetRunFileWithUser(userId, problemId uint64, suffix string) string {
+	return fmt.Sprintf("user%dproblem:%d:run.%s", userId, problemId, suffix)
+}
+
+func (svc *SubmissionSvc) GetSubmitFileWithUser(userId, problemId uint64, suffix string) string {
+	return fmt.Sprintf("user%dproblem:%d:submit.%s", userId, problemId, suffix)
 }
 
 func (svc *SubmissionSvc) GetEvaluation(eval map[string]interface{}) (domain.Evaluation, error) {
@@ -212,182 +426,4 @@ func (svc *SubmissionSvc) GetEvaluation(eval map[string]interface{}) (domain.Eva
 		RunTime: runTime,
 	}
 	return evaluation, nil
-}
-
-func (svc *SubmissionSvc) SetSubmission(id int8, code, stdin, stdout string) Submission {
-	submit := Submission{
-		LanguageId: id,
-		Code:       code,
-		Stdin:      stdin,  // 标准输入
-		StdOut:     stdout, // 期望输出
-	}
-	return submit
-}
-
-func (svc *SubmissionSvc) CodeFormat(language string, submission domain.Submission) (error, bool) {
-	// 代码格式检查
-	var formatOk bool
-	switch language {
-	case "Go":
-		formatOk = svc.GoFormat(submission.Code, submission.UserId)
-	case "Java":
-		formatOk = svc.JavaFormat(submission.Code, submission.UserId)
-	case "Python":
-		formatOk = svc.PythonFormat(submission.Code, submission.UserId)
-	case "C++":
-		formatOk = svc.CppFormat(submission.Code, submission.UserId)
-	}
-	if !formatOk {
-		return ErrSyntax, false
-	}
-	return nil, true
-}
-
-func (svc *SubmissionSvc) GoFormat(code string, userId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "go")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建 temp.go 文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, "go"))
-
-	// 将代码写入 temp.go 文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 使用 go vet 或 go build 来检测语法
-	cmd := exec.Command("go", "vet", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *SubmissionSvc) JavaFormat(code string, userId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "java")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, "java"))
-
-	// 将代码写入文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	cmd := exec.Command("javac", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *SubmissionSvc) CppFormat(code string, userId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "cpp")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, "cpp"))
-
-	// 将代码写入文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	cmd := exec.Command("g++", "-fsyntax-only", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *SubmissionSvc) PythonFormat(code string, userId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "python")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, "py"))
-
-	// 将代码写入文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	cmd := exec.Command("python3", "-m", "py_compile", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *SubmissionSvc) GetFileWithUser(userId uint64, suffix string) string {
-	return fmt.Sprintf("user%d.%s", userId, suffix)
 }

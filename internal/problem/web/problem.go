@@ -76,9 +76,8 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 		domainTestCases := make([]domain.TestCase, len(req.TestCases))
 		for i, tc := range req.TestCases {
 			domainTestCases[i] = domain.TestCase{
-				Input:       tc.Input,
-				Output:      tc.Output,
-				IsPermanent: tc.IsPermanent,
+				Input:  tc.Input,
+				Output: tc.Output,
 			}
 		}
 
