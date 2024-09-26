@@ -48,7 +48,7 @@ func InitGin() *gin.Engine {
 	problemService := service2.NewProblemService(problemRepository)
 	problemHandler := web2.NewProblemHandler(problemService)
 	wechatService := InitWechatService()
-	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, tokenGenerator)
+	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, tokenGenerator, userService)
 	submitCache := cache3.NewSubmitCache(cmdable)
 	submitRepository := repository3.NewSubmitRepository(submitCache)
 	submitService := InitJudgeService(submitRepository, problemRepository)

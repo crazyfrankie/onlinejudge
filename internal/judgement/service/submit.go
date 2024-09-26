@@ -27,7 +27,7 @@ var (
 
 type SubmitService interface {
 	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
-	//SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
+	SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
 
 	GetEvaluation(eval map[string]interface{}) (domain.Evaluation, error)
 

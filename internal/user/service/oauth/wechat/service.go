@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
 	"net/url"
 	"oj/internal/user/domain"
@@ -15,8 +14,8 @@ var (
 )
 
 type Service interface {
-	AuthURL(ctx context.Context) (string, error)
-	VerifyCode(ctx context.Context, code, state string) (domain.WeChatInfo, error)
+	AuthURL(ctx context.Context, state string) (string, error)
+	VerifyCode(ctx context.Context, code string) (domain.WeChatInfo, error)
 }
 
 type AuthSvc struct {
@@ -46,13 +45,12 @@ func NewService(appId string, appSecret string) Service {
 	}
 }
 
-func (s *AuthSvc) AuthURL(ctx context.Context) (string, error) {
+func (s *AuthSvc) AuthURL(ctx context.Context, state string) (string, error) {
 	const urlPattern = "https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect"
-	state := uuid.New()
 	return fmt.Sprintf(urlPattern, s.appId, redirectUri, state), nil
 }
 
-func (s *AuthSvc) VerifyCode(ctx context.Context, code, state string) (domain.WeChatInfo, error) {
+func (s *AuthSvc) VerifyCode(ctx context.Context, code string) (domain.WeChatInfo, error) {
 	const targetPattern = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
 	target := fmt.Sprintf(targetPattern, s.appId, s.appSecret, code)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, nil)
@@ -78,7 +76,7 @@ func (s *AuthSvc) VerifyCode(ctx context.Context, code, state string) (domain.We
 	}
 
 	return domain.WeChatInfo{
-		OpenId:  res.OpenId,
-		UnionId: res.UnionId,
+		OpenID:  res.OpenId,
+		UnionID: res.UnionId,
 	}, nil
 }
