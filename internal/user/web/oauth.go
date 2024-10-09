@@ -19,9 +19,8 @@ import (
 type OAuthWeChatHandler struct {
 	svc      wechat.Service
 	userSvc  service.UserService
-	tokenGen middleware.TokenGenerator
+	tokenGen *middleware.JWTHandler
 	stateKey []byte
-	cfg      Config
 }
 
 type StateClaims struct {
@@ -29,18 +28,12 @@ type StateClaims struct {
 	jwt.StandardClaims
 }
 
-type Config struct {
-	secure bool
-	// stateKey string
-}
-
-func NewOAuthHandler(svc wechat.Service, tokenGen middleware.TokenGenerator, userSvc service.UserService, cfg Config) *OAuthWeChatHandler {
+func NewOAuthHandler(svc wechat.Service, tokenGen *middleware.JWTHandler, userSvc service.UserService) *OAuthWeChatHandler {
 	return &OAuthWeChatHandler{
 		svc:      svc,
 		tokenGen: tokenGen,
 		userSvc:  userSvc,
 		stateKey: []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxF"),
-		cfg:      cfg,
 	}
 }
 
@@ -80,7 +73,7 @@ func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
 	if err != nil {
 		return err
 	}
-	c.SetCookie("jwt-state", tokenStr, 600, "/oauth/wechat/callback", "", h.cfg.secure, true)
+	c.SetCookie("jwt-state", tokenStr, 600, "/oauth/wechat/callback", "", false, true)
 	return nil
 }
 
@@ -107,13 +100,13 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		userAgent := c.GetHeader("User-Agent")
 
-		token, err := h.tokenGen.GenerateToken(0, user.Id, userAgent)
+		err = h.tokenGen.GenerateToken(c, 0, user.Id, userAgent)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
 
-		c.JSON(http.StatusOK, token)
+		c.JSON(http.StatusOK, "login successfully")
 	}
 }
 

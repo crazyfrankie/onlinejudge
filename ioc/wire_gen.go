@@ -11,6 +11,7 @@ import (
 	"github.com/google/wire"
 	repository3 "oj/internal/judgement/repository"
 	cache3 "oj/internal/judgement/repository/cache"
+	"oj/internal/judgement/service/local"
 	web3 "oj/internal/judgement/web"
 	"oj/internal/middleware"
 	repository2 "oj/internal/problem/repository"
@@ -35,25 +36,29 @@ func InitGin() *gin.Engine {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmdable)
 	userRepository := repository.NewUserRepository(userDao, userCache)
-	tokenGenerator := middleware.NewJWTService()
-	userService := service.NewUserService(userRepository, tokenGenerator)
+	userService := service.NewUserService(userRepository)
 	codeCache := cache.NewRedisCodeCache(cmdable)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := InitSMSService(limiter)
 	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := web.NewUserHandler(userService, codeService, tokenGenerator)
+	jwtHandler := middleware.NewJWTHandler()
+	userHandler := web.NewUserHandler(userService, codeService, jwtHandler)
 	problemDao := dao2.NewProblemDao(db)
 	problemCache := cache2.NewProblemCache(cmdable)
 	problemRepository := repository2.NewProblemRepository(problemDao, problemCache)
 	problemService := service2.NewProblemService(problemRepository)
 	problemHandler := web2.NewProblemHandler(problemService)
 	wechatService := InitWechatService()
-	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, tokenGenerator, userService)
+	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, jwtHandler, userService)
 	submitCache := cache3.NewSubmitCache(cmdable)
 	submitRepository := repository3.NewSubmitRepository(submitCache)
 	submitService := InitJudgeService(submitRepository, problemRepository)
 	submissionHandler := web3.NewSubmissionHandler(submitService)
-	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler)
+	localSubmitCache := cache3.NewLocalSubmitCache(cmdable)
+	localSubmitRepo := repository3.NewLocalSubmitRepo(localSubmitCache)
+	locSubmitService := local.NewLocSubmitService(localSubmitRepo, problemRepository)
+	localSubmitHandler := web3.NewLocalSubmitHandler(locSubmitService)
+	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler, localSubmitHandler)
 	return engine
 }
 

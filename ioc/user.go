@@ -23,7 +23,7 @@ var UserSet = wire.NewSet(
 	InitWechatService,
 	InitSMSService,
 
-	middleware.NewJWTService,
+	middleware.NewJWTHandler,
 
 	web.NewUserHandler,
 	web.NewOAuthHandler,

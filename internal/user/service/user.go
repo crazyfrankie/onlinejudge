@@ -10,7 +10,6 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"oj/internal/middleware"
 	"oj/internal/user/domain"
 	"oj/internal/user/repository"
 )
@@ -34,14 +33,12 @@ type UserService interface {
 }
 
 type UserSvc struct {
-	repo   repository.UserRepository
-	jwtGen middleware.TokenGenerator
+	repo repository.UserRepository
 }
 
-func NewUserService(repo repository.UserRepository, jwtGen middleware.TokenGenerator) UserService {
+func NewUserService(repo repository.UserRepository) UserService {
 	return &UserSvc{
-		repo:   repo,
-		jwtGen: jwtGen,
+		repo: repo,
 	}
 }
 

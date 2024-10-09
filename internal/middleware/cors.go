@@ -20,7 +20,7 @@ func CORS() gin.HandlerFunc {
 			return strings.Contains(origin, "yourcompany.com")
 		},
 		// 不加这一行 前端拿不到 token
-		ExposedHeaders: []string{"x-jwt-token"},
+		ExposedHeaders: []string{"x-jwt-token", "x-refresh-token"},
 		MaxAge:         12 * time.Hour,
 	})
 }

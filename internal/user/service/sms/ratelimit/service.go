@@ -1,6 +1,7 @@
 // Package ratelimit
 /*
 装饰器模式实现
+短信在客户端的限流
 */
 package ratelimit
 

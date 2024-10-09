@@ -11,7 +11,7 @@ import (
 	rate "oj/pkg/ratelimit"
 )
 
-func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler, oauthHdl *uwb.OAuthWeChatHandler, judgeHdl *jwb.SubmissionHandler) *gin.Engine {
+func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler, oauthHdl *uwb.OAuthWeChatHandler, judgeHdl *jwb.SubmissionHandler, localHdl *jwb.LocalSubmitHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdl...)
 	// 注册路由
@@ -19,6 +19,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.
 	proHdl.RegisterRoute(server)
 	oauthHdl.RegisterRoute(server)
 	judgeHdl.RegisterRoute(server)
+	localHdl.RegisterRoute(server)
 	return server
 }
 
@@ -36,7 +37,10 @@ func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
 			IgnorePaths("/user/login/send-code").
 			IgnorePaths("/user/login-sms").
 			IgnorePaths("/oauth/wechat/authurl").
-			IgnorePaths("run").
+			IgnorePaths("/remote/run").
+			//IgnorePaths("/remote/submit").
+			//IgnorePaths("/local/run").
+			//IgnorePaths("/local/run").
 			CheckLogin(),
 
 		middleware.NewProblemJWTMiddlewareBuilder().

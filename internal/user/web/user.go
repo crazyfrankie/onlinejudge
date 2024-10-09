@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"github.com/golang-jwt/jwt"
 	"net/http"
 	"time"
 
@@ -21,13 +22,13 @@ const (
 type UserHandler struct {
 	svc              service.UserService
 	codeSvc          service.CodeService
-	tokenGen         middleware.TokenGenerator
 	emailRegexExp    *regexp.Regexp
 	passwordRegexExp *regexp.Regexp
 	phoneRegexExp    *regexp.Regexp
+	*middleware.JWTHandler
 }
 
-func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenGen middleware.TokenGenerator) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenGen *middleware.JWTHandler) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
@@ -39,7 +40,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenG
 	return &UserHandler{
 		svc:              svc,
 		codeSvc:          codeSvc,
-		tokenGen:         tokenGen,
+		JWTHandler:       tokenGen,
 		emailRegexExp:    emailRegexExp,
 		passwordRegexExp: passwordRegexExp,
 		phoneRegexExp:    phoneRegexExp,
@@ -56,7 +57,8 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("login/send-code", ctl.LoginSendSMSCode())
 		userGroup.POST("login-sms", ctl.LoginVerifySMSCode())
 		userGroup.GET("info", ctl.GetUserInfo())
-		userGroup.POST("info/edit")
+		userGroup.POST("info/edit", ctl.EditUserInfo())
+		userGroup.POST("refresh_token", ctl.Refresh())
 	}
 }
 
@@ -204,14 +206,18 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		var token string
-		token, err = ctl.tokenGen.GenerateToken(user.Role, user.Id, c.GetHeader("User-Agent"))
+		err = ctl.GenerateToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return
 		}
-		c.Header("x-jwt-token", token)
-		c.JSON(http.StatusOK, "login successfully!")
+		err = ctl.RefreshToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		}
+
+		c.JSON(http.StatusOK, "login successfully")
 	}
 }
 
@@ -284,18 +290,18 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 			return
 		}
 
-		// 从 Header 中取出 UserAgent
-		userAgent := c.GetHeader("User-Agent")
-
-		var token string
-		token, err = ctl.tokenGen.GenerateToken(user.Role, user.Id, userAgent)
-		switch {
-		case err != nil:
+		err = ctl.GenerateToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
+		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
-		default:
-			c.Header("x-jwt-token", token)
-			c.JSON(http.StatusOK, "login successfully")
+			return
 		}
+		err = ctl.RefreshToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "system error")
+			return
+		}
+
+		c.JSON(http.StatusOK, "login successfully")
 	}
 }
 
@@ -367,5 +373,29 @@ func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, req)
+	}
+}
+
+func (ctl *UserHandler) Refresh() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 只有这个接口拿出来的才是 refresh_token
+		refreshToken := middleware.ExtractToken(c)
+		var rc middleware.RefreshClaims
+		token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
+			return ctl.RtKey, nil
+		})
+		if err != nil || !token.Valid {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		// 设置新的 access_token
+		err = ctl.GenerateToken(c, rc.Role, rc.Id, c.GetHeader("User-Agent"))
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		c.JSON(http.StatusOK, "refresh successfully")
 	}
 }

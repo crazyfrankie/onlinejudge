@@ -5,21 +5,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"oj/internal/judgement/domain"
-	"oj/internal/judgement/service"
+	"oj/internal/judgement/service/remote"
 )
 
 type SubmissionHandler struct {
-	svc service.SubmitService
+	svc remote.SubmitService
 }
 
-func NewSubmissionHandler(svc service.SubmitService) *SubmissionHandler {
+func NewSubmissionHandler(svc remote.SubmitService) *SubmissionHandler {
 	return &SubmissionHandler{
 		svc: svc,
 	}
 }
 
 func (ctl *SubmissionHandler) RegisterRoute(r *gin.Engine) {
-	submitGroup := r.Group("")
+	submitGroup := r.Group("/remote")
 	{
 		submitGroup.POST("run", ctl.RunCode())
 		submitGroup.POST("submit", ctl.SubmitCode())
@@ -47,7 +47,7 @@ func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 		}, req.Language)
 
 		switch {
-		case errors.Is(err, service.ErrSyntax):
+		case errors.Is(err, remote.ErrSyntax):
 			c.JSON(http.StatusBadRequest, "your code not fit format")
 			return
 		case err != nil:
