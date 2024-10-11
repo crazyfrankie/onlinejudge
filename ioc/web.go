@@ -7,6 +7,7 @@ import (
 	"oj/internal/middleware"
 	pwb "oj/internal/problem/web"
 	uwb "oj/internal/user/web"
+	ijwt "oj/internal/user/web/jwt"
 	"oj/internal/user/web/pkg/middlewares/ratelimit"
 	rate "oj/pkg/ratelimit"
 )
@@ -23,13 +24,13 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.
 	return server
 }
 
-func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
+func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		middleware.CORS(),
 
 		ratelimit.NewBuilder(limiter).Build(),
 
-		middleware.NewLoginJWTMiddlewareBuilder().
+		middleware.NewLoginJWTMiddlewareBuilder(jwtHdl).
 			IgnorePaths("/user/signup").
 			IgnorePaths("/user/signup/send-code").
 			IgnorePaths("/user/signup/verify-code").
@@ -43,7 +44,7 @@ func GinMiddlewares(limiter rate.Limiter) []gin.HandlerFunc {
 			//IgnorePaths("/local/run").
 			CheckLogin(),
 
-		middleware.NewProblemJWTMiddlewareBuilder().
+		middleware.NewProblemJWTMiddlewareBuilder(jwtHdl).
 			SecretPaths("/admin/problem/create").
 			SecretPaths("/admin/problem").
 			SecretPaths("/admin/problem/update").

@@ -13,7 +13,6 @@ import (
 	cache3 "oj/internal/judgement/repository/cache"
 	"oj/internal/judgement/service/local"
 	web3 "oj/internal/judgement/web"
-	"oj/internal/middleware"
 	repository2 "oj/internal/problem/repository"
 	cache2 "oj/internal/problem/repository/cache"
 	dao2 "oj/internal/problem/repository/dao"
@@ -24,6 +23,7 @@ import (
 	"oj/internal/user/repository/dao"
 	"oj/internal/user/service"
 	"oj/internal/user/web"
+	"oj/internal/user/web/jwt"
 )
 
 // Injectors from wire.go:
@@ -31,7 +31,8 @@ import (
 func InitGin() *gin.Engine {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
-	v := GinMiddlewares(limiter)
+	handler := jwt.NewRedisJWTHandler(cmdable)
+	v := GinMiddlewares(limiter, handler)
 	db := InitDB()
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmdable)
@@ -41,15 +42,14 @@ func InitGin() *gin.Engine {
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := InitSMSService(limiter)
 	codeService := service.NewCodeService(codeRepository, smsService)
-	jwtHandler := middleware.NewJWTHandler()
-	userHandler := web.NewUserHandler(userService, codeService, jwtHandler)
+	userHandler := web.NewUserHandler(userService, codeService, handler)
 	problemDao := dao2.NewProblemDao(db)
 	problemCache := cache2.NewProblemCache(cmdable)
 	problemRepository := repository2.NewProblemRepository(problemDao, problemCache)
 	problemService := service2.NewProblemService(problemRepository)
 	problemHandler := web2.NewProblemHandler(problemService)
 	wechatService := InitWechatService()
-	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, jwtHandler, userService)
+	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, handler, userService)
 	submitCache := cache3.NewSubmitCache(cmdable)
 	submitRepository := repository3.NewSubmitRepository(submitCache)
 	submitService := InitJudgeService(submitRepository, problemRepository)
