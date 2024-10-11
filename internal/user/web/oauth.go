@@ -10,16 +10,16 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 
-	"oj/internal/middleware"
 	"oj/internal/user/domain"
 	"oj/internal/user/service"
 	"oj/internal/user/service/oauth/wechat"
+	ijwt "oj/internal/user/web/jwt"
 )
 
 type OAuthWeChatHandler struct {
-	svc      wechat.Service
-	userSvc  service.UserService
-	tokenGen *middleware.JWTHandler
+	svc     wechat.Service
+	userSvc service.UserService
+	ijwt.Handler
 	stateKey []byte
 }
 
@@ -28,10 +28,10 @@ type StateClaims struct {
 	jwt.StandardClaims
 }
 
-func NewOAuthHandler(svc wechat.Service, tokenGen *middleware.JWTHandler, userSvc service.UserService) *OAuthWeChatHandler {
+func NewOAuthHandler(svc wechat.Service, jwtHdl ijwt.Handler, userSvc service.UserService) *OAuthWeChatHandler {
 	return &OAuthWeChatHandler{
 		svc:      svc,
-		tokenGen: tokenGen,
+		Handler:  jwtHdl,
 		userSvc:  userSvc,
 		stateKey: []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxF"),
 	}
@@ -98,9 +98,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 			UnionID: info.UnionID,
 		})
 
-		userAgent := c.GetHeader("User-Agent")
-
-		err = h.tokenGen.GenerateToken(c, 0, user.Id, userAgent)
+		err = h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return

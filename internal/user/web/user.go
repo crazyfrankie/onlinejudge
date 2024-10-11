@@ -2,16 +2,17 @@ package web
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt"
 	"net/http"
 	"time"
 
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
+	"github.com/redis/go-redis/v9"
 
-	"oj/internal/middleware"
 	"oj/internal/user/domain"
 	"oj/internal/user/service"
+	ijwt "oj/internal/user/web/jwt"
 )
 
 const (
@@ -25,10 +26,11 @@ type UserHandler struct {
 	emailRegexExp    *regexp.Regexp
 	passwordRegexExp *regexp.Regexp
 	phoneRegexExp    *regexp.Regexp
-	*middleware.JWTHandler
+	ijwt.Handler
+	cmd redis.Cmdable
 }
 
-func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenGen *middleware.JWTHandler) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
 	const (
 		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
@@ -40,7 +42,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService, tokenG
 	return &UserHandler{
 		svc:              svc,
 		codeSvc:          codeSvc,
-		JWTHandler:       tokenGen,
+		Handler:          jwtHdl,
 		emailRegexExp:    emailRegexExp,
 		passwordRegexExp: passwordRegexExp,
 		phoneRegexExp:    phoneRegexExp,
@@ -58,7 +60,7 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("login-sms", ctl.LoginVerifySMSCode())
 		userGroup.GET("info", ctl.GetUserInfo())
 		userGroup.POST("info/edit", ctl.EditUserInfo())
-		userGroup.POST("refresh_token", ctl.Refresh())
+		userGroup.POST("refresh_token", ctl.TokenRefresh())
 	}
 }
 
@@ -206,12 +208,7 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.GenerateToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
-			return
-		}
-		err = ctl.RefreshToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
+		err = ctl.SetLoginToken(c, user.Role, user.Id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return
@@ -290,12 +287,7 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.GenerateToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
-			return
-		}
-		err = ctl.RefreshToken(c, user.Role, user.Id, c.GetHeader("User-Agent"))
+		err = ctl.SetLoginToken(c, user.Role, user.Id)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, "system error")
 			return
@@ -322,7 +314,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 			return
 		}
 
-		claim := claims.(*middleware.Claims)
+		claim := claims.(*ijwt.Claims)
 
 		user, err := ctl.svc.GetInfo(c.Request.Context(), claim.Id)
 
@@ -361,7 +353,7 @@ func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, "system error")
 			return
 		}
-		claim := claims.(*middleware.Claims)
+		claim := claims.(*ijwt.Claims)
 
 		err := ctl.svc.EditInfo(c.Request.Context(), claim.Id, domain.User{
 			Name:     req.Name,
@@ -376,26 +368,46 @@ func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) Refresh() gin.HandlerFunc {
+// TokenRefresh 可以同时刷新长短 toke，用 redis 来记录是否有，即 refresh_token 是一次性
+// 参考登录部分，比较 User-Agent 来增强安全性
+func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 只有这个接口拿出来的才是 refresh_token
-		refreshToken := middleware.ExtractToken(c)
-		var rc middleware.RefreshClaims
+		refreshToken := ctl.ExtractToken(c)
+		var rc ijwt.RefreshClaims
 		token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
-			return ctl.RtKey, nil
+			return ijwt.AtKey, nil
 		})
 		if err != nil || !token.Valid {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
+		err = ctl.Handler.CheckSession(c, rc.SSId)
+		if err != nil {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		// 设置新的 access_token
-		err = ctl.GenerateToken(c, rc.Role, rc.Id, c.GetHeader("User-Agent"))
+		err = ctl.AccessToken(c, rc.Role, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		c.JSON(http.StatusOK, "refresh successfully")
+	}
+}
+
+func (ctl *UserHandler) LogOut() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := ctl.Handler.ClearToken(c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "log out failed")
+			return
+		}
+
+		c.JSON(http.StatusOK, "log out successfully")
 	}
 }
