@@ -1,19 +1,30 @@
 package ioc
 
 import (
-	"github.com/redis/go-redis/v9"
-
 	"time"
 
-	"oj/config"
+	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
 
 func InitRedis() redis.Cmdable {
+	type Config struct {
+		Addr         string `yaml:"addr"`
+		MinIdleConns int    `yaml:"minIdleConns"`
+		PoolSize     int    `yaml:"poolSize"`
+	}
+
+	var cfg Config
+	err := viper.UnmarshalKey("redis", &cfg)
+	if err != nil {
+		panic(err)
+	}
+
 	return redis.NewClient(&redis.Options{
-		Addr:         config.Config.Redis.Addr,
+		Addr:         cfg.Addr,
 		Password:     "",
-		MinIdleConns: config.Config.Redis.MinIdleConns,
-		PoolSize:     config.Config.Redis.PoolSize,
+		MinIdleConns: cfg.MinIdleConns,
+		PoolSize:     cfg.PoolSize,
 		DialTimeout:  time.Minute * 5,
 	})
 }

@@ -3,9 +3,11 @@ package ratelimit
 import (
 	_ "embed" // 导入 embed 包，用于在编译时将文件嵌入到 Go 二进制文件中
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+
 	"oj/pkg/ratelimit"
 )
 

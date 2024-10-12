@@ -11,10 +11,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"oj/ioc"
 )
 
 func main() {
+	initViper()
+
 	router := ioc.InitGin()
 
 	server := &http.Server{
@@ -49,4 +53,12 @@ func main() {
 	}
 
 	fmt.Println("Server exited gracefully")
+}
+
+func initViper() {
+	viper.SetConfigFile("config\\dev.yaml")
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 }

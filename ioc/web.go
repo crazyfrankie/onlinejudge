@@ -4,11 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	jwb "oj/internal/judgement/web"
-	"oj/internal/middleware"
 	pwb "oj/internal/problem/web"
 	uwb "oj/internal/user/web"
 	ijwt "oj/internal/user/web/jwt"
-	"oj/internal/user/web/pkg/middlewares/ratelimit"
+	"oj/internal/user/web/middlewares"
+	"oj/internal/user/web/middlewares/ratelimit"
 	rate "oj/pkg/ratelimit"
 )
 
@@ -26,11 +26,11 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.
 
 func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		middleware.CORS(),
+		middlewares.CORS(),
 
 		ratelimit.NewBuilder(limiter).Build(),
 
-		middleware.NewLoginJWTMiddlewareBuilder(jwtHdl).
+		middlewares.NewLoginJWTMiddlewareBuilder(jwtHdl).
 			IgnorePaths("/user/signup").
 			IgnorePaths("/user/signup/send-code").
 			IgnorePaths("/user/signup/verify-code").
@@ -44,7 +44,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			//IgnorePaths("/local/run").
 			CheckLogin(),
 
-		middleware.NewProblemJWTMiddlewareBuilder(jwtHdl).
+		middlewares.NewProblemJWTMiddlewareBuilder(jwtHdl).
 			SecretPaths("/admin/problem/create").
 			SecretPaths("/admin/problem").
 			SecretPaths("/admin/problem/update").

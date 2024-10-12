@@ -1,10 +1,11 @@
-package middleware
+package middlewares
 
 import (
-	"github.com/gin-gonic/contrib/cors"
-	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 func CORS() gin.HandlerFunc {
