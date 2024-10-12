@@ -1,0 +1,10 @@
+mysql:
+  dsn: "root:123456@tcp(localhost:3306)/onlinejudge?charset=utf8mb4&parseTime=true&loc=Local"
+  maxIdleConns: 10
+  maxOpenConns: 20
+  connMaxLifeTime: 60
+
+redis:
+  addr: "localhost:8838"
+  poolSize: 15
+  minIdleConns: 5
