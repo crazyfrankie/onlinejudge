@@ -71,11 +71,11 @@ func (ctl *UserHandler) SignupSendSMSCode() gin.HandlerFunc {
 		err := ctl.codeSvc.Send(c.Request.Context(), signUpBiz, phone)
 		switch {
 		case errors.Is(err, service.ErrSendTooMany):
-			c.JSON(http.StatusTooManyRequests, "send too many")
+			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("send too many")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, "send successfully")
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
 		}
 	}
 }
@@ -88,13 +88,13 @@ func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
 		_, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, phone, code)
 		switch {
 		case errors.Is(err, service.ErrVerifyTooMany):
-			c.JSON(http.StatusBadRequest, "too many verifications")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("too many verifications")))
 			return
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
-		c.JSON(http.StatusOK, "verification successfully")
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("verification successfully")))
 	}
 }
 
@@ -115,40 +115,40 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 
 		// 两次密码不一致
 		if req.Password != req.ConfirmPassword {
-			c.JSON(http.StatusBadRequest, "password does not match")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("password does not match")))
 			return
 		}
 
 		// 邮箱格式检查
 		ok, err := ctl.emailRegexExp.MatchString(req.Email)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 		if !ok {
-			c.JSON(http.StatusBadRequest, "your email does not fit the format")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your email does not fit the format")))
 			return
 		}
 
 		// 密码格式检查
 		ok, err = ctl.passwordRegexExp.MatchString(req.Password)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 		if !ok {
-			c.JSON(http.StatusBadRequest, "your password does not fit the format")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your password does not fit the format")))
 			return
 		}
 
 		// 手机号格式检测
 		ok, err = ctl.phoneRegexExp.MatchString(req.Phone)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 		if !ok {
-			c.JSON(http.StatusBadRequest, "your phone number does not fit the format")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your phone number does not fit the format")))
 			return
 		}
 
@@ -162,15 +162,15 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrUserDuplicateEmail):
-			c.JSON(http.StatusInternalServerError, "email conflict")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("email conflict")))
 		case errors.Is(err, service.ErrUserDuplicateName):
-			c.JSON(http.StatusInternalServerError, "name conflict")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("name conflict")))
 		case errors.Is(err, service.ErrUserDuplicatePhone):
-			c.JSON(http.StatusInternalServerError, "phone conflict")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("phone conflict")))
 		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, "sign up successfully!")
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("sign up successfully!")))
 		}
 	}
 }
@@ -190,7 +190,7 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		// 检查是否包含邮箱
 		isEmail, err := ctl.emailRegexExp.MatchString(req.Identifier)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
@@ -198,23 +198,23 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		user, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		switch {
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
-			c.JSON(http.StatusInternalServerError, "identifier or password error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier or password error")))
 			return
 		case errors.Is(err, service.ErrUserNotFound):
-			c.JSON(http.StatusInternalServerError, "identifier not found")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier not found")))
 			return
 		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
 		err = ctl.SetLoginToken(c, user.Role, user.Id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, "login successfully")
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
 	}
 }
 
@@ -232,11 +232,11 @@ func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 		// 手机号格式检测
 		ok, err := ctl.phoneRegexExp.MatchString(req.Phone)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 		if !ok {
-			c.JSON(http.StatusBadRequest, "your phone number does not fit the format")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your phone number does not fit the format")))
 			return
 		}
 
@@ -244,11 +244,11 @@ func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrSendTooMany):
-			c.JSON(http.StatusTooManyRequests, "send too many")
+			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("send too many")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, "send successfully")
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
 		}
 	}
 }
@@ -268,10 +268,10 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 		_, err := ctl.codeSvc.Verify(c.Request.Context(), loginBiz, req.Phone, req.Code)
 		switch {
 		case errors.Is(err, service.ErrVerifyTooMany):
-			c.JSON(http.StatusBadRequest, "too many verifications")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("too many verifications")))
 			return
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
@@ -280,20 +280,20 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 		user, err = ctl.svc.FindOrCreate(c.Request.Context(), req.Phone)
 		switch {
 		case errors.Is(err, service.ErrUserNotFound):
-			c.JSON(http.StatusInternalServerError, "identifier not found")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier not found")))
 			return
 		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
 		err = ctl.SetLoginToken(c, user.Role, user.Id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, "login successfully")
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
 	}
 }
 
@@ -310,7 +310,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
@@ -320,16 +320,16 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 
 		switch {
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, User{
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(User{
 				Name:     user.Name,
 				Email:    user.Email,
 				Phone:    user.Phone,
 				Birthday: user.Birthday.Format(time.DateOnly),
 				AboutMe:  user.AboutMe,
 				Role:     user.Role,
-			})
+			})))
 		}
 	}
 }
@@ -344,13 +344,13 @@ func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
@@ -361,10 +361,10 @@ func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 			AboutMe:  req.AboutMe,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, "update failed")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("update failed")))
 			return
 		}
-		c.JSON(http.StatusOK, req)
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(req)))
 	}
 }
 
@@ -396,7 +396,7 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, "refresh successfully")
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("refresh successfully")))
 	}
 }
 
@@ -404,10 +404,10 @@ func (ctl *UserHandler) LogOut() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		err := ctl.Handler.ClearToken(c)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "log out failed")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("log out failed")))
 			return
 		}
 
-		c.JSON(http.StatusOK, "log out successfully")
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("log out successfully")))
 	}
 }

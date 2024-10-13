@@ -50,15 +50,15 @@ func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
 		state := uuid.New().String()
 		url, err := h.svc.AuthURL(c.Request.Context(), state)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "get url failed")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("get url failed")))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 		}
 
-		c.JSON(http.StatusOK, url)
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(url)))
 	}
 }
 
@@ -83,13 +83,13 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		err := h.VerifyState(c)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
 		info, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
@@ -100,11 +100,11 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		err = h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, "login successfully")
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
 	}
 }
 

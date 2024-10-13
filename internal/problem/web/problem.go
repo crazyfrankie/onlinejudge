@@ -49,36 +49,22 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type TestCaseReq struct {
-			Input       string `json:"input"`
-			Output      string `json:"output"`
-			IsPermanent int8   `json:"isPermanent"`
-		}
-
 		type Req struct {
-			UserId     uint64        `json:"userId"`
-			Title      string        `json:"title"`
-			Tag        string        `json:"tag"`
-			Content    string        `json:"content"`
-			Prompt     []string      `json:"prompt"`
-			TestCases  []TestCaseReq `json:"testCases"`
-			PassRate   string        `json:"passRate"`
-			MaxMem     int           `json:"maxMem"`
-			MaxRunTime int           `json:"maxRunTime"`
-			Difficulty uint8         `json:"difficulty"`
+			UserId     uint64            `json:"userId"`
+			Title      string            `json:"title"`
+			Tag        string            `json:"tag"`
+			Content    string            `json:"content"`
+			Prompt     []string          `json:"prompt"`
+			TestCases  []domain.TestCase `json:"testCases"`
+			PassRate   string            `json:"passRate"`
+			MaxMem     int               `json:"maxMem"`
+			MaxRunTime int               `json:"maxRunTime"`
+			Difficulty uint8             `json:"difficulty"`
 		}
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
 			return
-		}
-
-		domainTestCases := make([]domain.TestCase, len(req.TestCases))
-		for i, tc := range req.TestCases {
-			domainTestCases[i] = domain.TestCase{
-				Input:  tc.Input,
-				Output: tc.Output,
-			}
 		}
 
 		pm := domain.Problem{
@@ -87,20 +73,21 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 			Tag:        req.Tag,
 			Content:    req.Content,
 			Prompt:     make([]string, len(req.Prompt)),
-			TestCases:  domainTestCases,
+			TestCases:  make([]domain.TestCase, len(req.TestCases)),
 			PassRate:   req.PassRate,
 			MaxMem:     req.MaxMem,
 			MaxRuntime: req.MaxRunTime,
 			Difficulty: req.Difficulty,
 		}
 		copy(pm.Prompt, req.Prompt)
+		copy(pm.TestCases, req.TestCases)
 
 		err := ctl.svc.AddProblem(c.Request.Context(), pm)
 		switch {
 		case err != nil:
-			c.JSON(http.StatusBadRequest, "system error")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, "add successfully")
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("add successfully")))
 		}
 	}
 }
@@ -128,11 +115,11 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrProblemNotFound):
-			c.JSON(http.StatusBadRequest, "problem not found")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("problem not found")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, pm)
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(pm)))
 		}
 	}
 }
@@ -141,11 +128,11 @@ func (ctl *ProblemHandler) GetAllProblems() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		problems, err := ctl.svc.GetAllProblems(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, problems)
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(problems)))
 	}
 }
 
@@ -164,11 +151,11 @@ func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrTagExists):
-			c.JSON(http.StatusBadRequest, "tag already exists")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("tag already exists")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, "add successfully")
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("add successfully")))
 		}
 	}
 }
@@ -179,11 +166,11 @@ func (ctl *ProblemHandler) GetAllTags() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrNoTags):
-			c.JSON(http.StatusBadRequest, "tag need to be created")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("tag need to be created")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, tags)
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(tags)))
 		}
 	}
 }
@@ -203,11 +190,11 @@ func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
 		err := ctl.svc.ModifyTag(c.Request.Context(), req.Id, req.Tag)
 		switch {
 		case errors.Is(err, service.ErrTagExists):
-			c.JSON(http.StatusBadRequest, "this tag already exists")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("this tag already exists")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, req.Tag)
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(req.Tag)))
 		}
 	}
 }
@@ -228,11 +215,11 @@ func (ctl *ProblemHandler) GetProblem() gin.HandlerFunc {
 		pm, err := ctl.svc.GetProblem(c.Request.Context(), req.Id, req.Tag, title)
 		switch {
 		case errors.Is(err, service.ErrProblemNotFound):
-			c.JSON(http.StatusNotFound, "problem not found")
+			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("problem not found")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, pm)
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(pm)))
 		}
 	}
 }
@@ -243,10 +230,10 @@ func (ctl *ProblemHandler) GetPmListByCategory() gin.HandlerFunc {
 
 		problems, err := ctl.svc.GetProblemsByTag(c.Request.Context(), tagName)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		}
 
-		c.JSON(http.StatusOK, problems)
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(problems)))
 	}
 }
 
@@ -256,11 +243,11 @@ func (ctl *ProblemHandler) GetProblemSet() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrNoTags):
-			c.JSON(http.StatusBadRequest, "tag need to be created")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("tag need to be created")))
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, tags)
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(tags)))
 		}
 	}
 }

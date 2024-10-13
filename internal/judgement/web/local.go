@@ -49,15 +49,15 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, remote.ErrSyntax):
-			c.JSON(http.StatusBadRequest, "your code not fit format")
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your code not fit format")))
 			return
+
 		case err != nil:
-			c.JSON(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithErr(err.Error())))
 			return
 		}
 
-		c.JSON(http.StatusOK, results)
-
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(results)))
 	}
 }
 
@@ -81,10 +81,10 @@ func (ctl *LocalSubmitHandler) SubmitCode() gin.HandlerFunc {
 			Code:      req.Code,
 		}, req.Language)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, "system error")
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(result)))
 	}
 }

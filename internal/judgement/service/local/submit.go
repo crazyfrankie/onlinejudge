@@ -22,6 +22,13 @@ var (
 type LocSubmitService interface {
 	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
 	//SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
+
+	ValidateCode(language, way string, submission domain.Submission) (error, bool)
+	GoFormat(code, way string, userId, problemId uint64) bool
+	JavaFormat(code, way string, userId, problemId uint64) bool
+	CppFormat(code, way string, userId, problemId uint64) bool
+	PythonFormat(code, way string, userId, problemId uint64) bool
+	GetFileWithUser(userId, problemId uint64, suffix, way string) string
 }
 
 type LocSubmitSvc struct {
@@ -161,15 +168,8 @@ func (svc *LocSubmitSvc) GoFormat(code, way string, userId, problemId uint64) bo
 		return false
 	}
 
-	// 构建 temp.go 文件的完整路径
 	// 构建文件的完整路径
-	var filePath string
-	if way == "run" {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "go"))
-	} else {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "go"))
-	}
-
+	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "go"))
 	// 将代码写入 temp.go 文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -205,13 +205,7 @@ func (svc *LocSubmitSvc) JavaFormat(code, way string, userId, problemId uint64) 
 	}
 
 	// 构建文件的完整路径
-	var filePath string
-	if way == "run" {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "java"))
-	} else {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "java"))
-	}
-
+	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "java"))
 	// 将代码写入文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -246,13 +240,7 @@ func (svc *LocSubmitSvc) CppFormat(code, way string, userId, problemId uint64) b
 	}
 
 	// 构建文件的完整路径
-	var filePath string
-	if way == "run" {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "cpp"))
-	} else {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "cpp"))
-	}
-
+	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "cpp"))
 	// 将代码写入文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -287,13 +275,7 @@ func (svc *LocSubmitSvc) PythonFormat(code, way string, userId, problemId uint64
 	}
 
 	// 构建文件的完整路径
-	var filePath string
-	if way == "run" {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "py"))
-	} else {
-		filePath = filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "py"))
-	}
-
+	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "py"))
 	// 将代码写入文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -310,6 +292,6 @@ func (svc *LocSubmitSvc) PythonFormat(code, way string, userId, problemId uint64
 	return true
 }
 
-func (svc *LocSubmitSvc) GetRunFileWithUser(userId, problemId uint64, suffix string) string {
-	return fmt.Sprintf("user%dproblem:%d:run.%s", userId, problemId, suffix)
+func (svc *LocSubmitSvc) GetFileWithUser(userId, problemId uint64, suffix, way string) string {
+	return fmt.Sprintf("user%dproblem:%d:%s.%s", userId, problemId, way, suffix)
 }
