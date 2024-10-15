@@ -22,4 +22,3 @@ else
     redis.call("decr", cntKey)
     return -2
 end
-

@@ -14,6 +14,8 @@ import (
 type UserCache interface {
 	Get(ctx context.Context, id uint64) (domain.User, error)
 	Set(ctx context.Context, user domain.User) error
+	SetCheckState(ctx context.Context, phone string) error
+	GetCheckState(ctx context.Context, phone string) (bool, error)
 	key(id uint64) string
 }
 
@@ -52,4 +54,26 @@ func (cache *RedisUserCache) Set(ctx context.Context, user domain.User) error {
 
 func (cache *RedisUserCache) key(id uint64) string {
 	return fmt.Sprintf("user:info:%d", id)
+}
+
+func (cache *RedisUserCache) SetCheckState(ctx context.Context, phone string) error {
+	key := fmt.Sprintf("verification_required:%s", phone)
+
+	err := cache.client.Set(ctx, key, true, time.Minute*1).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cache *RedisUserCache) GetCheckState(ctx context.Context, phone string) (bool, error) {
+	key := fmt.Sprintf("verification_required:%s", phone)
+
+	result, err := cache.client.Get(ctx, key).Bool()
+	if err != nil {
+		return false, err
+	}
+
+	return result, nil
 }

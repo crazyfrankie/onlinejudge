@@ -21,15 +21,15 @@ const (
 )
 
 type UserHandler struct {
-	svc     service.UserService
+	userSvc service.UserService
 	codeSvc service.CodeService
 	ijwt.Handler
 	cmd redis.Cmdable
 }
 
-func NewUserHandler(svc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
+func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
 	return &UserHandler{
-		svc:     svc,
+		userSvc: userSvc,
 		codeSvc: codeSvc,
 		Handler: jwtHdl,
 	}
@@ -68,10 +68,16 @@ func (ctl *UserHandler) SignupSendSMSCode() gin.HandlerFunc {
 
 func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		phone := c.PostForm("phone")
-		code := c.PostForm("code")
+		type Req struct {
+			Phone string `json:"phone"`
+			Code  string `json:"code"`
+		}
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			return
+		}
 
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, phone, code)
+		_, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, req.Phone, req.Code)
 		switch {
 		case errors.Is(err, service.ErrVerifyTooMany):
 			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("too many verifications")))
@@ -91,7 +97,6 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
 			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
 			Email           string `json:"email" validate:"required,email"`
-			Phone           string `json:"phone" validate:"required,,regexp=^1[3-9][0-9]{9}$"`
 			Role            uint8  `json:"role"`
 		}
 		req := Req{}
@@ -107,11 +112,10 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.svc.Signup(c.Request.Context(), domain.User{
+		err := ctl.userSvc.Signup(c.Request.Context(), domain.User{
 			Name:     req.Name,
 			Password: req.Password,
 			Email:    req.Email,
-			Phone:    req.Phone,
 			Role:     req.Role,
 		})
 
@@ -146,7 +150,7 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		validate := validator.New()
 		isEmail := validate.Var(req.Identifier, "email") == nil
 
-		user, err := ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+		user, err := ctl.userSvc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		switch {
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier or password error")))
@@ -172,7 +176,7 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Phone string `json:"phone" validate:"required,,regexp=^1[3-9][0-9]{9}$"`
+			Phone string `json:"phone" validate:"required,len=11"`
 		}
 		req := Req{}
 
@@ -224,7 +228,7 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 
 		// 设置 JWT
 		var user domain.User
-		user, err = ctl.svc.FindOrCreate(c.Request.Context(), req.Phone)
+		user, err = ctl.userSvc.FindOrCreate(c.Request.Context(), req.Phone)
 		switch {
 		case errors.Is(err, service.ErrUserNotFound):
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier not found")))
@@ -263,7 +267,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 
 		claim := claims.(*ijwt.Claims)
 
-		user, err := ctl.svc.GetInfo(c.Request.Context(), claim.Id)
+		user, err := ctl.userSvc.GetInfo(c.Request.Context(), claim.Id)
 
 		switch {
 		case err != nil:
@@ -302,7 +306,7 @@ func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.svc.EditInfo(c.Request.Context(), claim.Id, domain.User{
+		err := ctl.userSvc.EditInfo(c.Request.Context(), claim.Id, domain.User{
 			Name:     req.Name,
 			Birthday: req.Birthday,
 			AboutMe:  req.AboutMe,

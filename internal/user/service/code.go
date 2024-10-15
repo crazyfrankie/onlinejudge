@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -53,9 +52,6 @@ func (svc *CodeSvc) Send(ctx context.Context, biz, phone string) error {
 
 	// 塞进去 Redis
 	err := svc.repo.Store(ctx, biz, phone, enCode)
-	if errors.Is(err, ErrSendTooMany) {
-		return ErrSendTooMany
-	}
 	if err != nil {
 		return err
 	}

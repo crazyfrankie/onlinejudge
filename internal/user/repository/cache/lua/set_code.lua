@@ -4,6 +4,7 @@ local key = KEYS[1]
 -- 使用次数，也就是验证次数
 -- phone_code:login:131xxxxxxx:cnt
 local cntKey = key..":cnt"
+
 -- 预期中的验证码
 local val = ARGV[1]
 

@@ -48,8 +48,11 @@ func (ur *CacheUserRepository) Create(ctx context.Context, u domain.User) error 
 			String: u.Email,
 			Valid:  u.Email != "",
 		},
-		Phone: u.Phone,
-		Role:  u.Role,
+		Phone: sql.NullString{
+			String: u.Phone,
+			Valid:  u.Phone != "",
+		},
+		Role: u.Role,
 	}
 	if err := ur.dao.Insert(ctx, &newUser); err != nil {
 		return err

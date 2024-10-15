@@ -18,7 +18,7 @@ type User struct {
 	Name          string `gorm:"unique;not null"`
 	Password      string
 	Email         sql.NullString `gorm:"unique"`
-	Phone         string         `gorm:"unique"`
+	Phone         sql.NullString `gorm:"unique"`
 	WechatUnionID sql.NullString
 	WechatOpenID  sql.NullString `gorm:"unique"`
 	Role          uint8
@@ -127,7 +127,7 @@ func (dao *GormUserDao) FindById(ctx context.Context, id uint64) (domain.User, e
 		Id:       user.Id,
 		Name:     user.Name,
 		Email:    user.Email.String,
-		Phone:    user.Phone,
+		Phone:    user.Phone.String,
 		Birthday: user.Birthday.Time,
 		AboutMe:  user.AboutMe,
 		Role:     user.Role,
@@ -152,7 +152,7 @@ func (dao *GormUserDao) FindByPhone(ctx context.Context, phone string) (domain.U
 		Name:     user.Name,
 		Password: user.Password,
 		Email:    user.Email.String,
-		Phone:    user.Phone,
+		Phone:    user.Phone.String,
 		Role:     user.Role,
 	}
 	return newUser, nil
@@ -213,7 +213,7 @@ func (dao *GormUserDao) UpdateInfo(ctx context.Context, id uint64, user domain.U
 		Password: u.Password,
 		Role:     u.Role,
 		Email:    u.Email.String,
-		Phone:    u.Phone,
+		Phone:    u.Phone.String,
 		Name:     user.Name,
 		AboutMe:  user.AboutMe,
 		Birthday: user.Birthday,

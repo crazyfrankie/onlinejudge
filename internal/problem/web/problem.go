@@ -49,14 +49,11 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
-<<<<<<< HEAD
-=======
 		type TestCaseReq struct {
 			Input  string `json:"input"`
 			Output string `json:"output"`
 		}
 
->>>>>>> origin/dev
 		type Req struct {
 			UserId     uint64            `json:"userId"`
 			Title      string            `json:"title"`

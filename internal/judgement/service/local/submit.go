@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	domain2 "oj/internal/problem/domain"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 
 	"oj/internal/judgement/domain"
 	"oj/internal/judgement/repository"
+	domain2 "oj/internal/problem/domain"
 	repository2 "oj/internal/problem/repository"
 )
 
@@ -223,11 +223,9 @@ func (svc *LocSubmitSvc) GoFormat(code, way string, userId, problemId uint64) bo
 	}
 
 	// 构建文件的完整路径
-<<<<<<< HEAD
+
 	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "go"))
-=======
-	filePath := filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "go"))
->>>>>>> origin/dev
+
 	// 将代码写入 temp.go 文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -263,11 +261,8 @@ func (svc *LocSubmitSvc) JavaFormat(code, way string, userId, problemId uint64) 
 	}
 
 	// 构建文件的完整路径
-<<<<<<< HEAD
 	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "java"))
-=======
-	filePath := filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "java"))
->>>>>>> origin/dev
+
 	// 将代码写入文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -302,11 +297,8 @@ func (svc *LocSubmitSvc) CppFormat(code, way string, userId, problemId uint64) b
 	}
 
 	// 构建文件的完整路径
-<<<<<<< HEAD
 	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "cpp"))
-=======
-	filePath := filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "cpp"))
->>>>>>> origin/dev
+
 	// 将代码写入文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
@@ -341,11 +333,8 @@ func (svc *LocSubmitSvc) PythonFormat(code, way string, userId, problemId uint64
 	}
 
 	// 构建文件的完整路径
-<<<<<<< HEAD
 	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "py"))
-=======
-	filePath := filepath.Join(dir, svc.GetRunFileWithUser(userId, problemId, "py"))
->>>>>>> origin/dev
+
 	// 将代码写入文件中
 	err = os.WriteFile(filePath, []byte(code), 0644)
 	if err != nil {
