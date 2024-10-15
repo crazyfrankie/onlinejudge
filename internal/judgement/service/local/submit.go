@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	domain2 "oj/internal/problem/domain"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,7 +48,11 @@ func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.Pro
 }
 
 func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
-	var evals []domain.Evaluation
+	// 先去查缓存
+	evals, err := svc.repo.AcquireEvaluationResult(ctx, submission.UserId, submission.ProblemID)
+	if err == nil {
+		return evals, nil
+	}
 
 	// 语言支持验证
 	_, ok := svc.language[language]
@@ -84,31 +89,26 @@ func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submissi
 		return evals, fmt.Errorf("failed to get test cases: %w", err)
 	}
 
-	// 创建 Docker 镜像
-	imageName := fmt.Sprintf("code_run_%d", time.Now().UnixNano())
-	dockerfileContent := fmt.Sprintf(`
-	FROM golang:1.23.2
-	RUN mkdir /app
-	WORKDIR /app
-	COPY main.%s .
-	RUN go build -o onlinejudge main.%s
-	CMD ["./onlinejudge"]
-	`, language, language)
-
-	dockerfilePath := filepath.Join(tempDir, "Dockerfile")
-	if err := os.WriteFile(dockerfilePath, []byte(dockerfileContent), 0644); err != nil {
-		return nil, errors.New("failed to write Dockerfile")
-	}
-
-	// 构建 Docker 镜像
-	buildCmd := exec.Command("sudo", "docker", "build", "--no-cache", "-t", imageName, tempDir)
-	outPut, err := buildCmd.CombinedOutput() // 获取输出
+	imageName, err := svc.RunDocker(language, tempDir, err)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build Docker image: %s: %s", err.Error(), string(outPut))
+		return evals, err
 	}
 
-	fmt.Printf("Raw output from container: %s\n", string(outPut))
+	evals, err = svc.GetResult(testCases, imageName, evals)
+	if err != nil {
+		return evals, err
+	}
 
+	// 记录评估结果
+	cacheErr := svc.repo.StoreEvaluationResult(ctx, submission.UserId, submission.ProblemID, evals)
+	if cacheErr != nil {
+		return nil, errors.New("failed to store execution result in cache")
+	}
+
+	return evals, nil
+}
+
+func (svc *LocSubmitSvc) GetResult(testCases []domain2.TestCase, imageName string, evals []domain.Evaluation) ([]domain.Evaluation, error) {
 	// 运行 Docker 容器并传递输入用例
 	for _, testCase := range testCases {
 		var inputBuffer bytes.Buffer
@@ -144,14 +144,35 @@ func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submissi
 		}
 		evals = append(evals, eval)
 	}
+	return evals, nil
+}
 
-	// 记录评估结果
-	cacheErr := svc.repo.StoreEvaluationResult(ctx, submission.UserId, submission.ProblemID, evals)
-	if cacheErr != nil {
-		return nil, errors.New("failed to store execution result in cache")
+func (svc *LocSubmitSvc) RunDocker(language string, tempDir string, err error) (string, error) {
+	// 创建 Docker 镜像
+	imageName := fmt.Sprintf("code_run_%d", time.Now().UnixNano())
+	dockerfileContent := fmt.Sprintf(`
+	FROM golang:1.23.2
+	RUN mkdir /app
+	WORKDIR /app
+	COPY main.%s .
+	RUN go build -o onlinejudge main.%s
+	CMD ["./onlinejudge"]
+	`, language, language)
+
+	dockerfilePath := filepath.Join(tempDir, "Dockerfile")
+	if err := os.WriteFile(dockerfilePath, []byte(dockerfileContent), 0644); err != nil {
+		return "", errors.New("failed to write Dockerfile")
 	}
 
-	return evals, nil
+	// 构建 Docker 镜像
+	buildCmd := exec.Command("sudo", "docker", "build", "--no-cache", "-t", imageName, tempDir)
+	outPut, err := buildCmd.CombinedOutput() // 获取输出
+	if err != nil {
+		return "", fmt.Errorf("failed to build Docker image: %s: %s", err.Error(), string(outPut))
+	}
+
+	fmt.Printf("Raw output from container: %s\n", string(outPut))
+	return imageName, nil
 }
 
 //func (svc *LocSubmitSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
