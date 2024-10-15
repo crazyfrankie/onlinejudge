@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"github.com/redis/go-redis/v9"
 
@@ -21,31 +21,17 @@ const (
 )
 
 type UserHandler struct {
-	svc              service.UserService
-	codeSvc          service.CodeService
-	emailRegexExp    *regexp.Regexp
-	passwordRegexExp *regexp.Regexp
-	phoneRegexExp    *regexp.Regexp
+	svc     service.UserService
+	codeSvc service.CodeService
 	ijwt.Handler
 	cmd redis.Cmdable
 }
 
 func NewUserHandler(svc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
-	const (
-		emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-		passwordRegexPattern = `^(?=.*[a-zA-Z])(?=.*\d)(?=.*[$@$!%*#?&])[a-zA-Z\d$@$!%*#?&]{8,}$`
-		phoneRegexPattern    = `^1[3-9]\d{9}$`
-	)
-	emailRegexExp := regexp.MustCompile(emailRegexPattern, regexp.None)
-	passwordRegexExp := regexp.MustCompile(passwordRegexPattern, regexp.None)
-	phoneRegexExp := regexp.MustCompile(phoneRegexPattern, regexp.None)
 	return &UserHandler{
-		svc:              svc,
-		codeSvc:          codeSvc,
-		Handler:          jwtHdl,
-		emailRegexExp:    emailRegexExp,
-		passwordRegexExp: passwordRegexExp,
-		phoneRegexExp:    phoneRegexExp,
+		svc:     svc,
+		codeSvc: codeSvc,
+		Handler: jwtHdl,
 	}
 }
 
@@ -101,11 +87,11 @@ func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
 func (ctl *UserHandler) Signup() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Name            string `json:"name"`
-			Password        string `json:"password"`
-			ConfirmPassword string `json:"confirmPassword"`
-			Email           string `json:"email"`
-			Phone           string `json:"phone"`
+			Name            string `json:"name" validate:"required,min=3,max=20"`
+			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
+			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
+			Email           string `json:"email" validate:"required,email"`
+			Phone           string `json:"phone" validate:"required,,regexp=^1[3-9][0-9]{9}$"`
 			Role            uint8  `json:"role"`
 		}
 		req := Req{}
@@ -113,46 +99,15 @@ func (ctl *UserHandler) Signup() gin.HandlerFunc {
 			return
 		}
 
-		// 两次密码不一致
-		if req.Password != req.ConfirmPassword {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("password does not match")))
+		// 和之前的自己使用正则表达式校验，在用户名不冲突的情况下，性能几乎一样，只是在可读性上更优
+		// 追求代码简洁和可读性时选择此方法，若不追求，根据自己喜好选择
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
 			return
 		}
 
-		// 邮箱格式检查
-		ok, err := ctl.emailRegexExp.MatchString(req.Email)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-		if !ok {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your email does not fit the format")))
-			return
-		}
-
-		// 密码格式检查
-		ok, err = ctl.passwordRegexExp.MatchString(req.Password)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-		if !ok {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your password does not fit the format")))
-			return
-		}
-
-		// 手机号格式检测
-		ok, err = ctl.phoneRegexExp.MatchString(req.Phone)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-		if !ok {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your phone number does not fit the format")))
-			return
-		}
-
-		err = ctl.svc.Signup(c.Request.Context(), domain.User{
+		err := ctl.svc.Signup(c.Request.Context(), domain.User{
 			Name:     req.Name,
 			Password: req.Password,
 			Email:    req.Email,
@@ -187,15 +142,11 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		// 检查是否包含邮箱
-		isEmail, err := ctl.emailRegexExp.MatchString(req.Identifier)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
+		// 检查 Identifier 是否是邮箱
+		validate := validator.New()
+		isEmail := validate.Var(req.Identifier, "email") == nil
 
-		var user domain.User
-		user, err = ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+		user, err := ctl.svc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		switch {
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier or password error")))
@@ -221,7 +172,7 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Phone string `json:"phone"`
+			Phone string `json:"phone" validate:"required,,regexp=^1[3-9][0-9]{9}$"`
 		}
 		req := Req{}
 
@@ -230,17 +181,13 @@ func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
 		}
 
 		// 手机号格式检测
-		ok, err := ctl.phoneRegexExp.MatchString(req.Phone)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-		if !ok {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your phone number does not fit the format")))
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
 			return
 		}
 
-		err = ctl.codeSvc.Send(c.Request.Context(), loginBiz, req.Phone)
+		err := ctl.codeSvc.Send(c.Request.Context(), loginBiz, req.Phone)
 
 		switch {
 		case errors.Is(err, service.ErrSendTooMany):
