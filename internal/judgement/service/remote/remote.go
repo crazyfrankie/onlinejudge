@@ -237,7 +237,7 @@ func (svc *SubmissionSvc) GoFormat(code, way string, userId, problemId uint64) b
 	}
 
 	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "go")
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "remote", "temp", "go")
 
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
@@ -280,7 +280,7 @@ func (svc *SubmissionSvc) JavaFormat(code, way string, userId, problemId uint64)
 	}
 
 	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "java")
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "remote", "temp", "java")
 
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
@@ -321,7 +321,7 @@ func (svc *SubmissionSvc) CppFormat(code, way string, userId, problemId uint64) 
 	}
 
 	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "cpp")
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "remote", "temp", "cpp")
 
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {
@@ -362,7 +362,7 @@ func (svc *SubmissionSvc) PythonFormat(code, way string, userId, problemId uint6
 	}
 
 	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "temp", "python")
+	dir := filepath.Join(currDir, "internal", "judgement", "service", "remote", "temp", "python")
 
 	err = os.MkdirAll(dir, 0755)
 	if err != nil {

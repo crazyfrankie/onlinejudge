@@ -50,9 +50,8 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type TestCaseReq struct {
-			Input       string `json:"input"`
-			Output      string `json:"output"`
-			IsPermanent int8   `json:"isPermanent"`
+			Input  string `json:"input"`
+			Output string `json:"output"`
 		}
 
 		type Req struct {

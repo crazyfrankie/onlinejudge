@@ -60,7 +60,7 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("login-sms", ctl.LoginVerifySMSCode())
 		userGroup.GET("info", ctl.GetUserInfo())
 		userGroup.POST("info/edit", ctl.EditUserInfo())
-		userGroup.POST("refresh_token", ctl.TokenRefresh())
+		userGroup.POST("refresh-token", ctl.TokenRefresh())
 	}
 }
 
