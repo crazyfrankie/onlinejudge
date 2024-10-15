@@ -38,14 +38,14 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/user/login/send-code").
 			IgnorePaths("/user/login-sms").
 			IgnorePaths("/oauth/wechat/authurl").
+			IgnorePaths("/user/refresh-token").
 			IgnorePaths("/remote/run").
 			//IgnorePaths("/remote/submit").
-			//IgnorePaths("/local/run").
-			//IgnorePaths("/local/run").
+			IgnorePaths("/local/run").
 			CheckLogin(),
 
 		middlewares.NewProblemJWTMiddlewareBuilder(jwtHdl).
-			SecretPaths("/admin/problem/create").
+			//SecretPaths("/admin/problem/create").
 			SecretPaths("/admin/problem").
 			SecretPaths("/admin/problem/update").
 			SecretPaths("/admin/tags/create").

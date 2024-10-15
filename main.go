@@ -56,7 +56,7 @@ func main() {
 }
 
 func initViper() {
-	viper.SetConfigFile("config\\dev.yaml")
+	viper.SetConfigFile("config/dev.yaml")
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(err)
