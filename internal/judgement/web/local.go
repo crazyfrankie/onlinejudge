@@ -53,7 +53,7 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 			return
 
 		case err != nil:
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithErr(err.Error())))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 

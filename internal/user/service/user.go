@@ -2,11 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"math/rand"
 	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -22,14 +21,22 @@ var (
 	ErrInvalidUserOrPassword = errors.New("identifier or password error")
 )
 
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+
 type UserService interface {
-	Signup(ctx context.Context, u domain.User) error
+	CheckPhone(ctx context.Context, phone string) error
+	CreateUser(ctx context.Context, user domain.User) error
 	Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
-	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindOrCreateByWechat(ctx context.Context, wechatInfo domain.WeChatInfo) (domain.User, error)
-	EditInfo(ctx context.Context, id uint64, user domain.User) error
-	GenerateCode() string
+	FindOrCreateByGithub(ctx context.Context, id int) (domain.User, error)
+	UpdateName(ctx context.Context, user domain.User) error
+	UpdatePassword(ctx context.Context, user domain.User) error
+	UpdateBirthday(ctx context.Context, user domain.User) error
+	UpdateEmail(ctx context.Context, user domain.User) error
+	UpdateRole(ctx context.Context, user domain.User) error
+	GenerateCode() (string, error)
 }
 
 type UserSvc struct {
@@ -42,13 +49,27 @@ func NewUserService(repo repository.UserRepository) UserService {
 	}
 }
 
-func (svc *UserSvc) Signup(ctx context.Context, u domain.User) error {
-	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+func (svc *UserSvc) CheckPhone(ctx context.Context, phone string) error {
+	return svc.repo.CheckPhone(ctx, phone)
+}
+
+func (svc *UserSvc) CreateUser(ctx context.Context, user domain.User) error {
+	err := svc.repo.Create(ctx, user)
 	if err != nil {
 		return err
 	}
-	u.Password = string(hash)
-	return svc.repo.Create(ctx, u)
+
+	var code string
+	code, err = svc.GenerateCode()
+	user = domain.User{
+		Name: code[:15] + "-" + code[15:],
+	}
+
+	return nil
+}
+
+func (svc *UserSvc) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
+	return svc.repo.FindByPhone(ctx, phone)
 }
 
 func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error) {
@@ -76,42 +97,16 @@ func (svc *UserSvc) GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	return svc.repo.FindByID(ctx, id)
 }
 
-func (svc *UserSvc) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
-	user, err := svc.repo.FindByPhone(ctx, phone)
-	// 快路径
-	if !errors.Is(err, ErrUserNotFound) {
-		// 绝大部分请求都会进来这里
-		return user, nil
-	}
-	// 在系统资源不足后，触发降级策略
-	//if ctx.Value("降级") == "true" {
-	//	return domain.User{}, errors.New("系统降级了")
-	//}
-
-	// 慢路径
-	// 明确知道，没有这个用户
-	code := svc.GenerateCode()
-	user = domain.User{
-		Name:  "用户" + code,
-		Phone: phone,
-	}
-	err = svc.repo.Create(ctx, user)
-	if err != nil && !errors.Is(err, repository.ErrUserDuplicatePhone) {
-		return user, err
-	}
-	// 有主从延迟的问题
-	return svc.repo.FindByPhone(ctx, phone)
-}
-
 func (svc *UserSvc) FindOrCreateByWechat(ctx context.Context, info domain.WeChatInfo) (domain.User, error) {
 	user, err := svc.repo.FindByWechat(ctx, info.OpenID)
-	if errors.Is(err, ErrUserNotFound) {
+	if !errors.Is(err, ErrUserNotFound) {
 		return user, nil
 	}
 
-	code := svc.GenerateCode()
+	var code string
+	code, err = svc.GenerateCode()
 	user = domain.User{
-		Name:       "用户" + code,
+		Name:       code[:15] + "-" + code[15:],
 		WeChatInfo: info,
 	}
 
@@ -123,34 +118,66 @@ func (svc *UserSvc) FindOrCreateByWechat(ctx context.Context, info domain.WeChat
 	return svc.repo.FindByWechat(ctx, info.OpenID)
 }
 
-func (svc *UserSvc) EditInfo(ctx context.Context, id uint64, user domain.User) error {
-	// 可以考虑删除，因为整体业务逻辑保证了这个用户一定存在
-	existingUser, err := svc.repo.FindByID(ctx, id)
+func (svc *UserSvc) FindOrCreateByGithub(ctx context.Context, id int) (domain.User, error) {
+	gitId := strconv.Itoa(id)
+	user, err := svc.repo.FindByGithub(ctx, gitId)
+	if !errors.Is(err, ErrUserNotFound) {
+		return user, nil
+	}
+
+	var code string
+	code, err = svc.GenerateCode()
+	user = domain.User{
+		Name:     code[:15] + "-" + code[15:],
+		GithubID: gitId,
+	}
+
+	err = svc.repo.Create(ctx, user)
+	if err != nil && !errors.Is(err, repository.ErrUserDuplicateWechat) {
+		return user, err
+	}
+
+	return svc.repo.FindByGithub(ctx, gitId)
+}
+
+func (svc *UserSvc) UpdatePassword(ctx context.Context, user domain.User) error {
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
+	user.Password = string(hashPassword)
 
-	// 只有非空字段才会更新
-	if user.Name != "" {
-		existingUser.Name = user.Name
-	}
-	if user.AboutMe != "" {
-		existingUser.AboutMe = user.AboutMe
-	}
-	if !user.Birthday.IsZero() {
-		existingUser.Birthday = user.Birthday
-	}
-
-	return svc.repo.UpdateInfo(ctx, id, existingUser)
+	return svc.repo.UpdatePassword(ctx, user)
 }
 
-func (svc *UserSvc) GenerateCode() string {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
+func (svc *UserSvc) UpdateName(ctx context.Context, user domain.User) error {
+	return svc.repo.UpdateName(ctx, user)
+}
 
-	var code strings.Builder
-	for i := 0; i < 6; i++ {
-		digit := rand.Intn(10)
-		code.WriteString(strconv.Itoa(digit))
+func (svc *UserSvc) UpdateBirthday(ctx context.Context, user domain.User) error {
+	return svc.repo.UpdateBirthday(ctx, user)
+}
+
+func (svc *UserSvc) UpdateEmail(ctx context.Context, user domain.User) error {
+	return svc.repo.UpdateEmail(ctx, user)
+}
+
+func (svc *UserSvc) UpdateRole(ctx context.Context, user domain.User) error {
+	return svc.repo.UpdateRole(ctx, user)
+}
+
+func (svc *UserSvc) GenerateCode() (string, error) {
+	bytes := make([]byte, 20)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
 	}
-	return code.String()
+
+	var sb strings.Builder
+	sb.Grow(20)
+
+	for _, b := range bytes {
+		sb.WriteByte(charset[int(b)%len(charset)])
+	}
+
+	return sb.String(), nil
 }

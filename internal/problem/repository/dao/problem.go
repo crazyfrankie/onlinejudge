@@ -29,8 +29,8 @@ type ProblemDao interface {
 	FindCountInTag(ctx context.Context) ([]domain.TagWithCount, error)
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
-	FindById(ctx context.Context, id uint64) ([]domain.TestCase, error)
-	FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, error)
+	FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
+	FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 }
 
 type GormProblemDao struct {
@@ -259,7 +259,7 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 	return pm, nil
 }
 
-func (dao *GormProblemDao) FindById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
 	var problem Problem
 
 	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error
@@ -279,7 +279,7 @@ func (dao *GormProblemDao) FindById(ctx context.Context, id uint64) ([]domain.Te
 	return testCases[:3], nil
 }
 
-func (dao *GormProblemDao) FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
 	var problem Problem
 
 	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error

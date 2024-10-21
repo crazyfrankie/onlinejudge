@@ -1,4 +1,4 @@
-package middlewares
+package auth
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/redis/go-redis/v9"
 
-	ijwt "oj/internal/user/web/jwt"
+	ijwt "oj/internal/user/middleware/jwt"
 )
 
 var (

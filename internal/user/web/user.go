@@ -2,139 +2,202 @@ package web
 
 import (
 	"errors"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
-	"github.com/redis/go-redis/v9"
-
 	"oj/internal/user/domain"
+	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
-	ijwt "oj/internal/user/web/jwt"
-)
-
-const (
-	signUpBiz = "signup"
-	loginBiz  = "login"
 )
 
 type UserHandler struct {
 	userSvc service.UserService
 	codeSvc service.CodeService
+	logger  *zap.Logger
 	ijwt.Handler
-	cmd redis.Cmdable
 }
 
-func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
+func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
 		userSvc: userSvc,
 		codeSvc: codeSvc,
 		Handler: jwtHdl,
+		logger:  logger,
 	}
 }
 
 func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	userGroup := r.Group("user")
 	{
-		userGroup.POST("signup/send-code", ctl.SignupSendSMSCode())
-		userGroup.POST("signup/verify-code", ctl.SignupVerifySMSCode())
-		userGroup.POST("signup", ctl.Signup())
-		userGroup.POST("login", ctl.Login())
-		userGroup.POST("login/send-code", ctl.LoginSendSMSCode())
-		userGroup.POST("login-sms", ctl.LoginVerifySMSCode())
+		userGroup.POST("signup", ctl.PreSignupCheck())
+		userGroup.POST("login", ctl.IdentifierLogin())
+		userGroup.POST("send-code", ctl.SendVerificationCode())
+		userGroup.POST("signup/verify-code", ctl.SignupVerifyCode())
+		userGroup.POST("login/verify-code", ctl.LoginVerifyCode())
 		userGroup.GET("info", ctl.GetUserInfo())
-		userGroup.POST("info/edit", ctl.EditUserInfo())
 		userGroup.POST("refresh-token", ctl.TokenRefresh())
 	}
 }
 
-func (ctl *UserHandler) SignupSendSMSCode() gin.HandlerFunc {
+func (ctl *UserHandler) PreSignupCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		phone := c.PostForm("phone")
+		type Req struct {
+			Phone string `json:"phone"`
+		}
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("预检手机号:绑定信息错误", zap.Error(err))
+			return
+		}
 
-		err := ctl.codeSvc.Send(c.Request.Context(), signUpBiz, phone)
+		err := ctl.userSvc.CheckPhone(c.Request.Context(), req.Phone)
+		if err != nil {
+			zap.L().Error("预检手机号错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		zap.L().Info("手机号预检成功")
+		c.JSON(http.StatusAccepted, GetResponse(WithStatus(http.StatusAccepted), WithMsg("phone need verification")))
+	}
+}
+
+func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			Phone string `json:"phone" validate:"required,len=11"`
+			Biz   string `json:"biz"`
+		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("发送验证码:绑定信息错误", zap.Error(err))
+			return
+		}
+
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			zap.L().Error("发送验证码:手机号格式校验错误", zap.Error(err))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed:"+err.Error())))
+			return
+		}
+
+		err := ctl.codeSvc.Send(c.Request.Context(), req.Biz, req.Phone)
 		switch {
 		case errors.Is(err, service.ErrSendTooMany):
+			zap.L().Error("发送验证码:发送过于频繁", zap.Error(err))
 			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("send too many")))
+			return
 		case err != nil:
+			zap.L().Error("发送验证码:系统错误", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
 		default:
+			zap.L().Info("发送验证码成功")
 			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
 		}
 	}
 }
 
-func (ctl *UserHandler) SignupVerifySMSCode() gin.HandlerFunc {
+func (ctl *UserHandler) SignupVerifyCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			Phone string `json:"phone" validate:"required,len=11"`
+			Code  string `json:"code"`
+			Role  string `json:"role"`
+		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("注册:校验验证码:绑定信息错误", zap.Error(err))
+			return
+		}
+
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			zap.L().Error("注册:校验验证码:手机号格式校验错误", zap.Error(err))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed"+err.Error())))
+		}
+
+		_, err := ctl.codeSvc.Verify(c.Request.Context(), "signup", req.Phone, req.Code)
+		switch {
+		case errors.Is(err, service.ErrVerifyTooMany):
+			zap.L().Error("注册:校验验证码:校验次数过多", zap.Error(err))
+			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("verify too many")))
+			return
+		case err != nil:
+			zap.L().Error("注册:校验验证码:系统错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		err = ctl.userSvc.CreateUser(c.Request.Context(), domain.User{
+			Phone: req.Phone,
+		})
+		switch {
+		case errors.Is(err, service.ErrUserDuplicatePhone):
+			zap.L().Error("注册:创建用户:手机号冲突", zap.Error(err))
+			c.JSON(http.StatusConflict, GetResponse(WithStatus(http.StatusConflict), WithMsg("duplicate phone")))
+			return
+		case err != nil:
+			zap.L().Error("注册:创建用户:系统错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
+		zap.L().Info("注册:用户创建成功", zap.String("phone", maskedPhone))
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("signup successfully")))
+	}
+}
+
+func (ctl *UserHandler) LoginVerifyCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
 			Phone string `json:"phone"`
 			Code  string `json:"code"`
+			Role  string `json:"role"`
 		}
-		var req Req
+		req := Req{}
+
 		if err := c.Bind(&req); err != nil {
 			return
 		}
 
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), signUpBiz, req.Phone, req.Code)
+		_, err := ctl.codeSvc.Verify(c.Request.Context(), "login", req.Phone, req.Code)
 		switch {
 		case errors.Is(err, service.ErrVerifyTooMany):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("too many verifications")))
+			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("too many verifications")))
 			return
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("verification successfully")))
-	}
-}
 
-func (ctl *UserHandler) Signup() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		type Req struct {
-			Name            string `json:"name" validate:"required,min=3,max=20"`
-			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
-			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
-			Email           string `json:"email" validate:"required,email"`
-			Role            uint8  `json:"role"`
-		}
-		req := Req{}
-		if err := c.Bind(&req); err != nil {
+		// 设置 JWT
+		var user domain.User
+		user, err = ctl.userSvc.FindByPhone(c.Request.Context(), req.Phone)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		// 和之前的自己使用正则表达式校验，在用户名不冲突的情况下，性能几乎一样，只是在可读性上更优
-		// 追求代码简洁和可读性时选择此方法，若不追求，根据自己喜好选择
-		validate := validator.New()
-		if err := validate.Struct(req); err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+		err = ctl.SetLoginToken(c, user.Role, user.Id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		err := ctl.userSvc.Signup(c.Request.Context(), domain.User{
-			Name:     req.Name,
-			Password: req.Password,
-			Email:    req.Email,
-			Role:     req.Role,
-		})
-
-		switch {
-		case errors.Is(err, service.ErrUserDuplicateEmail):
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("email conflict")))
-		case errors.Is(err, service.ErrUserDuplicateName):
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("name conflict")))
-		case errors.Is(err, service.ErrUserDuplicatePhone):
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("phone conflict")))
-		case err != nil:
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-		default:
-			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("sign up successfully!")))
-		}
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
 	}
 }
 
-func (ctl *UserHandler) Login() gin.HandlerFunc {
+func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
 			Identifier string `json:"identifier"`
@@ -153,94 +216,19 @@ func (ctl *UserHandler) Login() gin.HandlerFunc {
 		user, err := ctl.userSvc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		switch {
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier or password error")))
+			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("identifier or password error")))
 			return
 		case errors.Is(err, service.ErrUserNotFound):
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier not found")))
-			return
-		case err != nil:
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-
-		err = ctl.SetLoginToken(c, user.Role, user.Id)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
-	}
-}
-
-func (ctl *UserHandler) LoginSendSMSCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		type Req struct {
-			Phone string `json:"phone" validate:"required,len=11"`
-		}
-		req := Req{}
-
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		// 手机号格式检测
-		validate := validator.New()
-		if err := validate.Struct(req); err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
-			return
-		}
-
-		err := ctl.codeSvc.Send(c.Request.Context(), loginBiz, req.Phone)
-
-		switch {
-		case errors.Is(err, service.ErrSendTooMany):
-			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("send too many")))
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
-		default:
-			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
-		}
-	}
-}
-
-func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		type Req struct {
-			Phone string `json:"phone"`
-			Code  string `json:"code"`
-		}
-		req := Req{}
-
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), loginBiz, req.Phone, req.Code)
-		switch {
-		case errors.Is(err, service.ErrVerifyTooMany):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("too many verifications")))
+			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("identifier not found")))
 			return
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		// 设置 JWT
-		var user domain.User
-		user, err = ctl.userSvc.FindOrCreate(c.Request.Context(), req.Phone)
-		switch {
-		case errors.Is(err, service.ErrUserNotFound):
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("identifier not found")))
-			return
-		case err != nil:
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
-			return
-		}
-
 		err = ctl.SetLoginToken(c, user.Role, user.Id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
@@ -250,15 +238,6 @@ func (ctl *UserHandler) LoginVerifySMSCode() gin.HandlerFunc {
 
 func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type User struct {
-			Name     string
-			Email    string
-			Phone    string
-			Birthday string
-			AboutMe  string
-			Role     uint8
-		}
-
 		claims, ok := c.Get("claims")
 		if !ok {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
@@ -273,49 +252,185 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
-			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(User{
-				Name:     user.Name,
-				Email:    user.Email,
-				Phone:    user.Phone,
-				Birthday: user.Birthday.Format(time.DateOnly),
-				AboutMe:  user.AboutMe,
-				Role:     user.Role,
-			})))
+			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(user)))
 		}
 	}
 }
 
-func (ctl *UserHandler) EditUserInfo() gin.HandlerFunc {
+func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Name     string    `json:"name"`
+			UserId          uint64 `json:"user_id"`
+			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
+			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
+		}
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("绑定用户密码:绑定信息错误", zap.Error(err))
+			return
+		}
+
+		// 使用 validator 进行字段验证
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			zap.L().Error("绑定用户信息:信息格式错误", zap.Error(err))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			return
+		}
+
+		err := ctl.userSvc.UpdatePassword(c.Request.Context(), domain.User{
+			Id:       req.UserId,
+			Password: req.Password,
+		})
+		if err != nil {
+			zap.L().Error("绑定用户密码:系统错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		zap.L().Info("绑定用户密码成功")
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's password successfully")))
+	}
+}
+
+func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			UserId   uint64    `json:"user_id"`
 			Birthday time.Time `json:"birthday"`
-			AboutMe  string    `json:"aboutMe"`
 		}
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			zap.L().Error("绑定用户生日:绑定信息错误", zap.Error(err))
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
+		// 使用 validator 进行字段验证
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			zap.L().Error("绑定用户生日:信息格式错误", zap.Error(err))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			return
+		}
+
+		err := ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
+			Id:       req.UserId,
+			Birthday: req.Birthday,
+		})
+		if err != nil {
+			zap.L().Error("绑定用户生日:系统错误", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
-		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.EditInfo(c.Request.Context(), claim.Id, domain.User{
-			Name:     req.Name,
-			Birthday: req.Birthday,
-			AboutMe:  req.AboutMe,
-		})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("update failed")))
+		zap.L().Info("绑定用户生日成功")
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's birthday successfully")))
+	}
+}
+
+func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			UserId uint64 `json:"user_id"`
+			Email  string `json:"email" validate:"required,email"`
+		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("绑定用户邮箱:绑定信息错误", zap.Error(err))
 			return
 		}
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(req)))
+
+		// 使用 validator 进行字段验证
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			zap.L().Error("绑定用户邮箱:信息格式错误", zap.Error(err))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			return
+		}
+
+		err := ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
+			Id:    req.UserId,
+			Email: req.Email,
+		})
+		if err != nil {
+			zap.L().Error("绑定用户邮箱:系统错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		zap.L().Info("绑定用户邮箱成功")
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's email successfully")))
+	}
+}
+
+func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			UserId uint64 `json:"user_id"`
+			Name   string `json:"name" validate:"required,min=3,max=20"`
+		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("绑定用户名:绑定信息错误", zap.Error(err))
+			return
+		}
+
+		// 使用 validator 进行字段验证
+		validate := validator.New()
+		if err := validate.Struct(req); err != nil {
+			zap.L().Error("绑定用户名:信息格式错误", zap.Error(err))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			return
+		}
+
+		err := ctl.userSvc.UpdateName(c.Request.Context(), domain.User{
+			Id:   req.UserId,
+			Name: req.Name,
+		})
+		if err != nil {
+			zap.L().Error("绑定用户名:系统错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		zap.L().Info("绑定用户名成功")
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's name successfully")))
+	}
+}
+
+func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		type Req struct {
+			UserId uint64 `json:"user_id"`
+			Role   uint8  `json:"role"`
+		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			zap.L().Error("绑定用户身份:绑定信息错误", zap.Error(err))
+			return
+		}
+
+		err := ctl.userSvc.UpdateName(c.Request.Context(), domain.User{
+			Id:   req.UserId,
+			Role: req.Role,
+		})
+		if err != nil {
+			zap.L().Error("绑定用户身份:系统错误", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		zap.L().Info("绑定用户身份成功")
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's role successfully")))
 	}
 }
 
@@ -355,7 +470,7 @@ func (ctl *UserHandler) LogOut() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		err := ctl.Handler.ClearToken(c)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("log out failed")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("log out failed")))
 			return
 		}
 

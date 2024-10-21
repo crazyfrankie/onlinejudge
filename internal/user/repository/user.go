@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"log"
 
 	"oj/internal/user/domain"
@@ -19,13 +18,19 @@ var (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, u domain.User) error
+	Create(ctx context.Context, user domain.User) error
+	CheckPhone(ctx context.Context, phone string) error
 	FindByName(ctx context.Context, name string) (domain.User, error)
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindByID(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindByWechat(ctx context.Context, openId string) (domain.User, error)
-	UpdateInfo(ctx context.Context, id uint64, user domain.User) error
+	FindByGithub(ctx context.Context, gitId string) (domain.User, error)
+	UpdatePassword(ctx context.Context, user domain.User) error
+	UpdateBirthday(ctx context.Context, user domain.User) error
+	UpdateName(ctx context.Context, user domain.User) error
+	UpdateEmail(ctx context.Context, user domain.User) error
+	UpdateRole(ctx context.Context, user domain.User) error
 }
 
 type CacheUserRepository struct {
@@ -40,25 +45,13 @@ func NewUserRepository(dao dao.UserDao, cache cache.UserCache) UserRepository {
 	}
 }
 
-func (ur *CacheUserRepository) Create(ctx context.Context, u domain.User) error {
-	newUser := dao.User{
-		Name:     u.Name,
-		Password: u.Password,
-		Email: sql.NullString{
-			String: u.Email,
-			Valid:  u.Email != "",
-		},
-		Phone: sql.NullString{
-			String: u.Phone,
-			Valid:  u.Phone != "",
-		},
-		Role: u.Role,
-	}
-	if err := ur.dao.Insert(ctx, &newUser); err != nil {
-		return err
-	}
-	u.Id = newUser.Id
-	return nil
+func (ur *CacheUserRepository) CheckPhone(ctx context.Context, phone string) error {
+	_, err := ur.dao.FindByPhone(ctx, phone)
+	return err
+}
+
+func (ur *CacheUserRepository) Create(ctx context.Context, user domain.User) error {
+	return ur.dao.Insert(ctx, user)
 }
 
 func (ur *CacheUserRepository) FindByName(ctx context.Context, name string) (domain.User, error) {
@@ -120,22 +113,26 @@ func (ur *CacheUserRepository) FindByWechat(ctx context.Context, openId string) 
 	return user, err
 }
 
-func (ur *CacheUserRepository) UpdateInfo(ctx context.Context, id uint64, user domain.User) error {
-	// 先更新数据库
-	u, err := ur.dao.UpdateInfo(ctx, id, user)
-	if err != nil {
-		return err
-	}
+func (ur *CacheUserRepository) FindByGithub(ctx context.Context, gitId string) (domain.User, error) {
+	return ur.dao.FindByGithub(ctx, gitId)
+}
 
-	// 更新缓存中的数据 直接覆盖即可
-	go func() {
-		newCtx := context.Background()
-		err = ur.cache.Set(newCtx, u)
-		if err != nil {
-			// 记录日志，做监控，但不影响返回的结果
-			log.Printf("failed to update cache for user %d: %v", user.Id, err)
-		}
-	}()
+func (ur *CacheUserRepository) UpdatePassword(ctx context.Context, user domain.User) error {
+	return ur.dao.UpdatePassword(ctx, user)
+}
 
-	return err
+func (ur *CacheUserRepository) UpdateBirthday(ctx context.Context, user domain.User) error {
+	return ur.dao.UpdateBirthday(ctx, user)
+}
+
+func (ur *CacheUserRepository) UpdateName(ctx context.Context, user domain.User) error {
+	return ur.dao.UpdateName(ctx, user)
+}
+
+func (ur *CacheUserRepository) UpdateEmail(ctx context.Context, user domain.User) error {
+	return ur.dao.UpdateEmail(ctx, user)
+}
+
+func (ur *CacheUserRepository) UpdateRole(ctx context.Context, user domain.User) error {
+	return ur.dao.UpdateRole(ctx, user)
 }

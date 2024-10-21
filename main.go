@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,17 +11,19 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
 	"oj/ioc"
 )
 
 func main() {
 	initViper()
+	initLogger()
 
 	router := ioc.InitGin()
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:9090",
+		Addr:    "0.0.0.0:9000",
 		Handler: router,
 	}
 
@@ -31,7 +32,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	fmt.Println("Server is running on http://localhost:9090")
+	zap.L().Info("Server is running", zap.String("address", "http://localhost:9000"))
 
 	// 创建通道监听信号
 	quit := make(chan os.Signal, 1)
@@ -41,18 +42,17 @@ func main() {
 
 	// 阻塞直到收到信号
 	<-quit
-	fmt.Println("Shutting down server")
+	zap.L().Info("shutting down server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
 	defer cancel()
 
 	// 优雅地关闭服务器
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced shutting down:", err)
+		zap.L().Error("Server forced shutting down", zap.Error(err))
 	}
 
-	fmt.Println("Server exited gracefully")
+	zap.L().Info("Server exited gracefully")
 }
 
 func initViper() {
@@ -61,4 +61,12 @@ func initViper() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func initLogger() {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(err)
+	}
+	zap.ReplaceGlobals(logger)
 }

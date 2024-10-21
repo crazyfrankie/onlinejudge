@@ -39,9 +39,3 @@ func WithMsg(msg string) func(*Response) {
 		r.Msg = msg
 	}
 }
-
-func WithErr(err string) func(*Response) {
-	return func(r *Response) {
-		r.Err = err
-	}
-}

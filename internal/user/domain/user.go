@@ -8,8 +8,8 @@ type User struct {
 	Password   string
 	Email      string
 	Phone      string
+	GithubID   string
 	WeChatInfo WeChatInfo
-	AboutMe    string
 	Birthday   time.Time
 	Role       uint8
 }

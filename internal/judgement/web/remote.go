@@ -2,8 +2,10 @@ package web
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+
 	"oj/internal/judgement/domain"
 	"oj/internal/judgement/service/remote"
 )
@@ -52,7 +54,7 @@ func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 			return
 
 		case err != nil:
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithErr(err.Error())))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 

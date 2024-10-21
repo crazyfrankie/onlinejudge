@@ -1,4 +1,4 @@
-package web
+package third
 
 import (
 	"errors"
@@ -14,6 +14,7 @@ import (
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
 	"oj/internal/user/service/oauth/github"
+	"oj/internal/user/web"
 )
 
 type OAuthGithubHandler struct {
@@ -46,16 +47,16 @@ func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 
 		url, err := h.svc.AuthUrl(c.Request.Context(), state)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("get url failed")))
+			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("get url failed")))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(url)))
+		c.JSON(http.StatusOK, web.GetResponse(web.WithStatus(http.StatusOK), web.WithData(url)))
 	}
 }
 
@@ -80,21 +81,21 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		err := h.VerifyState(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
 			return
 		}
 
 		var res github.Result
 		res, err = h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
 			return
 		}
 
 		var info domain.GithubInfo
 		info, err = h.svc.AcquireUserInfo(c.Request.Context(), res.AccessToken)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
 			return
 		}
 
@@ -102,11 +103,11 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		err = h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			c.JSON(http.StatusBadRequest, web.GetResponse(web.WithStatus(http.StatusBadRequest), web.WithMsg("system error")))
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
+		c.JSON(http.StatusOK, web.GetResponse(web.WithStatus(http.StatusOK), web.WithMsg("login successfully")))
 	}
 }
 

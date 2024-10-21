@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"go.uber.org/zap"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -69,6 +70,7 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
+			zap.L().Error("添加题目:绑定失败", zap.Error(err))
 			return
 		}
 
@@ -90,7 +92,7 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 		err := ctl.svc.AddProblem(c.Request.Context(), pm)
 		switch {
 		case err != nil:
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
 			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("add successfully")))
 		}
@@ -120,7 +122,7 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrProblemNotFound):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("problem not found")))
+			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("problem not found")))
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
@@ -156,7 +158,7 @@ func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrTagExists):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("tag already exists")))
+			c.JSON(http.StatusConflict, GetResponse(WithStatus(http.StatusConflict), WithMsg("tag already exists")))
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
@@ -171,7 +173,7 @@ func (ctl *ProblemHandler) GetAllTags() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrNoTags):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("tag need to be created")))
+			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("tag need to be created")))
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
@@ -195,7 +197,7 @@ func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
 		err := ctl.svc.ModifyTag(c.Request.Context(), req.Id, req.Tag)
 		switch {
 		case errors.Is(err, service.ErrTagExists):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("this tag already exists")))
+			c.JSON(http.StatusConflict, GetResponse(WithStatus(http.StatusConflict), WithMsg("this tag already exists")))
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
@@ -248,7 +250,7 @@ func (ctl *ProblemHandler) GetProblemSet() gin.HandlerFunc {
 
 		switch {
 		case errors.Is(err, service.ErrNoTags):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("tag need to be created")))
+			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("tag need to be created")))
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		default:
