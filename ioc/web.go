@@ -5,14 +5,15 @@ import (
 
 	jwb "oj/internal/judgement/web"
 	pwb "oj/internal/problem/web"
+	ijwt "oj/internal/user/middleware/jwt"
+	"oj/internal/user/middleware/ratelimit"
 	uwb "oj/internal/user/web"
-	ijwt "oj/internal/user/web/jwt"
-	"oj/internal/user/web/middlewares"
-	"oj/internal/user/web/middlewares/ratelimit"
+	"oj/internal/user/web/auth"
+	"oj/internal/user/web/third"
 	rate "oj/pkg/ratelimit"
 )
 
-func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler, oauthHdl *uwb.OAuthWeChatHandler, judgeHdl *jwb.SubmissionHandler, localHdl *jwb.LocalSubmitHandler) *gin.Engine {
+func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.ProblemHandler, oauthHdl *third.OAuthWeChatHandler, judgeHdl *jwb.SubmissionHandler, localHdl *jwb.LocalSubmitHandler, gitHdl *third.OAuthGithubHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdl...)
 	// 注册路由
@@ -21,30 +22,32 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *uwb.UserHandler, proHdl *pwb.
 	oauthHdl.RegisterRoute(server)
 	judgeHdl.RegisterRoute(server)
 	localHdl.RegisterRoute(server)
+	gitHdl.RegisterRoute(server)
 	return server
 }
 
 func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		middlewares.CORS(),
+		auth.CORS(),
 
 		ratelimit.NewBuilder(limiter).Build(),
 
-		middlewares.NewLoginJWTMiddlewareBuilder(jwtHdl).
+		auth.NewLoginJWTMiddlewareBuilder(jwtHdl).
 			IgnorePaths("/user/signup").
-			IgnorePaths("/user/signup/send-code").
+			IgnorePaths("/user/send-code").
 			IgnorePaths("/user/signup/verify-code").
+			IgnorePaths("/user/login/verify-code").
 			IgnorePaths("/user/login").
-			IgnorePaths("/user/login/send-code").
-			IgnorePaths("/user/login-sms").
-			IgnorePaths("/oauth/wechat/authurl").
+			IgnorePaths("/oauth/wechat/url").
+			IgnorePaths("/oauth/github/url").
+			IgnorePaths("/oauth/github/callback").
 			IgnorePaths("/user/refresh-token").
 			IgnorePaths("/remote/run").
 			//IgnorePaths("/remote/submit").
 			IgnorePaths("/local/run").
 			CheckLogin(),
 
-		middlewares.NewProblemJWTMiddlewareBuilder(jwtHdl).
+		auth.NewProblemJWTMiddlewareBuilder(jwtHdl).
 			//SecretPaths("/admin/problem/create").
 			SecretPaths("/admin/problem").
 			SecretPaths("/admin/problem/update").

@@ -11,58 +11,55 @@ import (
 	"github.com/google/uuid"
 
 	"oj/internal/user/domain"
+	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
-	"oj/internal/user/service/oauth/wechat"
-	ijwt "oj/internal/user/web/jwt"
+	"oj/internal/user/service/oauth/github"
 )
 
-type OAuthWeChatHandler struct {
-	svc     wechat.Service
+type OAuthGithubHandler struct {
+	svc     github.Service
 	userSvc service.UserService
 	ijwt.Handler
 	stateKey []byte
 }
 
-type StateClaims struct {
-	State string
-	jwt.StandardClaims
-}
-
-func NewOAuthHandler(svc wechat.Service, jwtHdl ijwt.Handler, userSvc service.UserService) *OAuthWeChatHandler {
-	return &OAuthWeChatHandler{
+func NewOAuthGithubHandler(svc github.Service, userSvc service.UserService, jwtHdl ijwt.Handler) *OAuthGithubHandler {
+	return &OAuthGithubHandler{
 		svc:      svc,
-		Handler:  jwtHdl,
 		userSvc:  userSvc,
+		Handler:  jwtHdl,
 		stateKey: []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxF"),
 	}
 }
 
-func (h *OAuthWeChatHandler) RegisterRoute(r *gin.Engine) {
-	oauthGroup := r.Group("/oauth/wechat")
+func (h *OAuthGithubHandler) RegisterRoute(r *gin.Engine) {
+	oauthGroup := r.Group("/oauth/github")
 	{
-		oauthGroup.GET("/authurl", h.AuthUrl())
+		oauthGroup.GET("/url", h.GitAuthUrl())
 		oauthGroup.Any("/callback", h.CallBack())
 	}
 }
 
-func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
+func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		state := uuid.New().String()
-		url, err := h.svc.AuthURL(c.Request.Context(), state)
+
+		url, err := h.svc.AuthUrl(c.Request.Context(), state)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("get url failed")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("get url failed")))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
 		}
 
 		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(url)))
 	}
 }
 
-func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
+func (h *OAuthGithubHandler) SetCookie(c *gin.Context, state string) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, StateClaims{
 		State: state,
 		StandardClaims: jwt.StandardClaims{
@@ -77,26 +74,31 @@ func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
 	return nil
 }
 
-func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
+func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		code := c.Query("code")
 
 		err := h.VerifyState(c)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		info, err := h.svc.VerifyCode(c.Request.Context(), code)
+		var res github.Result
+		res, err = h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		user, err := h.userSvc.FindOrCreateByWechat(c.Request.Context(), domain.WeChatInfo{
-			OpenID:  info.OpenID,
-			UnionID: info.UnionID,
-		})
+		var info domain.GithubInfo
+		info, err = h.svc.AcquireUserInfo(c.Request.Context(), res.AccessToken)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		user, err := h.userSvc.FindOrCreateByGithub(c.Request.Context(), info.Id)
 
 		err = h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
@@ -108,7 +110,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 	}
 }
 
-func (h *OAuthWeChatHandler) VerifyState(c *gin.Context) error {
+func (h *OAuthGithubHandler) VerifyState(c *gin.Context) error {
 	state := c.Query("state")
 	jwtState, err := c.Cookie("jwt-state")
 	if err != nil {

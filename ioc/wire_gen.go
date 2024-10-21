@@ -18,12 +18,13 @@ import (
 	dao2 "oj/internal/problem/repository/dao"
 	service2 "oj/internal/problem/service"
 	web2 "oj/internal/problem/web"
+	"oj/internal/user/middleware/jwt"
 	"oj/internal/user/repository"
 	"oj/internal/user/repository/cache"
 	"oj/internal/user/repository/dao"
 	"oj/internal/user/service"
 	"oj/internal/user/web"
-	"oj/internal/user/web/jwt"
+	"oj/internal/user/web/third"
 )
 
 // Injectors from wire.go:
@@ -42,14 +43,15 @@ func InitGin() *gin.Engine {
 	codeRepository := repository.NewCodeRepository(codeCache)
 	smsService := InitSMSService(limiter)
 	codeService := service.NewCodeService(codeRepository, smsService)
-	userHandler := web.NewUserHandler(userService, codeService, handler)
+	logger := InitLogger()
+	userHandler := web.NewUserHandler(userService, codeService, handler, logger)
 	problemDao := dao2.NewProblemDao(db)
 	problemCache := cache2.NewProblemCache(cmdable)
 	problemRepository := repository2.NewProblemRepository(problemDao, problemCache)
 	problemService := service2.NewProblemService(problemRepository)
 	problemHandler := web2.NewProblemHandler(problemService)
 	wechatService := InitWechatService()
-	oAuthWeChatHandler := web.NewOAuthHandler(wechatService, handler, userService)
+	oAuthWeChatHandler := third.NewOAuthHandler(wechatService, handler, userService)
 	submitCache := cache3.NewSubmitCache(cmdable)
 	submitRepository := repository3.NewSubmitRepository(submitCache)
 	submitService := InitJudgeService(submitRepository, problemRepository)
@@ -58,7 +60,9 @@ func InitGin() *gin.Engine {
 	localSubmitRepo := repository3.NewLocalSubmitRepo(localSubmitCache)
 	locSubmitService := local.NewLocSubmitService(localSubmitRepo, problemRepository)
 	localSubmitHandler := web3.NewLocalSubmitHandler(locSubmitService)
-	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler, localSubmitHandler)
+	githubService := InitGithubService()
+	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
+	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler, localSubmitHandler, oAuthGithubHandler)
 	return engine
 }
 

@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm/schema"
 
 	"oj/internal/problem/repository/dao"
+	udao "oj/internal/user/repository/dao"
 )
 
 func InitDB() *gorm.DB {
@@ -56,7 +57,7 @@ func InitDB() *gorm.DB {
 
 func Migrate(db *gorm.DB) error {
 	// 自动迁移，创建表
-	if err := db.AutoMigrate(&dao.TestCase{}, &dao.Problem{}); err != nil {
+	if err := db.AutoMigrate(&dao.TestCase{}, &dao.Problem{}, &dao.Tag{}, &dao.ProblemTag{}, &udao.User{}); err != nil {
 		return err
 	}
 	return nil
