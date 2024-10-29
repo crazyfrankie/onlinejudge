@@ -19,27 +19,34 @@ var (
 
 // LoginJWTMiddlewareBuilder JWT 进行校验
 type LoginJWTMiddlewareBuilder struct {
-	paths map[string]struct{}
+	ignorePaths map[string]struct{}
+	adminPaths  map[string]struct{}
 	ijwt.Handler
 	cmd redis.Cmdable
 }
 
 func NewLoginJWTMiddlewareBuilder(jwtHdl ijwt.Handler) *LoginJWTMiddlewareBuilder {
 	return &LoginJWTMiddlewareBuilder{
-		paths:   make(map[string]struct{}),
-		Handler: jwtHdl,
+		ignorePaths: make(map[string]struct{}),
+		adminPaths:  make(map[string]struct{}),
+		Handler:     jwtHdl,
 	}
 }
 
 func (l *LoginJWTMiddlewareBuilder) IgnorePaths(path string) *LoginJWTMiddlewareBuilder {
-	l.paths[path] = struct{}{}
+	l.ignorePaths[path] = struct{}{}
+	return l
+}
+
+func (l *LoginJWTMiddlewareBuilder) AdminPaths(path string) *LoginJWTMiddlewareBuilder {
+	l.adminPaths[path] = struct{}{}
 	return l
 }
 
 func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 路径校验
-		if _, ok := l.paths[c.Request.URL.Path]; ok {
+		if _, ok := l.ignorePaths[c.Request.URL.Path]; ok {
 			c.Next()
 			return
 		}
@@ -67,70 +74,8 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
-		// 将解析出来的 Claims 存入上下文
-		c.Set("claims", claims)
-		// 继续后续的处理
-		c.Next()
-	}
-}
-
-type ProblemJWTMiddlewareBuilder struct {
-	paths map[string]struct{}
-	ijwt.Handler
-	cmd redis.Cmdable
-}
-
-func NewProblemJWTMiddlewareBuilder(jwtHdl ijwt.Handler) *ProblemJWTMiddlewareBuilder {
-	return &ProblemJWTMiddlewareBuilder{
-		paths:   make(map[string]struct{}),
-		Handler: jwtHdl,
-	}
-}
-
-func (l *ProblemJWTMiddlewareBuilder) SecretPaths(path string) *ProblemJWTMiddlewareBuilder {
-	l.paths[path] = struct{}{}
-	return l
-}
-
-func (l *ProblemJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if _, ok := l.paths[c.Request.URL.Path]; !ok {
-			c.Next()
-			return
-		}
-
-		tokenHeader := l.Handler.ExtractToken(c)
-
-		// 检查请求头中是否包含 Token
-		if tokenHeader == "" {
-			// 没登录
-			c.JSON(http.StatusUnauthorized, "you need to login")
-			c.Abort()
-			return
-		}
-
-		claims, err := ParseToken(tokenHeader)
-		if err != nil {
-			code, msg := handleTokenError(err)
-			c.JSON(code, msg)
-			c.Abort()
-			return
-		}
-
-		if claims.UserAgent != c.Request.UserAgent() {
-			// 严重的安全问题
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-
-		if claims.Role != 1 {
+		if _, ok := l.adminPaths[c.Request.URL.Path]; ok && claims.Role != 1 {
 			c.AbortWithStatusJSON(http.StatusForbidden, "access denied")
-			return
-		}
-
-		err = l.Handler.CheckSession(c, claims.SSId)
-		if err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 

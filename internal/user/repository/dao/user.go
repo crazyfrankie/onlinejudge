@@ -12,6 +12,15 @@ import (
 	"oj/internal/user/domain"
 )
 
+var (
+	ErrUserDuplicateEmail  = errors.New("duplicate email")
+	ErrUserDuplicateName   = errors.New("duplicate name")
+	ErrUserDuplicatePhone  = errors.New("duplicate phone")
+	ErrUserDuplicateWechat = errors.New("duplicate wechat")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrRecordNotFound      = errors.New("record not found")
+)
+
 type User struct {
 	Id            uint64 `gorm:"primaryKey,autoIncrement"`
 	Password      string
@@ -52,15 +61,6 @@ func NewUserDao(db *gorm.DB) UserDao {
 	}
 }
 
-var (
-	ErrUserDuplicateEmail  = errors.New("duplicate email")
-	ErrUserDuplicateName   = errors.New("duplicate name")
-	ErrUserDuplicatePhone  = errors.New("duplicate phone")
-	ErrUserDuplicateWechat = errors.New("duplicate wechat")
-	ErrUserNotFound        = errors.New("user not found")
-	ErrRecordNotFound      = errors.New("record not found")
-)
-
 func handleDBError(err error) error {
 	var mysqlErr *mysql.MySQLError
 	const uniqueConflictErrNo uint16 = 1062
@@ -97,15 +97,17 @@ func (dao *GormUserDao) Insert(ctx context.Context, user domain.User) error {
 
 	u := User{
 		Phone: user.Phone,
-		Role:  user.Role,
+		Role:  0,
+		Name:  user.Name,
 	}
 	now := time.Now().UnixMilli()
 	u.Ctime = now
 	u.Uptime = now
-	if err := tx.WithContext(ctx).Create(&user).Error; err != nil {
+	if err := tx.WithContext(ctx).Create(&u).Error; err != nil {
 		tx.Rollback() // 插入失败则回滚事务
 		return handleDBError(err)
 	}
+
 	return tx.Commit().Error
 }
 

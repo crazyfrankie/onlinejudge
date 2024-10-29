@@ -9,22 +9,11 @@ package ioc
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
-	repository3 "oj/internal/judgement/repository"
-	cache3 "oj/internal/judgement/repository/cache"
-	"oj/internal/judgement/service/local"
-	web3 "oj/internal/judgement/web"
-	repository2 "oj/internal/problem/repository"
-	cache2 "oj/internal/problem/repository/cache"
-	dao2 "oj/internal/problem/repository/dao"
-	service2 "oj/internal/problem/service"
-	web2 "oj/internal/problem/web"
+	"oj/internal/article"
+	"oj/internal/judgement"
+	"oj/internal/problem"
+	"oj/internal/user"
 	"oj/internal/user/middleware/jwt"
-	"oj/internal/user/repository"
-	"oj/internal/user/repository/cache"
-	"oj/internal/user/repository/dao"
-	"oj/internal/user/service"
-	"oj/internal/user/web"
-	"oj/internal/user/web/third"
 )
 
 // Injectors from wire.go:
@@ -35,34 +24,14 @@ func InitGin() *gin.Engine {
 	handler := jwt.NewRedisJWTHandler(cmdable)
 	v := GinMiddlewares(limiter, handler)
 	db := InitDB()
-	userDao := dao.NewUserDao(db)
-	userCache := cache.NewUserCache(cmdable)
-	userRepository := repository.NewUserRepository(userDao, userCache)
-	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewRedisCodeCache(cmdable)
-	codeRepository := repository.NewCodeRepository(codeCache)
-	smsService := InitSMSService(limiter)
-	codeService := service.NewCodeService(codeRepository, smsService)
-	logger := InitLogger()
-	userHandler := web.NewUserHandler(userService, codeService, handler, logger)
-	problemDao := dao2.NewProblemDao(db)
-	problemCache := cache2.NewProblemCache(cmdable)
-	problemRepository := repository2.NewProblemRepository(problemDao, problemCache)
-	problemService := service2.NewProblemService(problemRepository)
-	problemHandler := web2.NewProblemHandler(problemService)
-	wechatService := InitWechatService()
-	oAuthWeChatHandler := third.NewOAuthHandler(wechatService, handler, userService)
-	submitCache := cache3.NewSubmitCache(cmdable)
-	submitRepository := repository3.NewSubmitRepository(submitCache)
-	submitService := InitJudgeService(submitRepository, problemRepository)
-	submissionHandler := web3.NewSubmissionHandler(submitService)
-	localSubmitCache := cache3.NewLocalSubmitCache(cmdable)
-	localSubmitRepo := repository3.NewLocalSubmitRepo(localSubmitCache)
-	locSubmitService := local.NewLocSubmitService(localSubmitRepo, problemRepository)
-	localSubmitHandler := web3.NewLocalSubmitHandler(locSubmitService)
-	githubService := InitGithubService()
-	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
-	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, submissionHandler, localSubmitHandler, oAuthGithubHandler)
+	userHandler := user.InitUserHandler(cmdable, db)
+	problemHandler := problem.InitProblemHandler(cmdable, db)
+	oAuthWeChatHandler := user.InitOAuthWeChatHandler(cmdable, db)
+	localSubmitHandler := judgement.InitLocalJudgement(cmdable, db)
+	submissionHandler := judgement.InitRemoteJudgement(cmdable, db)
+	oAuthGithubHandler := user.InitOAuthGithubHandler(cmdable, db)
+	articleHandler := article.InitArticleHandler()
+	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, localSubmitHandler, submissionHandler, oAuthGithubHandler, articleHandler)
 	return engine
 }
 

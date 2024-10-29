@@ -24,8 +24,8 @@ var (
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 type UserService interface {
-	CheckPhone(ctx context.Context, phone string) error
-	CreateUser(ctx context.Context, user domain.User) error
+	CheckPhone(ctx context.Context, phone string) (domain.User, error)
+	FindOrCreateUser(ctx context.Context, phone string) (domain.User, error)
 	Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
@@ -49,23 +49,36 @@ func NewUserService(repo repository.UserRepository) UserService {
 	}
 }
 
-func (svc *UserSvc) CheckPhone(ctx context.Context, phone string) error {
+func (svc *UserSvc) CheckPhone(ctx context.Context, phone string) (domain.User, error) {
 	return svc.repo.CheckPhone(ctx, phone)
 }
 
-func (svc *UserSvc) CreateUser(ctx context.Context, user domain.User) error {
-	err := svc.repo.Create(ctx, user)
-	if err != nil {
-		return err
+func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.User, error) {
+	user, err := svc.repo.FindByPhone(ctx, phone)
+	if err == nil {
+		return user, nil
+	}
+
+	if !errors.Is(err, ErrUserNotFound) {
+		return domain.User{}, err
 	}
 
 	var code string
 	code, err = svc.GenerateCode()
-	user = domain.User{
-		Name: code[:15] + "-" + code[15:],
+	if err != nil {
+		return domain.User{}, err
+	}
+	u := domain.User{
+		Phone: phone,
+		Name:  code[:15] + "-" + code[15:],
 	}
 
-	return nil
+	err = svc.repo.Create(ctx, u)
+	if err != nil {
+		return domain.User{}, err
+	}
+
+	return svc.repo.FindByPhone(ctx, phone)
 }
 
 func (svc *UserSvc) FindByPhone(ctx context.Context, phone string) (domain.User, error) {

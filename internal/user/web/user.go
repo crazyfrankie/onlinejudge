@@ -2,13 +2,15 @@ package web
 
 import (
 	"errors"
-	"go.uber.org/zap"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
+	"go.uber.org/zap"
+
 	"oj/internal/user/domain"
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
@@ -33,36 +35,11 @@ func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jw
 func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	userGroup := r.Group("user")
 	{
-		userGroup.POST("signup", ctl.PreSignupCheck())
 		userGroup.POST("login", ctl.IdentifierLogin())
 		userGroup.POST("send-code", ctl.SendVerificationCode())
-		userGroup.POST("signup/verify-code", ctl.SignupVerifyCode())
-		userGroup.POST("login/verify-code", ctl.LoginVerifyCode())
+		userGroup.POST("verify-code", ctl.VerificationCode())
 		userGroup.GET("info", ctl.GetUserInfo())
 		userGroup.POST("refresh-token", ctl.TokenRefresh())
-	}
-}
-
-func (ctl *UserHandler) PreSignupCheck() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		type Req struct {
-			Phone string `json:"phone"`
-		}
-		var req Req
-		if err := c.Bind(&req); err != nil {
-			zap.L().Error("预检手机号:绑定信息错误", zap.Error(err))
-			return
-		}
-
-		err := ctl.userSvc.CheckPhone(c.Request.Context(), req.Phone)
-		if err != nil {
-			zap.L().Error("预检手机号错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
-			return
-		}
-
-		zap.L().Info("手机号预检成功")
-		c.JSON(http.StatusAccepted, GetResponse(WithStatus(http.StatusAccepted), WithMsg("phone need verification")))
 	}
 }
 
@@ -103,86 +80,37 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) SignupVerifyCode() gin.HandlerFunc {
+func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
 			Phone string `json:"phone" validate:"required,len=11"`
 			Code  string `json:"code"`
 			Role  string `json:"role"`
+			Biz   string `json:"biz"`
 		}
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("注册:校验验证码:绑定信息错误", zap.Error(err))
+			zap.L().Error("校验验证码绑定信息错误", zap.Error(err))
 			return
 		}
 
-		validate := validator.New()
-		if err := validate.Struct(req); err != nil {
-			zap.L().Error("注册:校验验证码:手机号格式校验错误", zap.Error(err))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed"+err.Error())))
-		}
-
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), "signup", req.Phone, req.Code)
+		_, err := ctl.codeSvc.Verify(c.Request.Context(), req.Biz, req.Phone, req.Code)
 		switch {
 		case errors.Is(err, service.ErrVerifyTooMany):
-			zap.L().Error("注册:校验验证码:校验次数过多", zap.Error(err))
+			zap.L().Error(fmt.Sprintf("%s:校验验证码:校验次数过多", req.Biz), zap.Error(err))
 			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("verify too many")))
 			return
 		case err != nil:
-			zap.L().Error("注册:校验验证码:系统错误", zap.Error(err))
+			zap.L().Error(fmt.Sprintf("%s:校验验证码:系统错误", req.Biz), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
 
-		err = ctl.userSvc.CreateUser(c.Request.Context(), domain.User{
-			Phone: req.Phone,
-		})
-		switch {
-		case errors.Is(err, service.ErrUserDuplicatePhone):
-			zap.L().Error("注册:创建用户:手机号冲突", zap.Error(err))
-			c.JSON(http.StatusConflict, GetResponse(WithStatus(http.StatusConflict), WithMsg("duplicate phone")))
-			return
-		case err != nil:
-			zap.L().Error("注册:创建用户:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
-			return
-		}
-
-		maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
-		zap.L().Info("注册:用户创建成功", zap.String("phone", maskedPhone))
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("signup successfully")))
-	}
-}
-
-func (ctl *UserHandler) LoginVerifyCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		type Req struct {
-			Phone string `json:"phone"`
-			Code  string `json:"code"`
-			Role  string `json:"role"`
-		}
-		req := Req{}
-
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), "login", req.Phone, req.Code)
-		switch {
-		case errors.Is(err, service.ErrVerifyTooMany):
-			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("too many verifications")))
-			return
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
-			return
-		}
-
-		// 设置 JWT
 		var user domain.User
-		user, err = ctl.userSvc.FindByPhone(c.Request.Context(), req.Phone)
+		user, err = ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
 		if err != nil {
+			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:系统错误", req.Biz), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
@@ -193,7 +121,14 @@ func (ctl *UserHandler) LoginVerifyCode() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
+		maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
+		zap.L().Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", maskedPhone))
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg(fmt.Sprintf("%s successfully", req.Biz)), WithData(map[string]interface{}{
+			"id":    user.Id,
+			"phone": user.Phone,
+			"name":  user.Name,
+		})))
 	}
 }
 

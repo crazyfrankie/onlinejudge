@@ -19,7 +19,7 @@ var (
 
 type UserRepository interface {
 	Create(ctx context.Context, user domain.User) error
-	CheckPhone(ctx context.Context, phone string) error
+	CheckPhone(ctx context.Context, phone string) (domain.User, error)
 	FindByName(ctx context.Context, name string) (domain.User, error)
 	FindByEmail(ctx context.Context, email string) (domain.User, error)
 	FindByID(ctx context.Context, id uint64) (domain.User, error)
@@ -45,9 +45,8 @@ func NewUserRepository(dao dao.UserDao, cache cache.UserCache) UserRepository {
 	}
 }
 
-func (ur *CacheUserRepository) CheckPhone(ctx context.Context, phone string) error {
-	_, err := ur.dao.FindByPhone(ctx, phone)
-	return err
+func (ur *CacheUserRepository) CheckPhone(ctx context.Context, phone string) (domain.User, error) {
+	return ur.dao.FindByPhone(ctx, phone)
 }
 
 func (ur *CacheUserRepository) Create(ctx context.Context, user domain.User) error {
