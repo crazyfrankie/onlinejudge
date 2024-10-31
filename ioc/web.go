@@ -2,7 +2,6 @@ package ioc
 
 import (
 	"github.com/gin-gonic/gin"
-
 	"oj/internal/article"
 	"oj/internal/auth"
 	"oj/internal/judgement"
@@ -30,6 +29,12 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 
 func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
+		func(c *gin.Context) {
+			c.Set("claims", ijwt.Claims{
+				Id: 1,
+			})
+		},
+
 		auth.CORS(),
 
 		ratelimit.NewBuilder(limiter).Build(),
@@ -44,6 +49,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/oauth/github/callback").
 			IgnorePaths("/user/refresh-token").
 			IgnorePaths("/remote/run").
+			IgnorePaths("/articles/edit").
 			//IgnorePaths("/remote/submit").
 			IgnorePaths("/local/run").
 			AdminPaths("/admin/problem").

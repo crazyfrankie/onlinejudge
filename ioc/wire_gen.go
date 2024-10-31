@@ -30,7 +30,7 @@ func InitGin() *gin.Engine {
 	localSubmitHandler := judgement.InitLocalJudgement(cmdable, db)
 	submissionHandler := judgement.InitRemoteJudgement(cmdable, db)
 	oAuthGithubHandler := user.InitOAuthGithubHandler(cmdable, db)
-	articleHandler := article.InitArticleHandler()
+	articleHandler := article.InitArticleHandler(db)
 	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, localSubmitHandler, submissionHandler, oAuthGithubHandler, articleHandler)
 	return engine
 }

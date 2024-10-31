@@ -195,7 +195,6 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			UserId          uint64 `json:"user_id"`
 			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
 			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
 		}
@@ -204,6 +203,14 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 			zap.L().Error("绑定用户密码:绑定信息错误", zap.Error(err))
 			return
 		}
+
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+
+		claim := claims.(*ijwt.Claims)
 
 		// 使用 validator 进行字段验证
 		validate := validator.New()
@@ -214,7 +221,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		}
 
 		err := ctl.userSvc.UpdatePassword(c.Request.Context(), domain.User{
-			Id:       req.UserId,
+			Id:       claim.Id,
 			Password: req.Password,
 		})
 		if err != nil {
@@ -232,7 +239,6 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			UserId   uint64    `json:"user_id"`
 			Birthday time.Time `json:"birthday"`
 		}
 
@@ -250,8 +256,15 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 			return
 		}
 
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+		claim := claims.(*ijwt.Claims)
+
 		err := ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
-			Id:       req.UserId,
+			Id:       claim.Id,
 			Birthday: req.Birthday,
 		})
 		if err != nil {
@@ -269,8 +282,7 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			UserId uint64 `json:"user_id"`
-			Email  string `json:"email" validate:"required,email"`
+			Email string `json:"email" validate:"required,email"`
 		}
 
 		var req Req
@@ -287,8 +299,15 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
-			Id:    req.UserId,
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+		claim := claims.(*ijwt.Claims)
+
+		err := ctl.userSvc.UpdateEmail(c.Request.Context(), domain.User{
+			Id:    claim.Id,
 			Email: req.Email,
 		})
 		if err != nil {
@@ -306,8 +325,7 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			UserId uint64 `json:"user_id"`
-			Name   string `json:"name" validate:"required,min=3,max=20"`
+			Name string `json:"name" validate:"required,min=3,max=20"`
 		}
 
 		var req Req
@@ -324,8 +342,15 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 			return
 		}
 
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+		claim := claims.(*ijwt.Claims)
+
 		err := ctl.userSvc.UpdateName(c.Request.Context(), domain.User{
-			Id:   req.UserId,
+			Id:   claim.Id,
 			Name: req.Name,
 		})
 		if err != nil {
@@ -343,8 +368,7 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			UserId uint64 `json:"user_id"`
-			Role   uint8  `json:"role"`
+			Role uint8 `json:"role"`
 		}
 
 		var req Req
@@ -353,8 +377,15 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.userSvc.UpdateName(c.Request.Context(), domain.User{
-			Id:   req.UserId,
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			return
+		}
+		claim := claims.(*ijwt.Claims)
+
+		err := ctl.userSvc.UpdateRole(c.Request.Context(), domain.User{
+			Id:   claim.Id,
 			Role: req.Role,
 		})
 		if err != nil {
