@@ -29,13 +29,11 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 
 func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		func(c *gin.Context) {
-			c.Set("claims", ijwt.Claims{
-				Id: 1,
-			})
-		},
-
-		auth.CORS(),
+		//func(c *gin.Context) {
+		//	c.Set("claims", ijwt.Claims{
+		//		Id: 1,
+		//	})
+		//},
 
 		ratelimit.NewBuilder(limiter).Build(),
 

@@ -17,3 +17,13 @@ type Article struct {
 	Ctime    int64  `gorm:"index:aid_ctime"`
 	Utime    int64
 }
+
+// OnlineArticle 线上库
+type OnlineArticle struct {
+	ID       uint64 `gorm:"primaryKey,autoIncrement"`
+	Title    string `gorm:"type:varchar(1024)"`
+	Content  string `gorm:"type:BLOB"`
+	AuthorID uint64 `gorm:"index:aid_ctime"`
+	Ctime    int64  `gorm:"index:aid_ctime"`
+	Utime    int64
+}

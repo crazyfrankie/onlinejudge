@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ArticleDao struct {
@@ -18,7 +19,7 @@ func NewArticleDao(db *gorm.DB) *ArticleDao {
 	}
 }
 
-func (dao *ArticleDao) Create(ctx context.Context, art Article) (uint64, error) {
+func (dao *ArticleDao) CreateDraft(ctx context.Context, art Article) (uint64, error) {
 	now := time.Now().UnixMilli()
 	art.Ctime = now
 	art.Utime = now
@@ -26,7 +27,7 @@ func (dao *ArticleDao) Create(ctx context.Context, art Article) (uint64, error) 
 	return art.ID, err
 }
 
-func (dao *ArticleDao) UpdateByID(ctx context.Context, art Article) error {
+func (dao *ArticleDao) UpdateDraftByID(ctx context.Context, art Article) error {
 	now := time.Now().UnixMilli()
 	art.Utime = now
 
@@ -49,4 +50,56 @@ func (dao *ArticleDao) UpdateByID(ctx context.Context, art Article) error {
 	}
 
 	return result.Error
+}
+
+func (dao *ArticleDao) SyncToPublish(ctx context.Context, art Article) (uint64, error) {
+	var (
+		id = art.ID
+	)
+	// 事务的闭包
+	err := dao.db.Transaction(func(tx *gorm.DB) error {
+		var err error
+
+		// 采用这个事务去创建连接
+		txDao := NewArticleDao(tx)
+		if id > 0 {
+			err = txDao.UpdateDraftByID(ctx, art)
+		} else {
+			id, err = txDao.CreateDraft(ctx, art)
+		}
+		if err != nil {
+			return err
+		}
+
+		return txDao.Upsert(ctx, OnlineArticle{
+			ID:       art.ID,
+			Title:    art.Title,
+			Content:  art.Content,
+			AuthorID: art.AuthorID,
+		})
+	})
+	return id, err
+}
+
+func (dao *ArticleDao) Upsert(ctx context.Context, art OnlineArticle) error {
+	// 实现 INSERT OR UPDATE
+	// SQL:
+	// INSERT xxx ON DUPLICATE KEY UPDATE xxx(如果是更新,xxx 代表要更新的列)
+
+	// GORM 实现:
+	now := time.Now().UnixMilli()
+	art.Ctime = now
+	art.Utime = now
+	return dao.db.WithContext(ctx).Clauses(clause.OnConflict{
+		// Columns 哪些列冲突
+		Columns: []clause.Column{{Name: "id"}},
+		// 如果是更新，则更新以下字段
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"title":   art.Title,
+			"content": art.Content,
+			"utime":   now,
+		}),
+		// DoNothing: 数据冲突了啥也不干
+		// Where: 数据冲突了，并且符合 WHERE 条件的就会执行更新
+	}).Create(&art).Error
 }

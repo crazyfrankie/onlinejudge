@@ -1,9 +1,11 @@
 package web
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"net/http"
+
 	"oj/internal/article/domain"
 	"oj/internal/article/service"
 	ijwt "oj/internal/user/middleware/jwt"
@@ -46,7 +48,7 @@ func (ctl *ArticleHandler) Edit() gin.HandlerFunc {
 		}
 		claim := claims.(ijwt.Claims)
 
-		id, err := ctl.svc.Save(c.Request.Context(), req.toDomain(claim.Id))
+		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
 			ctl.l.Error("创建/更新帖子:系统错误")
 			c.JSON(http.StatusInternalServerError, Result[uint64]{
@@ -115,3 +117,16 @@ func (req ArticleReq) toDomain(uid uint64) domain.Article {
 		Content: req.Content,
 	}
 }
+
+// 首先库（表）分制作库（表）和线上库（表）
+// 对于 web 层来说
+// Edit:作者新建帖子/修改已有帖子并保存到制作库
+// Publish:作者新建帖子/修改已有帖子并保存到线上库
+// 到 service 层
+// SaveDraft:如果存在文章 Id:代表是修改并保存,如果不存在是新建并保存
+// Publish:如果存在文章 Id:代表是修改并发布,如果不存在是新建并发布
+// 到 Repo 层
+// 由于有制作库和线上库,实际就是查询时查哪个库,将 Repo 分为 AuthorRepo 和 ReaderRepo
+// 在 service 层面做数据同步
+// Save 接口啥也不用改，因为它只改制作库
+// Publish 接口先改制作库，然后同步到线上库

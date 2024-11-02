@@ -20,8 +20,8 @@ import (
 func InitArticleHandler(db *gorm.DB) *web.ArticleHandler {
 	articleDao := dao.NewArticleDao(db)
 	articleRepository := repository.NewArticleRepository(articleDao)
-	articleService := service.NewArticleService(articleRepository)
 	logger := InitLog()
+	articleService := service.NewArticleService(articleRepository, logger)
 	articleHandler := web.NewArticleHandler(articleService, logger)
 	return articleHandler
 }
