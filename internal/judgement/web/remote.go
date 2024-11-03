@@ -1,11 +1,12 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/judgement/domain"
 	"oj/internal/judgement/service/remote"
 )
@@ -20,7 +21,7 @@ func NewSubmissionHandler(svc remote.SubmitService) *SubmissionHandler {
 	}
 }
 
-func (ctl *SubmissionHandler) RegisterRoute(r *gin.Engine) {
+func (ctl *SubmissionHandler) RegisterRoute(r *server.Hertz) {
 	submitGroup := r.Group("/remote")
 	{
 		submitGroup.POST("run", ctl.RunCode())
@@ -28,8 +29,8 @@ func (ctl *SubmissionHandler) RegisterRoute(r *gin.Engine) {
 	}
 }
 
-func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *SubmissionHandler) RunCode() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			UserId    uint64 `json:"userId"`
 			ProblemId uint64 `json:"problemId"`
@@ -42,7 +43,7 @@ func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 			return
 		}
 
-		result, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
+		result, err := ctl.svc.RunCode(ctx, domain.Submission{
 			UserId:    req.UserId,
 			ProblemID: req.ProblemId,
 			Code:      req.Code,
@@ -62,8 +63,8 @@ func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 	}
 }
 
-func (ctl *SubmissionHandler) SubmitCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *SubmissionHandler) SubmitCode() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			UserId    uint64 `json:"userId"`
 			ProblemId uint64 `json:"problemId"`
@@ -76,7 +77,7 @@ func (ctl *SubmissionHandler) SubmitCode() gin.HandlerFunc {
 			return
 		}
 
-		result, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
+		result, err := ctl.svc.RunCode(ctx, domain.Submission{
 			UserId:    req.UserId,
 			ProblemID: req.ProblemId,
 			Code:      req.Code,

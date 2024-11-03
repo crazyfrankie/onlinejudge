@@ -3,9 +3,9 @@
 package ioc
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/article"
 	"oj/internal/judgement"
 	"oj/internal/problem"
@@ -15,7 +15,7 @@ import (
 
 var BaseSet = wire.NewSet(InitDB, InitRedis)
 
-func InitGin() *gin.Engine {
+func InitGin() *server.Hertz {
 	wire.Build(
 		BaseSet,
 
@@ -39,5 +39,5 @@ func InitGin() *gin.Engine {
 		// web 服务器
 		InitWebServer,
 	)
-	return new(gin.Engine)
+	return new(server.Hertz)
 }

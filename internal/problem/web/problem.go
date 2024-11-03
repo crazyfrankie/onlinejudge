@@ -1,12 +1,13 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"go.uber.org/zap"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/problem/domain"
 	"oj/internal/problem/service"
 )
@@ -21,7 +22,7 @@ func NewProblemHandler(svc service.ProblemService) *ProblemHandler {
 	}
 }
 
-func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
+func (ctl *ProblemHandler) RegisterRoute(r *server.Hertz) {
 	//  管理员题目的增改查
 	modifyGroup := r.Group("admin/problem")
 	{
@@ -48,8 +49,8 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 
 }
 
-func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ProblemHandler) AddProblem() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type TestCaseReq struct {
 			Input  string `json:"input"`
 			Output string `json:"output"`
@@ -89,7 +90,7 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 		copy(pm.Prompt, req.Prompt)
 		copy(pm.TestCases, req.TestCases)
 
-		err := ctl.svc.AddProblem(c.Request.Context(), pm)
+		err := ctl.svc.AddProblem(ctx, pm)
 		switch {
 		case err != nil:
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
@@ -99,8 +100,8 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ProblemHandler) ModifyProblem() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Title      string `json:"title"`
 			Content    string `json:"content"`
@@ -114,7 +115,7 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 
 		id := c.Param("id")
 
-		pm, err := ctl.svc.ModifyProblem(c.Request.Context(), id, domain.Problem{
+		pm, err := ctl.svc.ModifyProblem(ctx, id, domain.Problem{
 			Title:      req.Title,
 			Content:    req.Content,
 			Difficulty: req.Difficulty,
@@ -131,9 +132,9 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) GetAllProblems() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		problems, err := ctl.svc.GetAllProblems(c.Request.Context())
+func (ctl *ProblemHandler) GetAllProblems() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		problems, err := ctl.svc.GetAllProblems(ctx)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
@@ -143,8 +144,8 @@ func (ctl *ProblemHandler) GetAllProblems() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ProblemHandler) AddTag() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Tag string `json:"tag"`
 		}
@@ -154,7 +155,7 @@ func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.svc.AddTag(c.Request.Context(), req.Tag)
+		err := ctl.svc.AddTag(ctx, req.Tag)
 
 		switch {
 		case errors.Is(err, service.ErrTagExists):
@@ -167,9 +168,9 @@ func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) GetAllTags() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tags, err := ctl.svc.FindAllTags(c.Request.Context())
+func (ctl *ProblemHandler) GetAllTags() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		tags, err := ctl.svc.FindAllTags(ctx)
 
 		switch {
 		case errors.Is(err, service.ErrNoTags):
@@ -182,8 +183,8 @@ func (ctl *ProblemHandler) GetAllTags() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ProblemHandler) ModifyTag() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Id  uint64 `json:"id"`
 			Tag string `json:"tag"`
@@ -194,7 +195,7 @@ func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.svc.ModifyTag(c.Request.Context(), req.Id, req.Tag)
+		err := ctl.svc.ModifyTag(ctx, req.Id, req.Tag)
 		switch {
 		case errors.Is(err, service.ErrTagExists):
 			c.JSON(http.StatusConflict, GetResponse(WithStatus(http.StatusConflict), WithMsg("this tag already exists")))
@@ -206,8 +207,8 @@ func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) GetProblem() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ProblemHandler) GetProblem() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Id  uint64 `json:"id"`
 			Tag string `json:"tag"`
@@ -219,7 +220,7 @@ func (ctl *ProblemHandler) GetProblem() gin.HandlerFunc {
 			return
 		}
 
-		pm, err := ctl.svc.GetProblem(c.Request.Context(), req.Id, req.Tag, title)
+		pm, err := ctl.svc.GetProblem(ctx, req.Id, req.Tag, title)
 		switch {
 		case errors.Is(err, service.ErrProblemNotFound):
 			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("problem not found")))
@@ -231,11 +232,11 @@ func (ctl *ProblemHandler) GetProblem() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) GetPmListByCategory() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ProblemHandler) GetPmListByCategory() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		tagName := c.Param("tag")
 
-		problems, err := ctl.svc.GetProblemsByTag(c.Request.Context(), tagName)
+		problems, err := ctl.svc.GetProblemsByTag(ctx, tagName)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 		}
@@ -244,9 +245,9 @@ func (ctl *ProblemHandler) GetPmListByCategory() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ProblemHandler) GetProblemSet() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		tags, err := ctl.svc.FindCountByTags(c.Request.Context())
+func (ctl *ProblemHandler) GetProblemSet() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
+		tags, err := ctl.svc.FindCountByTags(ctx)
 
 		switch {
 		case errors.Is(err, service.ErrNoTags):

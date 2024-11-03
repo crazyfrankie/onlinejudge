@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -28,7 +28,7 @@ func NewRedisJWTHandler(cmd redis.Cmdable) Handler {
 	}
 }
 
-func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64) error {
+func (h *RedisJWTHandler) SetLoginToken(ctx *app.RequestContext, role uint8, uid uint64) error {
 	ssid := uuid.New().String()
 	err := h.AccessToken(ctx, role, uid, ssid)
 	if err != nil {
@@ -43,7 +43,7 @@ func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64
 	return nil
 }
 
-func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) error {
+func (h *RedisJWTHandler) AccessToken(ctx *app.RequestContext, role uint8, id uint64, ssid string) error {
 	claims := Claims{
 		Role: role,
 		Id:   id,
@@ -60,7 +60,7 @@ func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, s
 	return err
 }
 
-func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, ssid string) error {
+func (h *RedisJWTHandler) RefreshToken(ctx *app.RequestContext, role uint8, id uint64, ssid string) error {
 	claims := RefreshClaims{
 		Role: role,
 		Id:   id,
@@ -77,7 +77,7 @@ func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, 
 	return err
 }
 
-func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
+func (h *RedisJWTHandler) ExtractToken(ctx *app.RequestContext) string {
 	tokenHeader := ctx.GetHeader("Authorization")
 	// 检查请求头中是否包含 Token
 	if tokenHeader == "" {
@@ -86,12 +86,12 @@ func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
 	return tokenHeader
 }
 
-func (h *RedisJWTHandler) CheckSession(ctx *gin.Context, ssid string) error {
+func (h *RedisJWTHandler) CheckSession(ctx *app.RequestContext, ssid string) error {
 	_, err := h.cmd.Exists(ctx.Request.Context(), fmt.Sprintf("user:ssid:%s", ssid)).Result()
 	return err
 }
 
-func (h *RedisJWTHandler) ClearToken(ctx *gin.Context) error {
+func (h *RedisJWTHandler) ClearToken(ctx *app.RequestContext) error {
 	ctx.Header("x-jwt-token", "")
 	ctx.Header("x-refresh-token", "")
 

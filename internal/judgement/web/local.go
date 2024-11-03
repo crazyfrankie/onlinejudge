@@ -1,12 +1,14 @@
 package web
 
 import (
+	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"oj/internal/judgement/domain"
 	"oj/internal/judgement/service/remote"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/judgement/service/local"
 )
 
@@ -20,7 +22,7 @@ func NewLocalSubmitHandler(svc local.LocSubmitService) *LocalSubmitHandler {
 	}
 }
 
-func (ctl *LocalSubmitHandler) RegisterRoute(r *gin.Engine) {
+func (ctl *LocalSubmitHandler) RegisterRoute(r *server.Hertz) {
 	submitGroup := r.Group("/local")
 	{
 		submitGroup.POST("run", ctl.RunCode())
@@ -28,8 +30,8 @@ func (ctl *LocalSubmitHandler) RegisterRoute(r *gin.Engine) {
 	}
 }
 
-func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *LocalSubmitHandler) RunCode() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			UserId    uint64 `json:"userId"`
 			ProblemId uint64 `json:"problemId"`
@@ -41,7 +43,7 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 			return
 		}
 
-		results, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
+		results, err := ctl.svc.RunCode(ctx, domain.Submission{
 			UserId:    req.UserId,
 			ProblemID: req.ProblemId,
 			Code:      req.Code,
@@ -61,8 +63,8 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 	}
 }
 
-func (ctl *LocalSubmitHandler) SubmitCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *LocalSubmitHandler) SubmitCode() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			UserId    uint64 `json:"userId"`
 			ProblemId uint64 `json:"problemId"`
@@ -75,7 +77,7 @@ func (ctl *LocalSubmitHandler) SubmitCode() gin.HandlerFunc {
 			return
 		}
 
-		result, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
+		result, err := ctl.svc.RunCode(ctx, domain.Submission{
 			UserId:    req.UserId,
 			ProblemID: req.ProblemId,
 			Code:      req.Code,

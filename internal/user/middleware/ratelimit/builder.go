@@ -6,8 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
+	"github.com/cloudwego/hertz/pkg/app"
 	"oj/pkg/ratelimit"
 )
 
@@ -32,8 +31,8 @@ func (b *Builder) Prefix(prefix string) *Builder {
 }
 
 // Build 构建 Gin 的中间件，用于处理限流逻辑
-func (b *Builder) Build() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (b *Builder) Build() app.HandlerFunc {
+	return func(c *app.RequestContext) {
 		limited, err := b.limit(c)
 		if err != nil {
 			// 如果执行限流时发生错误，返回 500 错误码
@@ -53,7 +52,7 @@ func (b *Builder) Build() gin.HandlerFunc {
 }
 
 // limit 执行限流逻辑，通过 Redis 的 Lua 脚本实现滑动窗口限流
-func (b *Builder) limit(c *gin.Context) (bool, error) {
+func (b *Builder) limit(c *app.RequestContext) (bool, error) {
 	// 生成限流的键，通常为前缀加上客户端 IP 地址
 	key := fmt.Sprintf("%s:%s", b.prefix, c.ClientIP())
 

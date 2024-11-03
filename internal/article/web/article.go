@@ -1,11 +1,13 @@
 package web
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/article/domain"
 	"oj/internal/article/service"
 	ijwt "oj/internal/user/middleware/jwt"
@@ -23,7 +25,7 @@ func NewArticleHandler(svc service.ArticleService, l *zap.Logger) *ArticleHandle
 	}
 }
 
-func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
+func (ctl *ArticleHandler) RegisterRoute(r *server.Hertz) {
 	postGroup := r.Group("articles")
 	{
 		postGroup.POST("/edit", ctl.Edit())
@@ -31,8 +33,8 @@ func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
 	}
 }
 
-func (ctl *ArticleHandler) Edit() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ArticleHandler) Edit() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		var req ArticleReq
 		if err := c.Bind(&req); err != nil {
 			return
@@ -48,7 +50,7 @@ func (ctl *ArticleHandler) Edit() gin.HandlerFunc {
 		}
 		claim := claims.(ijwt.Claims)
 
-		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
+		id, err := ctl.svc.SaveDraft(ctx, req.toDomain(claim.Id))
 		if err != nil {
 			ctl.l.Error("创建/更新帖子:系统错误")
 			c.JSON(http.StatusInternalServerError, Result[uint64]{
@@ -66,8 +68,8 @@ func (ctl *ArticleHandler) Edit() gin.HandlerFunc {
 	}
 }
 
-func (ctl *ArticleHandler) Publish() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *ArticleHandler) Publish() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		var req ArticleReq
 		if err := c.Bind(&req); err != nil {
 			return
@@ -83,7 +85,7 @@ func (ctl *ArticleHandler) Publish() gin.HandlerFunc {
 		}
 		claim := claims.(ijwt.Claims)
 
-		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
+		id, err := ctl.svc.Publish(ctx, req.toDomain(claim.Id))
 		if err != nil {
 			ctl.l.Error("发布帖子:系统错误")
 			c.JSON(http.StatusInternalServerError, Result[uint64]{

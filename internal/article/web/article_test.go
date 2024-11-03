@@ -3,7 +3,8 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -59,9 +60,9 @@ func TestArticleHandler_Publish(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			server := gin.Default()
+			server := server.Default()
 
-			server.Use(func(c *gin.Context) {
+			server.Use(func(c *app.RequestContext) {
 				c.Set("claims", ijwt.Claims{
 					Id: 1,
 				})

@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/user/domain"
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
@@ -33,7 +34,7 @@ func NewOAuthGithubHandler(svc github.Service, userSvc service.UserService, jwtH
 	}
 }
 
-func (h *OAuthGithubHandler) RegisterRoute(r *gin.Engine) {
+func (h *OAuthGithubHandler) RegisterRoute(r *server.Hertz) {
 	oauthGroup := r.Group("/oauth/github")
 	{
 		oauthGroup.GET("/url", h.GitAuthUrl())
@@ -41,8 +42,8 @@ func (h *OAuthGithubHandler) RegisterRoute(r *gin.Engine) {
 	}
 }
 
-func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (h *OAuthGithubHandler) GitAuthUrl() app.HandlerFunc {
+	return func(c *app.RequestContext) {
 		state := uuid.New().String()
 
 		url, err := h.svc.AuthUrl(c.Request.Context(), state)
@@ -60,7 +61,7 @@ func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 	}
 }
 
-func (h *OAuthGithubHandler) SetCookie(c *gin.Context, state string) error {
+func (h *OAuthGithubHandler) SetCookie(c *app.RequestContext, state string) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, StateClaims{
 		State: state,
 		StandardClaims: jwt.StandardClaims{
@@ -75,8 +76,8 @@ func (h *OAuthGithubHandler) SetCookie(c *gin.Context, state string) error {
 	return nil
 }
 
-func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (h *OAuthGithubHandler) CallBack() app.HandlerFunc {
+	return func(c *app.RequestContext) {
 		code := c.Query("code")
 
 		err := h.VerifyState(c)
@@ -111,7 +112,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 	}
 }
 
-func (h *OAuthGithubHandler) VerifyState(c *gin.Context) error {
+func (h *OAuthGithubHandler) VerifyState(c *app.RequestContext) error {
 	state := c.Query("state")
 	jwtState, err := c.Cookie("jwt-state")
 	if err != nil {

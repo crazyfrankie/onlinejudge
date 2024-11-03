@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/cloudwego/hertz/pkg/app"
 	ijwt "oj/internal/user/middleware/jwt"
 )
 
@@ -43,8 +43,8 @@ func (l *LoginJWTMiddlewareBuilder) AdminPaths(path string) *LoginJWTMiddlewareB
 	return l
 }
 
-func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (l *LoginJWTMiddlewareBuilder) CheckLogin() app.HandlerFunc {
+	return func(c *app.RequestContext) {
 		// 路径校验
 		if _, ok := l.ignorePaths[c.Request.URL.Path]; ok {
 			c.Next()

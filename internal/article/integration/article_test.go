@@ -10,7 +10,7 @@ import (
 	"oj/ioc"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -19,7 +19,7 @@ import (
 // ArticleTestSuite 测试套件
 type ArticleTestSuite struct {
 	suite.Suite
-	server *gin.Engine
+	server *server.Hertz
 	db     *gorm.DB
 }
 

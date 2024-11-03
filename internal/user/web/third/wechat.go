@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/user/domain"
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
@@ -38,7 +39,7 @@ func NewOAuthHandler(svc wechat.Service, jwtHdl ijwt.Handler, userSvc service.Us
 	}
 }
 
-func (h *OAuthWeChatHandler) RegisterRoute(r *gin.Engine) {
+func (h *OAuthWeChatHandler) RegisterRoute(r *server.Hertz) {
 	oauthGroup := r.Group("/oauth/wechat")
 	{
 		oauthGroup.GET("/url", h.AuthUrl())
@@ -46,8 +47,8 @@ func (h *OAuthWeChatHandler) RegisterRoute(r *gin.Engine) {
 	}
 }
 
-func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (h *OAuthWeChatHandler) AuthUrl() app.HandlerFunc {
+	return func(c *app.RequestContext) {
 		state := uuid.New().String()
 		url, err := h.svc.AuthURL(c.Request.Context(), state)
 		if err != nil {
@@ -64,7 +65,7 @@ func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
 	}
 }
 
-func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
+func (h *OAuthWeChatHandler) SetCookie(c *app.RequestContext, state string) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, StateClaims{
 		State: state,
 		StandardClaims: jwt.StandardClaims{
@@ -79,8 +80,8 @@ func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
 	return nil
 }
 
-func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (h *OAuthWeChatHandler) CallBack() app.HandlerFunc {
+	return func(c *app.RequestContext) {
 		code := c.Query("code")
 
 		err := h.VerifyState(c)
@@ -110,7 +111,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 	}
 }
 
-func (h *OAuthWeChatHandler) VerifyState(c *gin.Context) error {
+func (h *OAuthWeChatHandler) VerifyState(c *app.RequestContext) error {
 	state := c.Query("state")
 	jwtState, err := c.Cookie("jwt-state")
 	if err != nil {

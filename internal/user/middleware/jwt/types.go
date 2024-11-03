@@ -1,17 +1,17 @@
 package jwt
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/golang-jwt/jwt"
 )
 
 type Handler interface {
-	SetLoginToken(ctx *gin.Context, role uint8, uid uint64) error
-	AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) error
-	RefreshToken(ctx *gin.Context, role uint8, id uint64, ssid string) error
-	ExtractToken(ctx *gin.Context) string
-	CheckSession(ctx *gin.Context, ssid string) error
-	ClearToken(ctx *gin.Context) error
+	SetLoginToken(ctx *app.RequestContext, role uint8, uid uint64) error
+	AccessToken(ctx *app.RequestContext, role uint8, id uint64, ssid string) error
+	RefreshToken(ctx *app.RequestContext, role uint8, id uint64, ssid string) error
+	ExtractToken(ctx *app.RequestContext) string
+	CheckSession(ctx *app.RequestContext, ssid string) error
+	ClearToken(ctx *app.RequestContext) error
 }
 
 type Claims struct {

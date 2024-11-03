@@ -7,7 +7,7 @@
 package ioc
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"github.com/google/wire"
 	"oj/internal/article"
 	"oj/internal/judgement"
@@ -18,7 +18,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitGin() *gin.Engine {
+func InitGin() *server.Hertz {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
 	handler := jwt.NewRedisJWTHandler(cmdable)

@@ -1,7 +1,8 @@
 package ioc
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/article"
 	"oj/internal/auth"
 	"oj/internal/judgement"
@@ -13,8 +14,8 @@ import (
 	rate "oj/pkg/ratelimit"
 )
 
-func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler) *gin.Engine {
-	server := gin.Default()
+func InitWebServer(mdl []app.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler) *server.Hertz {
+	server := server.Default()
 	server.Use(mdl...)
 	// 注册路由
 	userHdl.RegisterRoute(server)
@@ -27,9 +28,9 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	return server
 }
 
-func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
-	return []gin.HandlerFunc{
-		//func(c *gin.Context) {
+func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []app.HandlerFunc {
+	return []app.HandlerFunc{
+		//func(c *app.RequestContext) {
 		//	c.Set("claims", ijwt.Claims{
 		//		Id: 1,
 		//	})

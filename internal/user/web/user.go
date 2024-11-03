@@ -1,16 +1,18 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"go.uber.org/zap"
 
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/app/server"
 	"oj/internal/user/domain"
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
@@ -32,7 +34,7 @@ func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jw
 	}
 }
 
-func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
+func (ctl *UserHandler) RegisterRoute(r *server.Hertz) {
 	userGroup := r.Group("user")
 	{
 		userGroup.POST("login", ctl.IdentifierLogin())
@@ -43,8 +45,8 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	}
 }
 
-func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) SendVerificationCode() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Phone string `json:"phone" validate:"required,len=11"`
 			Biz   string `json:"biz"`
@@ -63,7 +65,7 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.codeSvc.Send(c.Request.Context(), req.Biz, req.Phone)
+		err := ctl.codeSvc.Send(ctx, req.Biz, req.Phone)
 		switch {
 		case errors.Is(err, service.ErrSendTooMany):
 			zap.L().Error("发送验证码:发送过于频繁", zap.Error(err))
@@ -80,8 +82,8 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) VerificationCode() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Phone string `json:"phone" validate:"required,len=11"`
 			Code  string `json:"code"`
@@ -95,7 +97,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), req.Biz, req.Phone, req.Code)
+		_, err := ctl.codeSvc.Verify(ctx, req.Biz, req.Phone, req.Code)
 		switch {
 		case errors.Is(err, service.ErrVerifyTooMany):
 			zap.L().Error(fmt.Sprintf("%s:校验验证码:校验次数过多", req.Biz), zap.Error(err))
@@ -108,7 +110,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 		}
 
 		var user domain.User
-		user, err = ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
+		user, err = ctl.userSvc.FindOrCreateUser(ctx, req.Phone)
 		if err != nil {
 			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:系统错误", req.Biz), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
@@ -132,8 +134,8 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) IdentifierLogin() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Identifier string `json:"identifier"`
 			Password   string `json:"password"`
@@ -148,7 +150,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 		validate := validator.New()
 		isEmail := validate.Var(req.Identifier, "email") == nil
 
-		user, err := ctl.userSvc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
+		user, err := ctl.userSvc.Login(ctx, req.Identifier, req.Password, isEmail)
 		switch {
 		case errors.Is(err, service.ErrInvalidUserOrPassword):
 			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("identifier or password error")))
@@ -171,8 +173,8 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) GetUserInfo() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		claims, ok := c.Get("claims")
 		if !ok {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
@@ -181,7 +183,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 
 		claim := claims.(*ijwt.Claims)
 
-		user, err := ctl.userSvc.GetInfo(c.Request.Context(), claim.Id)
+		user, err := ctl.userSvc.GetInfo(ctx, claim.Id)
 
 		switch {
 		case err != nil:
@@ -192,8 +194,8 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) UpdatePassword() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
 			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
@@ -220,7 +222,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.userSvc.UpdatePassword(c.Request.Context(), domain.User{
+		err := ctl.userSvc.UpdatePassword(ctx, domain.User{
 			Id:       claim.Id,
 			Password: req.Password,
 		})
@@ -236,8 +238,8 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) UpdateBirthday() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Birthday time.Time `json:"birthday"`
 		}
@@ -263,7 +265,7 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
+		err := ctl.userSvc.UpdateBirthday(ctx, domain.User{
 			Id:       claim.Id,
 			Birthday: req.Birthday,
 		})
@@ -279,8 +281,8 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) UpdateEmail() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Email string `json:"email" validate:"required,email"`
 		}
@@ -306,7 +308,7 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateEmail(c.Request.Context(), domain.User{
+		err := ctl.userSvc.UpdateEmail(ctx, domain.User{
 			Id:    claim.Id,
 			Email: req.Email,
 		})
@@ -322,8 +324,8 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) UpdateName() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Name string `json:"name" validate:"required,min=3,max=20"`
 		}
@@ -349,7 +351,7 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateName(c.Request.Context(), domain.User{
+		err := ctl.userSvc.UpdateName(ctx, domain.User{
 			Id:   claim.Id,
 			Name: req.Name,
 		})
@@ -365,8 +367,8 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) UpdateRole() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		type Req struct {
 			Role uint8 `json:"role"`
 		}
@@ -384,7 +386,7 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateRole(c.Request.Context(), domain.User{
+		err := ctl.userSvc.UpdateRole(ctx, domain.User{
 			Id:   claim.Id,
 			Role: req.Role,
 		})
@@ -402,8 +404,8 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 
 // TokenRefresh 可以同时刷新长短 toke，用 redis 来记录是否有，即 refresh_token 是一次性
 // 参考登录部分，比较 User-Agent 来增强安全性
-func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) TokenRefresh() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		// 只有这个接口拿出来的才是 refresh_token
 		refreshToken := ctl.ExtractToken(c)
 		var rc ijwt.RefreshClaims
@@ -432,8 +434,8 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) LogOut() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func (ctl *UserHandler) LogOut() app.HandlerFunc {
+	return func(ctx context.Context, c *app.RequestContext) {
 		err := ctl.Handler.ClearToken(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("log out failed")))
