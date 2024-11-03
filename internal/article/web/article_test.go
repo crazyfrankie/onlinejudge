@@ -3,80 +3,74 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"oj/internal/article/integration"
-	"testing"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
+	"go.uber.org/mock/gomock"
+	"go.uber.org/zap"
+	"net/http"
+	"net/http/httptest"
+	"oj/internal/article/domain"
+	"oj/internal/article/service"
+	"oj/internal/article/service/svcmocks"
+	ijwt "oj/internal/user/middleware/jwt"
+	"testing"
 )
 
-// ArticleTestSuite 测试套件
-type ArticleTestSuite struct {
-	suite.Suite
-	server *gin.Engine
-}
-
-func (s *ArticleTestSuite) SetupSuite() {
-	s.server = gin.Default()
-	svc := integration.InitArticleService()
-	artHdl := NewArticleHandler(svc)
-	artHdl.RegisterRoute(s.server)
-}
-
-func TestArticle(t *testing.T) {
-	suite.Run(t, &ArticleTestSuite{})
-}
-
-func (s *ArticleTestSuite) TestArticleHandler_Edit() {
-	t := s.T()
+func TestArticleHandler_Publish(t *testing.T) {
 	testCases := []struct {
 		name string
 
-		// 集成测试准备数据
-		before func(t *testing.T)
-		// 集成测试验证数据
-		after func(t *testing.T)
+		mock func(ctrl *gomock.Controller) service.ArticleService
 
-		// 预期输入
-		art Article
-		// HTTP 响应码
+		reqBody string
+
 		wantCode int
-		// 希望带上文章的 ID
-		wantResult Result[uint64]
+
+		wantRes Response
 	}{
 		{
-			name: "新建帖子-保存成功",
-			before: func(t *testing.T) {
-
-			},
-			after: func(t *testing.T) {
-				// 验证数据库
-			},
-
-			art: Article{
-				Title:   "我的标题",
-				Content: "我的内容",
+			name: "新建并发表",
+			reqBody: `
+					{
+						"title":"我的标题",
+						"content":"我的内容"
+					}`,
+			mock: func(ctrl *gomock.Controller) service.ArticleService {
+				svc := svcmocks.NewMockArticleService(ctrl)
+				svc.EXPECT().Publish(gomock.Any(), domain.Article{
+					Title:   "我的标题",
+					Content: "我的内容",
+					Author: domain.Author{
+						Id: 1,
+					},
+				}).Return(uint64(1), nil)
+				return svc
 			},
 			wantCode: http.StatusOK,
-			wantResult: Result[uint64]{
-				Data: 1,
+			wantRes: Response{
+				Data: float64(1),
 				Msg:  "OK",
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// 构造请求
-			// 执行
-			// 验证结果
-			tc.before(t)
-			reqBody, err := json.Marshal(tc.art)
-			assert.NoError(t, err)
-			req, err := http.NewRequest(http.MethodPost, "/posts/edit", bytes.NewBuffer(reqBody))
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			server := gin.Default()
+
+			server.Use(func(c *gin.Context) {
+				c.Set("claims", ijwt.Claims{
+					Id: 1,
+				})
+			})
+
+			h := NewArticleHandler(tc.mock(ctrl), zap.NewNop())
+			h.RegisterRoute(server)
+
+			req, err := http.NewRequest(http.MethodPost, "/articles/publish", bytes.NewBuffer([]byte(tc.reqBody)))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", "application/json")
 
@@ -84,19 +78,13 @@ func (s *ArticleTestSuite) TestArticleHandler_Edit() {
 			// 这就是 HTTP 请求进入 Gin 的地方
 			// 当这样调用时，Gin 就会处理这个请求
 			// 响应写回到 resp 里
-			s.server.ServeHTTP(resp, req)
+			server.ServeHTTP(resp, req)
 
 			assert.Equal(t, tc.wantCode, resp.Code)
-			var webRes Result[uint64]
+			var webRes Response
 			err = json.NewDecoder(resp.Body).Decode(&webRes)
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantResult, webRes)
-			tc.after(t)
+			assert.Equal(t, tc.wantRes, webRes)
 		})
 	}
-}
-
-type Article struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
 }
