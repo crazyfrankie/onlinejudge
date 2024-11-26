@@ -10,9 +10,6 @@ import (
 )
 
 var (
-	ErrUserDuplicateEmail  = dao.ErrUserDuplicateEmail
-	ErrUserDuplicateName   = dao.ErrUserDuplicateName
-	ErrUserDuplicatePhone  = dao.ErrUserDuplicatePhone
 	ErrUserNotFound        = dao.ErrUserNotFound
 	ErrUserDuplicateWechat = dao.ErrUserDuplicateWechat
 )

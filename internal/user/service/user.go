@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -14,19 +15,15 @@ import (
 )
 
 var (
-	ErrUserDuplicateEmail    = repository.ErrUserDuplicateEmail
-	ErrUserDuplicateName     = repository.ErrUserDuplicateName
-	ErrUserDuplicatePhone    = repository.ErrUserDuplicatePhone
-	ErrUserNotFound          = repository.ErrUserNotFound
-	ErrInvalidUserOrPassword = errors.New("identifier or password error")
+	ErrUserNotFound = repository.ErrUserNotFound
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 type UserService interface {
 	CheckPhone(ctx context.Context, phone string) (domain.User, error)
-	FindOrCreateUser(ctx context.Context, phone string) (domain.User, error)
-	Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error)
+	FindOrCreateUser(ctx context.Context, phone string) (domain.User, *CodeServiceError)
+	Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, *CodeServiceError)
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindOrCreateByWechat(ctx context.Context, wechatInfo domain.WeChatInfo) (domain.User, error)
@@ -53,20 +50,20 @@ func (svc *UserSvc) CheckPhone(ctx context.Context, phone string) (domain.User, 
 	return svc.repo.CheckPhone(ctx, phone)
 }
 
-func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.User, error) {
+func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.User, *CodeServiceError) {
 	user, err := svc.repo.FindByPhone(ctx, phone)
 	if err == nil {
 		return user, nil
 	}
 
 	if !errors.Is(err, ErrUserNotFound) {
-		return domain.User{}, err
+		return domain.User{}, &CodeServiceError{Code: http.StatusInternalServerError, Message: "system error"}
 	}
 
 	var code string
 	code, err = svc.GenerateCode()
 	if err != nil {
-		return domain.User{}, err
+		return domain.User{}, &CodeServiceError{Code: http.StatusInternalServerError, Message: "system error"}
 	}
 	u := domain.User{
 		Phone: phone,
@@ -75,17 +72,22 @@ func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.
 
 	err = svc.repo.Create(ctx, u)
 	if err != nil {
-		return domain.User{}, err
+		return domain.User{}, &CodeServiceError{Code: http.StatusInternalServerError, Message: "system error"}
 	}
 
-	return svc.repo.FindByPhone(ctx, phone)
+	user, err = svc.repo.FindByPhone(ctx, phone)
+	if err != nil {
+		return domain.User{}, &CodeServiceError{Code: http.StatusInternalServerError, Message: "system error"}
+	}
+
+	return user, nil
 }
 
 func (svc *UserSvc) FindByPhone(ctx context.Context, phone string) (domain.User, error) {
 	return svc.repo.FindByPhone(ctx, phone)
 }
 
-func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, error) {
+func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEmail bool) (domain.User, *CodeServiceError) {
 	var err error
 	var user domain.User
 
@@ -95,12 +97,16 @@ func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEm
 		user, err = svc.repo.FindByName(ctx, identifier)
 	}
 	if err != nil {
-		return domain.User{}, err
+		if errors.Is(err, ErrUserNotFound) {
+			return domain.User{}, &CodeServiceError{Code: http.StatusNotFound, Message: "user not found"}
+		} else {
+			return domain.User{}, &CodeServiceError{Code: http.StatusInternalServerError, Message: "system error"}
+		}
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		// 打 DEBUG 日志
-		return domain.User{}, ErrInvalidUserOrPassword
+		return domain.User{}, &CodeServiceError{Code: http.StatusUnauthorized, Message: "identifier or password error"}
 	}
 
 	return user, nil

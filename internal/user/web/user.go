@@ -1,7 +1,6 @@
 package web
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -46,37 +45,30 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Phone string `json:"phone" validate:"required,len=11"`
+			Phone string `json:"phone"`
 			Biz   string `json:"biz"`
 		}
-
 		var req Req
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("发送验证码:绑定信息错误", zap.Error(err))
+			zap.L().Error(fmt.Sprintf("%s:绑定参数错误", req.Biz))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg(err.Error())))
 			return
 		}
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			zap.L().Error("发送验证码:手机号格式校验错误", zap.Error(err))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed:"+err.Error())))
+			zap.L().Error(fmt.Sprintf("%s:校验参数错误", req.Biz))
+			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg(err.Error())))
 			return
 		}
 
 		err := ctl.codeSvc.Send(c.Request.Context(), req.Biz, req.Phone)
-		switch {
-		case errors.Is(err, service.ErrSendTooMany):
-			zap.L().Error("发送验证码:发送过于频繁", zap.Error(err))
-			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("send too many")))
+		if err != nil {
+			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
 			return
-		case err != nil:
-			zap.L().Error("发送验证码:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
-			return
-		default:
-			zap.L().Info("发送验证码成功")
-			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
 		}
+
+		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
 	}
 }
 
@@ -95,28 +87,21 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		_, err := ctl.codeSvc.Verify(c.Request.Context(), req.Biz, req.Phone, req.Code)
-		switch {
-		case errors.Is(err, service.ErrVerifyTooMany):
-			zap.L().Error(fmt.Sprintf("%s:校验验证码:校验次数过多", req.Biz), zap.Error(err))
-			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("verify too many")))
-			return
-		case err != nil:
-			zap.L().Error(fmt.Sprintf("%s:校验验证码:系统错误", req.Biz), zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+		err := ctl.codeSvc.Verify(c.Request.Context(), req.Biz, req.Phone, req.Code)
+		if err != nil {
+			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
 			return
 		}
 
-		var user domain.User
-		user, err = ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
+		user, err := ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
 		if err != nil {
-			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:系统错误", req.Biz), zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:%s", req.Biz, err.Message), zap.String("error", err.Message))
+			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
 			return
 		}
 
-		err = ctl.SetLoginToken(c, user.Role, user.Id)
-		if err != nil {
+		tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
+		if tokenErr != nil {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}
@@ -149,20 +134,13 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 		isEmail := validate.Var(req.Identifier, "email") == nil
 
 		user, err := ctl.userSvc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
-		switch {
-		case errors.Is(err, service.ErrInvalidUserOrPassword):
-			c.JSON(http.StatusTooManyRequests, GetResponse(WithStatus(http.StatusTooManyRequests), WithMsg("identifier or password error")))
-			return
-		case errors.Is(err, service.ErrUserNotFound):
-			c.JSON(http.StatusNotFound, GetResponse(WithStatus(http.StatusNotFound), WithMsg("identifier not found")))
-			return
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+		if err != nil {
+			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
 			return
 		}
 
-		err = ctl.SetLoginToken(c, user.Role, user.Id)
-		if err != nil {
+		tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
+		if tokenErr != nil {
 			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
 			return
 		}

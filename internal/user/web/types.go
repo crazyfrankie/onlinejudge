@@ -1,17 +1,17 @@
 package web
 
 type Response struct {
-	Status int         `json:"status"`
-	Data   interface{} `json:"data"`
-	Msg    string      `json:"msg"`
-	Err    string      `json:"err"`
+	Code int         `json:"code"`
+	Data interface{} `json:"data"`
+	Msg  string      `json:"msg"`
+	Err  string      `json:"err"`
 }
 
 func GetResponse(options ...func(*Response)) Response {
 	resp := Response{
-		Status: 200, // 默认状态
-		Msg:    "",  // 默认消息
-		Err:    "",  // 默认错误信息
+		Code: 200, // 默认状态
+		Msg:  "",  // 默认消息
+		Err:  "",  // 默认错误信息
 	}
 	for _, opt := range options {
 		opt(&resp)
@@ -21,9 +21,9 @@ func GetResponse(options ...func(*Response)) Response {
 
 // 设置具体参数的函数
 
-func WithStatus(status int) func(*Response) {
+func WithStatus(code int) func(*Response) {
 	return func(r *Response) {
-		r.Status = status
+		r.Code = code
 	}
 }
 

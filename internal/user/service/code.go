@@ -5,7 +5,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -25,8 +27,8 @@ var (
 )
 
 type CodeService interface {
-	Send(ctx context.Context, biz, phone string) error
-	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
+	Send(ctx context.Context, biz, receiver string) *CodeServiceError
+	Verify(ctx context.Context, biz, phone, inputCode string) *CodeServiceError
 	GenerateCode() string
 	GenerateHMAC(code, key string) string
 }
@@ -36,6 +38,11 @@ type CodeSvc struct {
 	sms  smsSvc.Service
 }
 
+type CodeServiceError struct {
+	Code    int
+	Message string
+}
+
 func NewCodeService(r repository.CodeRepository, sms smsSvc.Service) CodeService {
 	return &CodeSvc{
 		repo: r,
@@ -43,7 +50,7 @@ func NewCodeService(r repository.CodeRepository, sms smsSvc.Service) CodeService
 	}
 }
 
-func (svc *CodeSvc) Send(ctx context.Context, biz, phone string) error {
+func (svc *CodeSvc) Send(ctx context.Context, biz, receiver string) *CodeServiceError {
 	// 生成一个验证码
 	code := svc.GenerateCode()
 
@@ -51,22 +58,38 @@ func (svc *CodeSvc) Send(ctx context.Context, biz, phone string) error {
 	enCode := svc.GenerateHMAC(code, secretKey)
 
 	// 塞进去 Redis
-	err := svc.repo.Store(ctx, biz, phone, enCode)
+	err := svc.repo.Store(ctx, biz, receiver, enCode)
 	if err != nil {
-		return err
+		if errors.Is(err, ErrSendTooMany) {
+			return &CodeServiceError{Code: http.StatusTooManyRequests, Message: "send too many"}
+		} else {
+			return &CodeServiceError{Code: http.StatusBadRequest, Message: "system error"}
+		}
 	}
 
 	// 发送出去
-	err = svc.sms.Send(ctx, codeTplId, []string{code}, phone)
+	err = svc.sms.Send(ctx, codeTplId, []string{code}, receiver)
+	if err != nil {
+		return &CodeServiceError{Code: http.StatusInternalServerError, Message: "failed to send"}
+	}
 
-	return err
+	return nil
 }
 
-func (svc *CodeSvc) Verify(ctx context.Context, biz, phone, inputCode string) (bool, error) {
+func (svc *CodeSvc) Verify(ctx context.Context, biz, phone, inputCode string) *CodeServiceError {
 	// 拿到 code 后加密再去跟 redis 中的 code 进行对比
 	enCode := svc.GenerateHMAC(inputCode, secretKey)
 
-	return svc.repo.Verify(ctx, biz, phone, enCode)
+	_, err := svc.repo.Verify(ctx, biz, phone, enCode)
+	if err != nil {
+		if errors.Is(err, ErrVerifyTooMany) {
+			return &CodeServiceError{Code: http.StatusTooManyRequests, Message: "verify too many"}
+		} else {
+			return &CodeServiceError{Code: http.StatusBadRequest, Message: "system error"}
+		}
+	}
+
+	return nil
 }
 
 func (svc *CodeSvc) GenerateCode() string {

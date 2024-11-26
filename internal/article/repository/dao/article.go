@@ -103,3 +103,30 @@ func (dao *ArticleDao) Upsert(ctx context.Context, art OnlineArticle) error {
 		// Where: 数据冲突了，并且符合 WHERE 条件的就会执行更新
 	}).Create(&art).Error
 }
+
+func (dao *ArticleDao) SyncStatus(ctx context.Context, id uint64, authorId uint64, private uint8) error {
+	now := time.Now().UnixMilli()
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&Article{}).
+			Where("id = ? AND author_id = ?", id, authorId).
+			Updates(map[string]any{
+				"status": private,
+				"utime":  now,
+			})
+
+		if res.Error != nil {
+			// 数据库有问题
+			return res.Error
+		}
+		if res.RowsAffected != 1 {
+			return fmt.Errorf("有人误操作,uid :%d", id)
+		}
+
+		return tx.Model(&Article{}).
+			Where("id = ? ", id).
+			Updates(map[string]any{
+				"status": private,
+				"utime":  now,
+			}).Error
+	})
+}

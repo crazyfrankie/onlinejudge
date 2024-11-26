@@ -35,6 +35,7 @@ func (repo *ArticleRepository) onlineArticleDomainToDao(art domain.Article) dao.
 		Title:    art.Title,
 		Content:  art.Content,
 		AuthorID: art.Author.Id,
+		Status:   art.Status.ToUint8(),
 	}
 }
 
@@ -44,5 +45,10 @@ func (repo *ArticleRepository) articleDomainToDao(art domain.Article) dao.Articl
 		Content:  art.Content,
 		Title:    art.Title,
 		AuthorID: art.Author.Id,
+		Status:   art.Status.ToUint8(),
 	}
+}
+
+func (repo *ArticleRepository) SyncStatus(ctx context.Context, id uint64, authorId uint64, private domain.ArticleStatus) error {
+	return repo.dao.SyncStatus(ctx, id, authorId, private.ToUint8())
 }

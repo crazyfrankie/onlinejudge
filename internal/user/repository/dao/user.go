@@ -4,18 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
-	"strings"
 	"time"
 
 	"oj/internal/user/domain"
 )
 
 var (
-	ErrUserDuplicateEmail  = errors.New("duplicate email")
-	ErrUserDuplicateName   = errors.New("duplicate name")
-	ErrUserDuplicatePhone  = errors.New("duplicate phone")
 	ErrUserDuplicateWechat = errors.New("duplicate wechat")
 	ErrUserNotFound        = errors.New("user not found")
 	ErrRecordNotFound      = errors.New("record not found")
@@ -61,40 +56,23 @@ func NewUserDao(db *gorm.DB) UserDao {
 	}
 }
 
-func handleDBError(err error) error {
-	var mysqlErr *mysql.MySQLError
-	const uniqueConflictErrNo uint16 = 1062
-
-	if errors.As(err, &mysqlErr) && mysqlErr.Number == uniqueConflictErrNo {
-		if strings.Contains(mysqlErr.Message, "email") {
-			return ErrUserDuplicateEmail
-		} else if strings.Contains(mysqlErr.Message, "name") {
-			return ErrUserDuplicateName
-		} else if strings.Contains(mysqlErr.Message, "phone") {
-			return ErrUserDuplicatePhone
-		}
-	}
-	return err
-}
+//func handleDBError(err error) error {
+//	var mysqlErr *mysql.MySQLError
+//	const uniqueConflictErrNo uint16 = 1062
+//
+//	if errors.As(err, &mysqlErr) && mysqlErr.Number == uniqueConflictErrNo {
+//		if strings.Contains(mysqlErr.Message, "email") {
+//			return ErrUserDuplicateEmail
+//		} else if strings.Contains(mysqlErr.Message, "name") {
+//			return ErrUserDuplicateName
+//		} else if strings.Contains(mysqlErr.Message, "phone") {
+//			return ErrUserDuplicatePhone
+//		}
+//	}
+//	return err
+//}
 
 func (dao *GormUserDao) Insert(ctx context.Context, user domain.User) error {
-	// 开启事务
-	tx := dao.db.Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	var existingUser User
-	if err := tx.WithContext(ctx).Where("phone = ?", user.Phone).First(&existingUser).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			tx.Rollback() // 查询出错则回滚事务
-			return err
-		}
-	} else {
-		tx.Rollback() // 如果用户已存在则回滚事务
-		return ErrUserDuplicatePhone
-	}
-
 	u := User{
 		Phone: user.Phone,
 		Role:  0,
@@ -103,12 +81,11 @@ func (dao *GormUserDao) Insert(ctx context.Context, user domain.User) error {
 	now := time.Now().UnixMilli()
 	u.Ctime = now
 	u.Uptime = now
-	if err := tx.WithContext(ctx).Create(&u).Error; err != nil {
-		tx.Rollback() // 插入失败则回滚事务
-		return handleDBError(err)
+	if err := dao.db.WithContext(ctx).Create(&u).Error; err != nil {
+		return err
 	}
 
-	return tx.Commit().Error
+	return nil
 }
 
 func (dao *GormUserDao) FindByName(ctx context.Context, name string) (domain.User, error) {

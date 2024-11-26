@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -16,6 +17,23 @@ type ArticleHandler struct {
 	l   *zap.Logger
 }
 
+type ArticleReq struct {
+	ID      uint64 `json:"id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+func (req ArticleReq) toDomain(uid uint64) domain.Article {
+	return domain.Article{
+		ID: req.ID,
+		Author: domain.Author{
+			Id: uid,
+		},
+		Title:   req.Title,
+		Content: req.Content,
+	}
+}
+
 func NewArticleHandler(svc service.ArticleService, l *zap.Logger) *ArticleHandler {
 	return &ArticleHandler{
 		svc: svc,
@@ -28,6 +46,7 @@ func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
 	{
 		postGroup.POST("/edit", ctl.Edit())
 		postGroup.POST("/publish", ctl.Publish())
+		postGroup.POST("/:id/withdraw", ctl.WithDraw())
 	}
 }
 
@@ -101,20 +120,33 @@ func (ctl *ArticleHandler) Publish() gin.HandlerFunc {
 	}
 }
 
-type ArticleReq struct {
-	ID      uint64 `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
-}
+func (ctl *ArticleHandler) WithDraw() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Query("id")
 
-func (req ArticleReq) toDomain(uid uint64) domain.Article {
-	return domain.Article{
-		ID: req.ID,
-		Author: domain.Author{
-			Id: uid,
-		},
-		Title:   req.Title,
-		Content: req.Content,
+		claims := c.MustGet("claims")
+		claim := claims.(ijwt.Claims)
+
+		Id, _ := strconv.Atoi(id)
+		err := ctl.svc.WithDraw(c.Request.Context(), domain.Article{
+			ID: uint64(Id),
+			Author: domain.Author{
+				Id: claim.Id,
+			},
+		})
+		if err != nil {
+			ctl.l.Error("撤回帖子:系统错误")
+			c.JSON(http.StatusInternalServerError, Result[uint64]{
+				Data: 0,
+				Msg:  "system error",
+			})
+			return
+		}
+
+		ctl.l.Info("帖子撤回成功")
+		c.JSON(http.StatusOK, Result[uint64]{
+			Msg: "OK",
+		})
 	}
 }
 

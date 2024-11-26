@@ -14,7 +14,8 @@ type Article struct {
 	// - 在 AuthorID 和 CTIME 上加联合索引
 	// - 在 AuthorID 上创建索引
 	AuthorID uint64 `gorm:"index:aid_ctime"`
-	Ctime    int64  `gorm:"index:aid_ctime"`
+	Status   uint8
+	Ctime    int64 `gorm:"index:aid_ctime"`
 	Utime    int64
 }
 
@@ -24,6 +25,7 @@ type OnlineArticle struct {
 	Title    string `gorm:"type:varchar(1024)"`
 	Content  string `gorm:"type:BLOB"`
 	AuthorID uint64 `gorm:"index:aid_ctime"`
-	Ctime    int64  `gorm:"index:aid_ctime"`
+	Status   uint8
+	Ctime    int64 `gorm:"index:aid_ctime"`
 	Utime    int64
 }

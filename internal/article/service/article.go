@@ -12,6 +12,7 @@ import (
 type ArticleService interface {
 	SaveDraft(ctx context.Context, art domain.Article) (uint64, error)
 	Publish(ctx context.Context, art domain.Article) (uint64, error)
+	WithDraw(ctx context.Context, art domain.Article) error
 }
 
 type articleService struct {
@@ -30,6 +31,7 @@ func NewArticleService(repo *repository.ArticleRepository, logger *zap.Logger) A
 // 如果 art 的 ID 大于0,说明是更新草稿,直接去制作库更新代表保存
 // 如果 art 的 ID 小于等于0,说明是新建的草稿,创建草稿到制作库即代表保存
 func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (uint64, error) {
+	art.Status = domain.ArticleStatusUnPublished
 	if art.ID > 0 {
 		err := svc.repo.UpdateDraft(ctx, art)
 		return art.ID, err
@@ -78,4 +80,8 @@ func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uin
 	//
 	//return id, err
 	return svc.repo.Sync(ctx, art)
+}
+
+func (svc *articleService) WithDraw(ctx context.Context, art domain.Article) error {
+	return svc.repo.SyncStatus(ctx, art.ID, art.Author.Id, domain.ArticleStatusPrivate)
 }
