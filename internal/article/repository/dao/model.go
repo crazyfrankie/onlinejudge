@@ -2,9 +2,9 @@ package dao
 
 // Article 制作库
 type Article struct {
-	ID      uint64 `gorm:"primaryKey,autoIncrement"`
-	Title   string `gorm:"type:varchar(1024)"`
-	Content string `gorm:"type:BLOB"`
+	ID      uint64 `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
+	Title   string `gorm:"type:varchar(1024)" bson:"title,omitempty"`
+	Content string `gorm:"type:BLOB" bson:"content,omitempty"`
 	// 如何设计索引
 	// 在帖子这里，是什么样的查询场景
 	// 对于创作者来说，需要看草稿箱，看到自己所有的文章
@@ -13,19 +13,19 @@ type Article struct {
 	// 单独查询某一篇 SELECT * FROM article WHERE id = 1
 	// - 在 AuthorID 和 CTIME 上加联合索引
 	// - 在 AuthorID 上创建索引
-	AuthorID uint64 `gorm:"index:aid_ctime"`
-	Status   uint8
-	Ctime    int64 `gorm:"index:aid_ctime"`
-	Utime    int64
+	AuthorID uint64 `gorm:"index:aid_ctime" bson:"author_id,omitempty"`
+	Status   uint8  `bson:"status,omitempty"`
+	Ctime    int64  `gorm:"index:aid_ctime" bson:"ctime,omitempty"`
+	Utime    int64  `bson:"utime,omitempty"`
 }
 
 // OnlineArticle 线上库
 type OnlineArticle struct {
-	ID       uint64 `gorm:"primaryKey,autoIncrement"`
-	Title    string `gorm:"type:varchar(1024)"`
-	Content  string `gorm:"type:BLOB"`
-	AuthorID uint64 `gorm:"index:aid_ctime"`
-	Status   uint8
-	Ctime    int64 `gorm:"index:aid_ctime"`
-	Utime    int64
+	ID       uint64 `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
+	Title    string `gorm:"type:varchar(1024)" bson:"title,omitempty"`
+	Content  string `gorm:"type:BLOB" bson:"content,omitempty"`
+	AuthorID uint64 `gorm:"index:aid_ctime" bson:"author_id,omitempty"`
+	Status   uint8  `bson:"status,omitempty"`
+	Ctime    int64  `gorm:"index:aid_ctime" bson:"ctime,omitempty"`
+	Utime    int64  `bson:"utime,omitempty"`
 }

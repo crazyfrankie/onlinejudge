@@ -9,17 +9,17 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type ArticleDao struct {
+type GORMArticleDao struct {
 	db *gorm.DB
 }
 
-func NewArticleDao(db *gorm.DB) *ArticleDao {
-	return &ArticleDao{
+func NewArticleDao(db *gorm.DB) *GORMArticleDao {
+	return &GORMArticleDao{
 		db: db,
 	}
 }
 
-func (dao *ArticleDao) CreateDraft(ctx context.Context, art Article) (uint64, error) {
+func (dao *GORMArticleDao) CreateDraft(ctx context.Context, art Article) (uint64, error) {
 	now := time.Now().UnixMilli()
 	art.Ctime = now
 	art.Utime = now
@@ -27,7 +27,7 @@ func (dao *ArticleDao) CreateDraft(ctx context.Context, art Article) (uint64, er
 	return art.ID, err
 }
 
-func (dao *ArticleDao) UpdateDraftByID(ctx context.Context, art Article) error {
+func (dao *GORMArticleDao) UpdateDraftByID(ctx context.Context, art Article) error {
 	now := time.Now().UnixMilli()
 	art.Utime = now
 
@@ -52,7 +52,7 @@ func (dao *ArticleDao) UpdateDraftByID(ctx context.Context, art Article) error {
 	return result.Error
 }
 
-func (dao *ArticleDao) SyncToPublish(ctx context.Context, art Article) (uint64, error) {
+func (dao *GORMArticleDao) SyncToPublish(ctx context.Context, art Article) (uint64, error) {
 	var (
 		id = art.ID
 	)
@@ -81,7 +81,7 @@ func (dao *ArticleDao) SyncToPublish(ctx context.Context, art Article) (uint64, 
 	return id, err
 }
 
-func (dao *ArticleDao) Upsert(ctx context.Context, art OnlineArticle) error {
+func (dao *GORMArticleDao) Upsert(ctx context.Context, art OnlineArticle) error {
 	// 实现 INSERT OR UPDATE
 	// SQL:
 	// INSERT xxx ON DUPLICATE KEY UPDATE xxx(如果是更新,xxx 代表要更新的列)
@@ -104,7 +104,7 @@ func (dao *ArticleDao) Upsert(ctx context.Context, art OnlineArticle) error {
 	}).Create(&art).Error
 }
 
-func (dao *ArticleDao) SyncStatus(ctx context.Context, id uint64, authorId uint64, private uint8) error {
+func (dao *GORMArticleDao) SyncStatus(ctx context.Context, id uint64, authorId uint64, private uint8) error {
 	now := time.Now().UnixMilli()
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		res := tx.Model(&Article{}).
@@ -122,7 +122,7 @@ func (dao *ArticleDao) SyncStatus(ctx context.Context, id uint64, authorId uint6
 			return fmt.Errorf("有人误操作,uid :%d", id)
 		}
 
-		return tx.Model(&Article{}).
+		return tx.Model(&OnlineArticle{}).
 			Where("id = ? ", id).
 			Updates(map[string]any{
 				"status": private,

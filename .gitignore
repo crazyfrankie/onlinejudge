@@ -11,3 +11,5 @@ onlinejudge
 
 .luarc.json
 /Makefile
+
+/config/

@@ -8,10 +8,10 @@ import (
 )
 
 type ArticleRepository struct {
-	dao *dao.ArticleDao
+	dao *dao.GORMArticleDao
 }
 
-func NewArticleRepository(dao *dao.ArticleDao) *ArticleRepository {
+func NewArticleRepository(dao *dao.GORMArticleDao) *ArticleRepository {
 	return &ArticleRepository{
 		dao: dao,
 	}
