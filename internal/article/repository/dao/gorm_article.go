@@ -98,6 +98,7 @@ func (dao *GORMArticleDao) Upsert(ctx context.Context, art OnlineArticle) error 
 			"title":   art.Title,
 			"content": art.Content,
 			"utime":   now,
+			"status":  art.Status,
 		}),
 		// DoNothing: 数据冲突了啥也不干
 		// Where: 数据冲突了，并且符合 WHERE 条件的就会执行更新
