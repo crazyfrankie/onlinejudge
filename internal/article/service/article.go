@@ -13,6 +13,7 @@ type ArticleService interface {
 	SaveDraft(ctx context.Context, art domain.Article) (uint64, error)
 	Publish(ctx context.Context, art domain.Article) (uint64, error)
 	WithDraw(ctx context.Context, art domain.Article) error
+	//List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error)
 }
 
 type articleService struct {
@@ -85,3 +86,7 @@ func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uin
 func (svc *articleService) WithDraw(ctx context.Context, art domain.Article) error {
 	return svc.repo.SyncStatus(ctx, art.ID, art.Author.Id, domain.ArticleStatusPrivate)
 }
+
+//func (svc *articleService) List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error) {
+//
+//}

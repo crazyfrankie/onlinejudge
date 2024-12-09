@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"oj/common/constant"
+	"oj/common/response"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +16,6 @@ import (
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
 	"oj/internal/user/service/oauth/wechat"
-	"oj/internal/user/web"
 )
 
 type OAuthWeChatHandler struct {
@@ -51,16 +52,16 @@ func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
 		state := uuid.New().String()
 		url, err := h.svc.AuthURL(c.Request.Context(), state)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("get url failed")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
-		c.JSON(http.StatusOK, web.GetResponse(web.WithStatus(http.StatusOK), web.WithData(url)))
+		response.Success(c, url)
 	}
 }
 
@@ -85,13 +86,13 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		err := h.VerifyState(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		info, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -100,13 +101,14 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 			UnionID: info.UnionID,
 		})
 
-		err = h.Handler.SetLoginToken(c, 0, user.Id)
+		tokens, err := h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
-		c.JSON(http.StatusOK, web.GetResponse(web.WithStatus(http.StatusOK), web.WithMsg("login successfully")))
+		url := fmt.Sprintf("http://localhost:8081?access_token=%s&refresh_token=%s", tokens[0], tokens[1])
+		c.Redirect(http.StatusFound, url)
 	}
 }
 

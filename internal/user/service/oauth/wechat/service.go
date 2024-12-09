@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	redirectUri = url.PathEscape("https://zoj.com/oauth/wechat/callback")
+	redirectUri = url.PathEscape("http://zoj.top/oauth/wechat/callback")
 )
 
 type Service interface {

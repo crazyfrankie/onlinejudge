@@ -28,22 +28,22 @@ func NewRedisJWTHandler(cmd redis.Cmdable) *RedisJWTHandler {
 	}
 }
 
-func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64) error {
+func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64) ([]string, error) {
 	ssid := uuid.New().String()
-	err := h.AccessToken(ctx, role, uid, ssid)
+	accessToken, err := h.AccessToken(ctx, role, uid, ssid)
 	if err != nil {
-		return err
+		return []string{}, err
 	}
 
-	err = h.RefreshToken(ctx, role, uid, ssid)
+	refreshToken, err := h.RefreshToken(ctx, role, uid, ssid)
 	if err != nil {
-		return err
+		return []string{}, err
 	}
 
-	return nil
+	return []string{accessToken, refreshToken}, nil
 }
 
-func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) error {
+func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error) {
 	claims := Claims{
 		Role: role,
 		Id:   id,
@@ -57,10 +57,10 @@ func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, s
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(SecretKey)
 	ctx.Header("x-jwt-token", token)
-	return err
+	return token, err
 }
 
-func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, ssid string) error {
+func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error) {
 	claims := RefreshClaims{
 		Role: role,
 		Id:   id,
@@ -74,7 +74,7 @@ func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, 
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(SecretKey)
 	ctx.Header("x-refresh-token", token)
-	return err
+	return token, err
 }
 
 func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
@@ -82,6 +82,10 @@ func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
 	// 检查请求头中是否包含 Token
 	if tokenHeader == "" {
 		return ""
+	}
+	// 如果有 Bearer 前缀，去掉它
+	if len(tokenHeader) > 7 && tokenHeader[:7] == "Bearer " {
+		return tokenHeader[7:]
 	}
 	return tokenHeader
 }

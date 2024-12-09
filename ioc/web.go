@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"oj/internal/article"
 	"oj/internal/auth"
@@ -11,6 +12,7 @@ import (
 	"oj/internal/user/middleware/ratelimit"
 	"oj/internal/user/web/third"
 	rate "oj/pkg/ratelimit"
+	"time"
 )
 
 func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler) *gin.Engine {
@@ -34,6 +36,14 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 		//		Id: 1,
 		//	})
 		//},
+		cors.New(cors.Config{
+			AllowOrigins:     []string{"http://localhost:8081"}, // 允许的前端域名
+			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+			ExposeHeaders:    []string{"Content-Length", "x-jwt-token", "x-fresh-token"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}),
 
 		ratelimit.NewBuilder(limiter).Build(),
 
@@ -46,10 +56,10 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/oauth/github/url").
 			IgnorePaths("/oauth/github/callback").
 			IgnorePaths("/user/refresh-token").
-			IgnorePaths("/remote/run").
-			IgnorePaths("/articles/edit").
+			//IgnorePaths("/remote/run").
+			//IgnorePaths("/articles/edit").
 			//IgnorePaths("/remote/submit").
-			IgnorePaths("/local/run").
+			//IgnorePaths("/local/run").
 			AdminPaths("/admin/problem").
 			AdminPaths("/admin/problem/update").
 			AdminPaths("/admin/tags/create").

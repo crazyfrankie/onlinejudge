@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"oj/common/constant"
+	"oj/common/response"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +16,6 @@ import (
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
 	"oj/internal/user/service/oauth/github"
-	"oj/internal/user/web"
 )
 
 type OAuthGithubHandler struct {
@@ -47,16 +48,16 @@ func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 
 		url, err := h.svc.AuthUrl(c.Request.Context(), state)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("get url failed")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
-		c.JSON(http.StatusOK, web.GetResponse(web.WithStatus(http.StatusOK), web.WithData(url)))
+		response.Success(c, url)
 	}
 }
 
@@ -71,7 +72,7 @@ func (h *OAuthGithubHandler) SetCookie(c *gin.Context, state string) error {
 	if err != nil {
 		return err
 	}
-	c.SetCookie("jwt-state", tokenStr, 600, "/oauth/wechat/callback", "", false, true)
+	c.SetCookie("jwt-state", tokenStr, 600, "/", "", false, true)
 	return nil
 }
 
@@ -79,35 +80,36 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		code := c.Query("code")
 
-		err := h.VerifyState(c)
+		//err := h.VerifyState(c)
+		//if err != nil {
+		//	response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+		//	return
+		//}
+		//
+		//var res github.Result
+		res, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
-			return
-		}
-
-		var res github.Result
-		res, err = h.svc.VerifyCode(c.Request.Context(), code)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		var info domain.GithubInfo
 		info, err = h.svc.AcquireUserInfo(c.Request.Context(), res.AccessToken)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, web.GetResponse(web.WithStatus(http.StatusInternalServerError), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		user, err := h.userSvc.FindOrCreateByGithub(c.Request.Context(), info.Id)
 
-		err = h.Handler.SetLoginToken(c, 0, user.Id)
+		tokens, err := h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, web.GetResponse(web.WithStatus(http.StatusBadRequest), web.WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
-		c.JSON(http.StatusOK, web.GetResponse(web.WithStatus(http.StatusOK), web.WithMsg("login successfully")))
+		url := fmt.Sprintf("http://localhost:8081?access_token=%s&refresh_token=%s", tokens[0], tokens[1])
+		c.Redirect(http.StatusFound, url)
 	}
 }
 

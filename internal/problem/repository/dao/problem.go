@@ -14,6 +14,7 @@ import (
 
 var (
 	ErrProblemNotFound = errors.New("problem not found")
+	ErrProblemExists   = errors.New("problem already exists")
 	ErrTagExists       = errors.New("tag already exists")
 	ErrNoTags          = errors.New("no tags found")
 )
@@ -70,6 +71,10 @@ func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Pro
 
 	err = dao.db.WithContext(ctx).Create(&pm).Error
 
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return ErrProblemExists
+	}
+
 	return err
 }
 
@@ -94,8 +99,8 @@ func (dao *GormProblemDao) UpdateProblem(ctx context.Context, id uint64, problem
 
 	var pm Problem
 	result := dao.db.WithContext(ctx).Where("id = ?", id).First(&pm)
-	if result.Error != nil {
-		return domain.Problem{}, result.Error
+	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return domain.Problem{}, ErrProblemNotFound
 	}
 
 	// 更新数据

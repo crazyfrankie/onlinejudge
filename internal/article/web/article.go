@@ -14,7 +14,9 @@ import (
 
 type ArticleHandler struct {
 	svc service.ArticleService
+	//intrSvc service.InteractiveService
 	l   *zap.Logger
+	biz string
 }
 
 type ArticleReq struct {
@@ -37,7 +39,9 @@ func (req ArticleReq) toDomain(uid uint64) domain.Article {
 func NewArticleHandler(svc service.ArticleService, l *zap.Logger) *ArticleHandler {
 	return &ArticleHandler{
 		svc: svc,
+		//intrSvc: intrSvc,
 		l:   l,
+		biz: "article",
 	}
 }
 
@@ -162,3 +166,28 @@ func (ctl *ArticleHandler) WithDraw() gin.HandlerFunc {
 // 在 service 层面做数据同步
 // Save 接口啥也不用改，因为它只改制作库
 // Publish 接口先改制作库，然后同步到线上库
+
+//func (ctl *ArticleHandler) List(c *gin.Context) {
+//	type Req struct {
+//		Offset int `json:"offset"`
+//		Limit  int `json:"limit"`
+//	}
+//	var req Req
+//	if err := c.Bind(&req); err != nil {
+//		return
+//	}
+//
+//	claims := c.MustGet("claims")
+//	claim := claims.(*ijwt.Claims)
+//
+//	res, err := ctl.svc.List(c.Request.Context(), claim.Id, req.Offset, req.Limit)
+//	if err != nil {
+//		c.JSON(http.StatusInternalServerError, Result[int64]{
+//			Data: 5,
+//			Msg:  "系统错误",
+//		})
+//		return
+//	}
+//
+//
+//}

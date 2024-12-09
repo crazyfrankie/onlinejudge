@@ -12,6 +12,7 @@ import (
 var (
 	ErrProblemNotFound = dao.ErrProblemNotFound
 	ErrTagExists       = dao.ErrTagExists
+	ErrProblemExists   = dao.ErrProblemExists
 	ErrNoTags          = dao.ErrNoTags
 )
 

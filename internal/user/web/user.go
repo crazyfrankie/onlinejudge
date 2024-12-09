@@ -1,8 +1,11 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"oj/common/constant"
+	"oj/common/response"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,10 +38,15 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 	userGroup := r.Group("user")
 	{
 		userGroup.POST("login", ctl.IdentifierLogin())
+		userGroup.POST("logout", ctl.LogOut())
 		userGroup.POST("send-code", ctl.SendVerificationCode())
 		userGroup.POST("verify-code", ctl.VerificationCode())
 		userGroup.GET("info", ctl.GetUserInfo())
 		userGroup.POST("refresh-token", ctl.TokenRefresh())
+		userGroup.POST("name", ctl.UpdateName())
+		userGroup.POST("email", ctl.UpdateEmail())
+		userGroup.POST("password", ctl.UpdatePassword())
+		userGroup.POST("birthday", ctl.UpdateBirthday())
 	}
 }
 
@@ -51,24 +59,23 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 		var req Req
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error(fmt.Sprintf("%s:绑定参数错误", req.Biz))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg(err.Error())))
 			return
 		}
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error(fmt.Sprintf("%s:校验参数错误", req.Biz))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg(err.Error())))
+			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		err := ctl.codeSvc.Send(c.Request.Context(), req.Biz, req.Phone)
 		if err != nil {
-			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
+			response.Error(c, err)
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("send successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -87,33 +94,36 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		err := ctl.codeSvc.Verify(c.Request.Context(), req.Biz, req.Phone, req.Code)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		err := ctl.codeSvc.Verify(ctx, req.Biz, req.Phone, req.Code)
 		if err != nil {
-			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
+			response.Error(c, err)
 			return
 		}
 
 		user, err := ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
 		if err != nil {
-			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:%s", req.Biz, err.Message), zap.String("error", err.Message))
-			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
+			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:%s", req.Biz, err.Error()), zap.String("error", err.Error()))
+			response.Error(c, err)
 			return
 		}
 
-		tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
+		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
 		if tokenErr != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
 		zap.L().Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", maskedPhone))
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg(fmt.Sprintf("%s successfully", req.Biz)), WithData(map[string]interface{}{
+		response.Success(c, map[string]interface{}{
 			"id":    user.Id,
 			"phone": user.Phone,
 			"name":  user.Name,
-		})))
+		})
 	}
 }
 
@@ -135,17 +145,17 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 
 		user, err := ctl.userSvc.Login(c.Request.Context(), req.Identifier, req.Password, isEmail)
 		if err != nil {
-			c.JSON(err.Code, GetResponse(WithStatus(err.Code), WithMsg(err.Message)))
+			response.Error(c, err)
 			return
 		}
 
-		tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
+		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
 		if tokenErr != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("login successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -153,27 +163,24 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
-
 		claim := claims.(*ijwt.Claims)
 
 		user, err := ctl.userSvc.GetInfo(c.Request.Context(), claim.Id)
-
-		switch {
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
-		default:
-			c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(user)))
+		if err != nil {
+			response.Error(c, err)
 		}
+
+		response.Success(c, user)
 	}
 }
 
 func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Password        string `json:"password" validate:"required,min=8,containsany=abcdefghijklmnopqrstuvwxyz,containsany=0123456789,containsany=$@$!%*#?&"`
+			Password        string `json:"password" validate:"required"`
 			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
 		}
 		var req Req
@@ -184,7 +191,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -194,7 +201,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户信息:信息格式错误", zap.Error(err))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
@@ -204,20 +211,19 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		})
 		if err != nil {
 			zap.L().Error("绑定用户密码:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, err)
 			return
 		}
 
 		zap.L().Info("绑定用户密码成功")
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's password successfully")))
+		response.Success(c, nil)
 	}
 }
 
 func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		type Req struct {
-			Birthday time.Time `json:"birthday"`
+			Birthday string `json:"birthday"`
 		}
 
 		var req Req
@@ -230,30 +236,30 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户生日:信息格式错误", zap.Error(err))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
+		parsedDate, err := time.Parse("2006-01-02", req.Birthday)
+		err = ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
 			Id:       claim.Id,
-			Birthday: req.Birthday,
+			Birthday: parsedDate,
 		})
 		if err != nil {
 			zap.L().Error("绑定用户生日:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, err)
 			return
 		}
 
 		zap.L().Info("绑定用户生日成功")
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's birthday successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -273,13 +279,13 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户邮箱:信息格式错误", zap.Error(err))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
@@ -290,13 +296,12 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 		})
 		if err != nil {
 			zap.L().Error("绑定用户邮箱:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, err)
 			return
 		}
 
 		zap.L().Info("绑定用户邮箱成功")
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's email successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -316,13 +321,13 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户名:信息格式错误", zap.Error(err))
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("Validation failed: "+err.Error())))
+			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
@@ -333,13 +338,12 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 		})
 		if err != nil {
 			zap.L().Error("绑定用户名:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, err)
 			return
 		}
 
 		zap.L().Info("绑定用户名成功")
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's name successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -357,7 +361,7 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
@@ -368,13 +372,12 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 		})
 		if err != nil {
 			zap.L().Error("绑定用户身份:系统错误", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			response.Error(c, err)
 			return
 		}
 
 		zap.L().Info("绑定用户身份成功")
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("bind user's role successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -400,13 +403,13 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 		}
 
 		// 设置新的 access_token
-		err = ctl.AccessToken(c, rc.Role, rc.Id, rc.SSId)
+		_, err = ctl.AccessToken(c, rc.Role, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("refresh successfully")))
+		response.Success(c, nil)
 	}
 }
 
@@ -414,10 +417,10 @@ func (ctl *UserHandler) LogOut() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		err := ctl.Handler.ClearToken(c)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("log out failed")))
+			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithMsg("log out successfully")))
+		response.Success(c, nil)
 	}
 }

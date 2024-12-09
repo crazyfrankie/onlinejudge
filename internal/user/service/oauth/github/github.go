@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	redirectUri = url.PathEscape("https://zoj.com/oauth/github/callback")
+	redirectUri = url.PathEscape("http://localhost:9000/oauth/github/callback")
 )
 
 type Service interface {
@@ -52,7 +52,10 @@ func (svc *AuthService) VerifyCode(ctx context.Context, code string) (Result, er
 		return Result{}, err
 	}
 
+	req.Header.Set("Accept", "application/json")
+
 	var resp *http.Response
+
 	resp, err = svc.client.Do(req)
 	if err != nil {
 		return Result{}, err
@@ -69,12 +72,12 @@ func (svc *AuthService) VerifyCode(ctx context.Context, code string) (Result, er
 
 func (svc *AuthService) AcquireUserInfo(ctx context.Context, token string) (domain.GithubInfo, error) {
 	target := "https://api.github.com/user"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return domain.GithubInfo{}, err
 	}
 
-	req.Header.Set("Authorization", "Bearer"+token)
+	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	var resp *http.Response
