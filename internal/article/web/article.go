@@ -1,15 +1,17 @@
 package web
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"oj/common/constant"
+	"oj/common/errors"
+	"oj/common/response"
 	"oj/internal/article/domain"
 	"oj/internal/article/service"
-	ijwt "oj/internal/user/middleware/jwt"
+	"oj/internal/user/middleware/jwt"
 )
 
 type ArticleHandler struct {
@@ -17,23 +19,6 @@ type ArticleHandler struct {
 	//intrSvc service.InteractiveService
 	l   *zap.Logger
 	biz string
-}
-
-type ArticleReq struct {
-	ID      uint64 `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
-}
-
-func (req ArticleReq) toDomain(uid uint64) domain.Article {
-	return domain.Article{
-		ID: req.ID,
-		Author: domain.Author{
-			Id: uid,
-		},
-		Title:   req.Title,
-		Content: req.Content,
-	}
 }
 
 func NewArticleHandler(svc service.ArticleService, l *zap.Logger) *ArticleHandler {
@@ -51,6 +36,7 @@ func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
 		postGroup.POST("/edit", ctl.Edit())
 		postGroup.POST("/publish", ctl.Publish())
 		postGroup.POST("/:id/withdraw", ctl.WithDraw())
+		postGroup.POST("/:id/detail", ctl.Detail())
 	}
 }
 
@@ -63,29 +49,20 @@ func (ctl *ArticleHandler) Edit() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, Result[uint64]{
-				Data: 0,
-				Msg:  "system error:未发现作者的用户信息",
-			})
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
-		claim := claims.(ijwt.Claims)
+		claim := claims.(jwt.Claims)
 
 		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
 			ctl.l.Error("创建/更新帖子:系统错误")
-			c.JSON(http.StatusInternalServerError, Result[uint64]{
-				Data: 0,
-				Msg:  "system error",
-			})
+			response.Error(c, err)
 			return
 		}
 
 		ctl.l.Info("帖子创建/更新成功")
-		c.JSON(http.StatusOK, Result[uint64]{
-			Data: id,
-			Msg:  "OK",
-		})
+		response.Success(c, id)
 	}
 }
 
@@ -98,29 +75,20 @@ func (ctl *ArticleHandler) Publish() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			c.JSON(http.StatusInternalServerError, Result[uint64]{
-				Data: 0,
-				Msg:  "system error:未发现作者的用户信息",
-			})
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
-		claim := claims.(ijwt.Claims)
+		claim := claims.(jwt.Claims)
 
 		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
 			ctl.l.Error("发布帖子:系统错误")
-			c.JSON(http.StatusInternalServerError, Result[uint64]{
-				Data: 0,
-				Msg:  "system error",
-			})
+			response.Error(c, err)
 			return
 		}
 
 		ctl.l.Info("帖子发布成功")
-		c.JSON(http.StatusOK, Result[uint64]{
-			Data: id,
-			Msg:  "OK",
-		})
+		response.Success(c, id)
 	}
 }
 
@@ -129,7 +97,7 @@ func (ctl *ArticleHandler) WithDraw() gin.HandlerFunc {
 		id := c.Query("id")
 
 		claims := c.MustGet("claims")
-		claim := claims.(ijwt.Claims)
+		claim := claims.(jwt.Claims)
 
 		Id, _ := strconv.Atoi(id)
 		err := ctl.svc.WithDraw(c.Request.Context(), domain.Article{
@@ -140,17 +108,12 @@ func (ctl *ArticleHandler) WithDraw() gin.HandlerFunc {
 		})
 		if err != nil {
 			ctl.l.Error("撤回帖子:系统错误")
-			c.JSON(http.StatusInternalServerError, Result[uint64]{
-				Data: 0,
-				Msg:  "system error",
-			})
+			response.Error(c, err)
 			return
 		}
 
 		ctl.l.Info("帖子撤回成功")
-		c.JSON(http.StatusOK, Result[uint64]{
-			Msg: "OK",
-		})
+		response.Success(c, nil)
 	}
 }
 
@@ -167,27 +130,62 @@ func (ctl *ArticleHandler) WithDraw() gin.HandlerFunc {
 // Save 接口啥也不用改，因为它只改制作库
 // Publish 接口先改制作库，然后同步到线上库
 
-//func (ctl *ArticleHandler) List(c *gin.Context) {
-//	type Req struct {
-//		Offset int `json:"offset"`
-//		Limit  int `json:"limit"`
-//	}
-//	var req Req
-//	if err := c.Bind(&req); err != nil {
-//		return
-//	}
-//
-//	claims := c.MustGet("claims")
-//	claim := claims.(*ijwt.Claims)
-//
-//	res, err := ctl.svc.List(c.Request.Context(), claim.Id, req.Offset, req.Limit)
-//	if err != nil {
-//		c.JSON(http.StatusInternalServerError, Result[int64]{
-//			Data: 5,
-//			Msg:  "系统错误",
-//		})
-//		return
-//	}
-//
-//
-//}
+func (ctl *ArticleHandler) List() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req ListReq
+		if err := c.Bind(&req); err != nil {
+			return
+		}
+
+		claims := c.MustGet("claims")
+		claim := claims.(*jwt.Claims)
+
+		res, err := ctl.svc.List(c.Request.Context(), claim.Id, req.Offset, req.Limit)
+		if err != nil {
+			response.Error(c, err)
+			return
+		}
+
+		var resp []ListResp
+		for _, art := range res {
+			resp = append(resp, ListResp{
+				ID:         art.ID,
+				Title:      art.Title,
+				Abstract:   art.Abstract(),
+				AuthorID:   art.Author.Id,
+				AuthorName: art.Author.Name,
+				Status:     art.Status.ToUint8(),
+				Ctime:      art.Ctime.String(),
+				Utime:      art.Utime.String(),
+			})
+		}
+
+		response.Success(c, resp)
+	}
+}
+
+func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims := c.MustGet("claims")
+		claim := claims.(*jwt.Claims)
+
+		artID := c.Param("id")
+
+		art, err := ctl.svc.Detail(c.Request.Context(), claim.Id, artID)
+		if err != nil {
+			response.Error(c, err)
+		}
+
+		resp := DetailResp{
+			ID:         art.ID,
+			Title:      art.Title,
+			Content:    art.Content,
+			AuthorID:   art.Author.Id,
+			AuthorName: art.Author.Name,
+			Ctime:      art.Ctime.String(),
+			Utime:      art.Utime.String(),
+			Status:     art.Status.ToUint8(),
+		}
+		response.Success(c, resp)
+	}
+}

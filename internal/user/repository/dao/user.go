@@ -42,11 +42,11 @@ type UserDao interface {
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindByWechat(ctx context.Context, openId string) (domain.User, error)
 	FindByGithub(ctx context.Context, gitId string) (domain.User, error)
-	UpdatePassword(ctx context.Context, user domain.User) (domain.User, error)
-	UpdateName(ctx context.Context, user domain.User) (domain.User, error)
-	UpdateBirthday(ctx context.Context, user domain.User) (domain.User, error)
-	UpdateEmail(ctx context.Context, user domain.User) (domain.User, error)
-	UpdateRole(ctx context.Context, user domain.User) (domain.User, error)
+	UpdatePassword(ctx context.Context, uid uint64, password string) (domain.User, error)
+	UpdateName(ctx context.Context, uid uint64, name string) (domain.User, error)
+	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) (domain.User, error)
+	UpdateEmail(ctx context.Context, uid uint64, email string) (domain.User, error)
+	UpdateRole(ctx context.Context, uid uint64, role uint8) (domain.User, error)
 }
 
 type GormUserDao struct {
@@ -59,7 +59,7 @@ func NewUserDao(db *gorm.DB) UserDao {
 	}
 }
 
-//func handleDBError(err error) error {
+//func handleDBError(err errors) errors {
 //	var mysqlErr *mysql.MySQLError
 //	const uniqueConflictErrNo uint16 = 1062
 //
@@ -252,10 +252,10 @@ func (dao *GormUserDao) FindByGithub(ctx context.Context, gitId string) (domain.
 	}, nil
 }
 
-func (dao *GormUserDao) UpdatePassword(ctx context.Context, user domain.User) (domain.User, error) {
+func (dao *GormUserDao) UpdatePassword(ctx context.Context, uid uint64, password string) (domain.User, error) {
 	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", user.Id).Updates(User{
-		Password: user.Password,
+	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
+		Password: password,
 	})
 	if result.Error != nil {
 		return domain.User{}, result.Error
@@ -265,13 +265,13 @@ func (dao *GormUserDao) UpdatePassword(ctx context.Context, user domain.User) (d
 		return domain.User{}, errors.New("user not found or no updates made")
 	}
 
-	return dao.FindById(ctx, user.Id)
+	return dao.FindById(ctx, uid)
 }
 
-func (dao *GormUserDao) UpdateName(ctx context.Context, user domain.User) (domain.User, error) {
+func (dao *GormUserDao) UpdateName(ctx context.Context, uid uint64, name string) (domain.User, error) {
 	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", user.Id).Updates(User{
-		Name: user.Name,
+	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
+		Name: name,
 	})
 	if result.Error != nil {
 		return domain.User{}, result.Error
@@ -281,14 +281,14 @@ func (dao *GormUserDao) UpdateName(ctx context.Context, user domain.User) (domai
 		return domain.User{}, errors.New("user not found or no updates made")
 	}
 
-	return dao.FindById(ctx, user.Id)
+	return dao.FindById(ctx, uid)
 }
 
-func (dao *GormUserDao) UpdateBirthday(ctx context.Context, user domain.User) (domain.User, error) {
+func (dao *GormUserDao) UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) (domain.User, error) {
 	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", user.Id).Updates(User{
+	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
 		Birthday: sql.NullTime{
-			Time:  user.Birthday,
+			Time:  birth,
 			Valid: true,
 		},
 	})
@@ -300,15 +300,15 @@ func (dao *GormUserDao) UpdateBirthday(ctx context.Context, user domain.User) (d
 		return domain.User{}, errors.New("user not found or no updates made")
 	}
 
-	return dao.FindById(ctx, user.Id)
+	return dao.FindById(ctx, uid)
 }
 
-func (dao *GormUserDao) UpdateEmail(ctx context.Context, user domain.User) (domain.User, error) {
+func (dao *GormUserDao) UpdateEmail(ctx context.Context, uid uint64, email string) (domain.User, error) {
 	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", user.Id).Updates(User{
+	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
 		Email: sql.NullString{
-			String: user.Email,
-			Valid:  user.Email != "",
+			String: email,
+			Valid:  email != "",
 		},
 	})
 	if result.Error != nil {
@@ -319,13 +319,13 @@ func (dao *GormUserDao) UpdateEmail(ctx context.Context, user domain.User) (doma
 		return domain.User{}, errors.New("user not found or no updates made")
 	}
 
-	return dao.FindById(ctx, user.Id)
+	return dao.FindById(ctx, uid)
 }
 
-func (dao *GormUserDao) UpdateRole(ctx context.Context, user domain.User) (domain.User, error) {
+func (dao *GormUserDao) UpdateRole(ctx context.Context, uid uint64, role uint8) (domain.User, error) {
 	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", user.Id).Updates(User{
-		Role: user.Role,
+	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
+		Role: role,
 	})
 	if result.Error != nil {
 		return domain.User{}, result.Error
@@ -335,5 +335,5 @@ func (dao *GormUserDao) UpdateRole(ctx context.Context, user domain.User) (domai
 		return domain.User{}, errors.New("user not found or no updates made")
 	}
 
-	return dao.FindById(ctx, user.Id)
+	return dao.FindById(ctx, uid)
 }

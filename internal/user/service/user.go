@@ -6,10 +6,12 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"oj/common/constant"
+	er "oj/common/errors"
 	"oj/internal/user/domain"
 	"oj/internal/user/repository"
 )
@@ -28,11 +30,11 @@ type UserService interface {
 	FindByPhone(ctx context.Context, phone string) (domain.User, error)
 	FindOrCreateByWechat(ctx context.Context, wechatInfo domain.WeChatInfo) (domain.User, error)
 	FindOrCreateByGithub(ctx context.Context, id int) (domain.User, error)
-	UpdateName(ctx context.Context, user domain.User) error
-	UpdatePassword(ctx context.Context, user domain.User) error
-	UpdateBirthday(ctx context.Context, user domain.User) error
-	UpdateEmail(ctx context.Context, user domain.User) error
-	UpdateRole(ctx context.Context, user domain.User) error
+	UpdateName(ctx context.Context, uid uint64, name string) error
+	UpdatePassword(ctx context.Context, uid uint64, password string) error
+	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error
+	UpdateEmail(ctx context.Context, uid uint64, email string) error
+	UpdateRole(ctx context.Context, uid uint64, role uint8) error
 	GenerateCode() (string, error)
 }
 
@@ -57,13 +59,13 @@ func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.
 	}
 
 	if !errors.Is(err, ErrUserNotFound) {
-		return domain.User{}, NewBusinessError(constant.ErrUserNotFound)
+		return domain.User{}, er.NewBusinessError(constant.ErrUserNotFound)
 	}
 
 	var code string
 	code, err = svc.GenerateCode()
 	if err != nil {
-		return domain.User{}, NewBusinessError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBusinessError(constant.ErrInternalServer)
 	}
 	u := domain.User{
 		Phone: phone,
@@ -72,12 +74,12 @@ func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.
 
 	err = svc.repo.Create(ctx, u)
 	if err != nil {
-		return domain.User{}, NewBusinessError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	user, err = svc.repo.FindByPhone(ctx, phone)
 	if err != nil {
-		return domain.User{}, NewBusinessError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return user, nil
@@ -98,15 +100,15 @@ func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEm
 	}
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			return domain.User{}, NewBusinessError(constant.ErrUserNotFound)
+			return domain.User{}, er.NewBusinessError(constant.ErrUserNotFound)
 		} else {
-			return domain.User{}, NewBusinessError(constant.ErrInternalServer)
+			return domain.User{}, er.NewBusinessError(constant.ErrInternalServer)
 		}
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		// 打 DEBUG 日志
-		return domain.User{}, NewBusinessError(constant.ErrInvalidCredentials)
+		return domain.User{}, er.NewBusinessError(constant.ErrInvalidCredentials)
 	}
 
 	return user, nil
@@ -116,10 +118,10 @@ func (svc *UserSvc) GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	user, err := svc.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			return domain.User{}, NewBusinessError(constant.ErrUserNotFound)
+			return domain.User{}, er.NewBusinessError(constant.ErrUserNotFound)
 		}
 
-		return domain.User{}, NewBusinessError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return user, nil
@@ -168,52 +170,52 @@ func (svc *UserSvc) FindOrCreateByGithub(ctx context.Context, id int) (domain.Us
 	return svc.repo.FindByGithub(ctx, gitId)
 }
 
-func (svc *UserSvc) UpdatePassword(ctx context.Context, user domain.User) error {
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+func (svc *UserSvc) UpdatePassword(ctx context.Context, uid uint64, password string) error {
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
+		return er.NewBusinessError(constant.ErrInternalServer)
 	}
-	user.Password = string(hashPassword)
+	password = string(hashPassword)
 
-	err = svc.repo.UpdatePassword(ctx, user)
+	err = svc.repo.UpdatePassword(ctx, uid, password)
 	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
-	}
-
-	return nil
-}
-
-func (svc *UserSvc) UpdateName(ctx context.Context, user domain.User) error {
-	err := svc.repo.UpdateName(ctx, user)
-	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
+		return er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return nil
 }
 
-func (svc *UserSvc) UpdateBirthday(ctx context.Context, user domain.User) error {
-	err := svc.repo.UpdateBirthday(ctx, user)
+func (svc *UserSvc) UpdateName(ctx context.Context, uid uint64, name string) error {
+	err := svc.repo.UpdateName(ctx, uid, name)
 	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
+		return er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return nil
 }
 
-func (svc *UserSvc) UpdateEmail(ctx context.Context, user domain.User) error {
-	err := svc.repo.UpdateEmail(ctx, user)
+func (svc *UserSvc) UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error {
+	err := svc.repo.UpdateBirthday(ctx, uid, birth)
 	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
+		return er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return nil
 }
 
-func (svc *UserSvc) UpdateRole(ctx context.Context, user domain.User) error {
-	err := svc.repo.UpdateRole(ctx, user)
+func (svc *UserSvc) UpdateEmail(ctx context.Context, uid uint64, email string) error {
+	err := svc.repo.UpdateEmail(ctx, uid, email)
 	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
+		return er.NewBusinessError(constant.ErrInternalServer)
+	}
+
+	return nil
+}
+
+func (svc *UserSvc) UpdateRole(ctx context.Context, uid uint64, role uint8) error {
+	err := svc.repo.UpdateRole(ctx, uid, role)
+	if err != nil {
+		return er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return nil

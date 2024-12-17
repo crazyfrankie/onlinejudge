@@ -14,6 +14,7 @@ import (
 type UserCache interface {
 	Get(ctx context.Context, id uint64) (domain.User, error)
 	Set(ctx context.Context, user domain.User) error
+	Del(ctx context.Context, id uint64) error
 	SetCheckState(ctx context.Context, phone string) error
 	GetCheckState(ctx context.Context, phone string) (bool, error)
 	key(id uint64) string
@@ -50,6 +51,14 @@ func (cache *RedisUserCache) Set(ctx context.Context, user domain.User) error {
 	key := cache.key(user.Id)
 
 	return cache.client.Set(ctx, key, val, time.Minute*10).Err()
+}
+
+func (cache *RedisUserCache) Del(ctx context.Context, id uint64) error {
+	key := cache.key(id)
+
+	err := cache.client.Del(ctx, key).Err()
+
+	return err
 }
 
 func (cache *RedisUserCache) key(id uint64) string {

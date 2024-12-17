@@ -39,8 +39,8 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 		cors.New(cors.Config{
 			AllowOrigins:     []string{"http://localhost:8081"}, // 允许的前端域名
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-			ExposeHeaders:    []string{"Content-Length", "x-jwt-token", "x-fresh-token"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "x-jwt-token", "x-refresh-token"},
+			ExposeHeaders:    []string{"Content-Length", "x-jwt-token", "x-refresh-token"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
 		}),

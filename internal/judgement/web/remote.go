@@ -54,7 +54,7 @@ func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 			return
 
 		case err != nil:
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system errors")))
 			return
 		}
 
@@ -82,7 +82,7 @@ func (ctl *SubmissionHandler) SubmitCode() gin.HandlerFunc {
 			Code:      req.Code,
 		}, req.Language)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system error")))
+			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system errors")))
 			return
 		}
 

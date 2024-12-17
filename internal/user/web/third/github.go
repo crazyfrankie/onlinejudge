@@ -4,14 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"oj/common/constant"
-	"oj/common/response"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 
+	"oj/common/constant"
+	er "oj/common/errors"
+	"oj/common/response"
 	"oj/internal/user/domain"
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
@@ -48,12 +49,12 @@ func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 
 		url, err := h.svc.AuthUrl(c.Request.Context(), state)
 		if err != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -82,21 +83,21 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		//err := h.VerifyState(c)
 		//if err != nil {
-		//	response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+		//	response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
 		//	return
 		//}
 		//
 		//var res github.Result
 		res, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
 		var info domain.GithubInfo
 		info, err = h.svc.AcquireUserInfo(c.Request.Context(), res.AccessToken)
 		if err != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -104,7 +105,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		tokens, err := h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 

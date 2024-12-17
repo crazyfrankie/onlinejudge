@@ -52,7 +52,7 @@ func (c *RedisCodeCache) Set(ctx context.Context, biz, phone, code string) error
 		// 发送太频繁
 		return ErrSendTooMany
 	default:
-		return errors.New("system error")
+		return errors.New("system errors")
 	}
 }
 
@@ -69,7 +69,7 @@ func (c *RedisCodeCache) Verify(ctx context.Context, biz, phone, inputCode strin
 		// 如果频繁出这个错误代表有人搞你 需要告警
 		return false, ErrVerifyTooMany
 	}
-	return false, errors.New("system error")
+	return false, errors.New("system errors")
 }
 
 func (c *RedisCodeCache) key(biz, phone string) string {
@@ -115,7 +115,7 @@ func (cm *MemCodeCache) Verify(ctx context.Context, biz, phone, inputCode string
 	if val.(CodeVal).Code == inputCode {
 		return true, nil
 	}
-	return false, errors.New("system error")
+	return false, errors.New("system errors")
 }
 
 func (cm *MemCodeCache) key(biz, phone string) string {

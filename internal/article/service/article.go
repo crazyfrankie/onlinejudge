@@ -2,9 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
+	"log"
+	"strconv"
 
 	"go.uber.org/zap"
 
+	"oj/common/constant"
+	er "oj/common/errors"
 	"oj/internal/article/domain"
 	"oj/internal/article/repository"
 )
@@ -13,7 +18,8 @@ type ArticleService interface {
 	SaveDraft(ctx context.Context, art domain.Article) (uint64, error)
 	Publish(ctx context.Context, art domain.Article) (uint64, error)
 	WithDraw(ctx context.Context, art domain.Article) error
-	//List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error)
+	List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error)
+	Detail(ctx context.Context, uid uint64, artID string) (domain.Article, error)
 }
 
 type articleService struct {
@@ -35,9 +41,19 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 	art.Status = domain.ArticleStatusUnPublished
 	if art.ID > 0 {
 		err := svc.repo.UpdateDraft(ctx, art)
-		return art.ID, err
+		if err != nil {
+			return 0, er.NewBusinessError(constant.ErrUpdateDraft)
+		}
+
+		return art.ID, nil
 	}
-	return svc.repo.CreateDraft(ctx, art)
+
+	id, err := svc.repo.CreateDraft(ctx, art)
+	if err != nil {
+		return 0, er.NewBusinessError(constant.ErrAddDraft)
+	}
+
+	return id, nil
 }
 
 // Publish 接口先改制作库，然后同步到线上库
@@ -46,7 +62,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uint64, error) {
 	//var (
 	//	id  = art.ID
-	//	err error
+	//	err er
 	//)
 	//if art.ID > 0 {
 	//	err = svc.repo.Update(ctx, art)
@@ -80,13 +96,48 @@ func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uin
 	//}
 	//
 	//return id, err
-	return svc.repo.Sync(ctx, art)
+	id, err := svc.repo.Sync(ctx, art)
+	if err != nil {
+		return 0, er.NewBusinessError(constant.ErrSyncPublish)
+	}
+
+	return id, nil
 }
 
 func (svc *articleService) WithDraw(ctx context.Context, art domain.Article) error {
-	return svc.repo.SyncStatus(ctx, art.ID, art.Author.Id, domain.ArticleStatusPrivate)
+	err := svc.repo.SyncStatus(ctx, art.ID, art.Author.Id, domain.ArticleStatusPrivate)
+	if err != nil {
+		return er.NewBusinessError(constant.ErrWithdrawArt)
+	}
+
+	return nil
 }
 
-//func (svc *articleService) List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error) {
-//
-//}
+func (svc *articleService) List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error) {
+	res, err := svc.repo.List(ctx, uid, offset, limit)
+	if err != nil {
+		return []domain.Article{}, er.NewBusinessError(constant.ErrInternalServer)
+	}
+
+	return res, nil
+}
+
+func (svc *articleService) Detail(ctx context.Context, uid uint64, artID string) (domain.Article, error) {
+	id, _ := strconv.Atoi(artID)
+
+	art, err := svc.repo.GetByID(ctx, uint64(id))
+	if err != nil {
+		if errors.Is(err, repository.ErrRecordNotFound) {
+			return domain.Article{}, er.NewBusinessError(constant.ErrArticleNotFound)
+		}
+
+		return domain.Article{}, er.NewBusinessError(constant.ErrInternalServer)
+	}
+
+	if art.ID != uid {
+		log.Printf("有人非法获取文章, UID:%d", uid)
+		return domain.Article{}, er.NewBusinessError(constant.ErrInternalServer)
+	}
+
+	return art, nil
+}

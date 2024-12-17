@@ -24,7 +24,7 @@ var (
 
 type LocSubmitService interface {
 	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
-	//SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
+	//SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, errors)
 
 	ValidateCode(language, way string, submission domain.Submission) (error, bool)
 	GoFormat(code, way string, userId, problemId uint64) bool
@@ -128,8 +128,8 @@ func (svc *LocSubmitSvc) GetResult(testCases []domain2.TestCase, imageName strin
 
 		output, err := runCmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("Container run error output: %s\n", string(output)) // 打印错误输出
-			return nil, fmt.Errorf("code execution error: %s", err.Error())
+			fmt.Printf("Container run errors output: %s\n", string(output)) // 打印错误输出
+			return nil, fmt.Errorf("code execution errors: %s", err.Error())
 		}
 
 		fmt.Printf("Raw output from container: %s\n", string(output))
@@ -182,7 +182,7 @@ func (svc *LocSubmitSvc) RunDocker(language string, tempDir string, err error) (
 	return imageName, nil
 }
 
-//func (svc *LocSubmitSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
+//func (svc *LocSubmitSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, errors) {
 //
 //}
 

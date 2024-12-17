@@ -1,16 +1,15 @@
-package service
+package errors
 
 import (
 	"errors"
 	"oj/common/constant"
 )
 
-// BusinessError 实现 error 接口
 type BusinessError struct {
 	ErrorCode constant.ErrorCode
 }
 
-// Error 实现 error 接口
+// Error 实现 errors 接口
 func (e *BusinessError) Error() string {
 	return e.ErrorCode.Message
 }

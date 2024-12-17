@@ -2,11 +2,11 @@ package response
 
 import (
 	"net/http"
-	"oj/internal/user/service"
-
-	"github.com/gin-gonic/gin"
 
 	"oj/common/constant"
+	"oj/common/errors"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Response struct {
@@ -25,7 +25,7 @@ func Success(ctx *gin.Context, data interface{}) {
 
 func Error(ctx *gin.Context, err error) {
 	// 使用类型断言判断是否为业务错误
-	if businessErr, ok := service.IsBusinessError(err); ok {
+	if businessErr, ok := errors.IsBusinessError(err); ok {
 		ctx.JSON(http.StatusOK, Response{
 			Code:    businessErr.Code(),
 			Message: businessErr.Error(),

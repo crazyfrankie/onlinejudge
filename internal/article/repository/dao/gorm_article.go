@@ -2,11 +2,16 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+)
+
+var (
+	ErrRecordNotFound = errors.New("record not found")
 )
 
 type GORMArticleDao struct {
@@ -130,4 +135,31 @@ func (dao *GORMArticleDao) SyncStatus(ctx context.Context, id uint64, authorId u
 				"utime":  now,
 			}).Error
 	})
+}
+
+func (dao *GORMArticleDao) List(ctx context.Context, uid uint64, offset, limit int) ([]Article, error) {
+	var arts []Article
+	err := dao.db.WithContext(ctx).Model(&Article{}).
+		Where("author_id = ?", uid).
+		Offset(offset).
+		Limit(limit).
+		Order("utime DESC").
+		Find(&arts).Error
+
+	return arts, err
+}
+
+func (dao *GORMArticleDao) GetByID(ctx context.Context, id uint64) (Article, error) {
+	var art Article
+
+	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&art).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return Article{}, ErrRecordNotFound
+		}
+
+		return Article{}, err
+	}
+
+	return art, nil
 }

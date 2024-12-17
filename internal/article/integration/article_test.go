@@ -171,7 +171,7 @@ func (s *ArticleTestSuite) TestArticleHandler_Edit() {
 			wantCode: http.StatusInternalServerError,
 			wantResult: Result[uint64]{
 				Data: 0,
-				Msg:  "system error",
+				Msg:  "system errors",
 			},
 		},
 	}

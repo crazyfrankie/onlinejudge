@@ -9,8 +9,6 @@ import (
 	"github.com/crazyfrankie/snow-flake"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-
-	"oj/internal/article/domain"
 )
 
 type MongoArticleDao struct {
@@ -71,7 +69,10 @@ func (m *MongoArticleDao) Sync(ctx context.Context, art Article) (int64, error) 
 		err error
 	)
 	if id > 0 {
-		m.UpdateById(ctx, art)
+		err := m.UpdateById(ctx, art)
+		if err != nil {
+			return 0, err
+		}
 	} else {
 		id, err = m.Create(ctx, art)
 	}
@@ -94,25 +95,25 @@ func (m *MongoArticleDao) Sync(ctx context.Context, art Article) (int64, error) 
 	return id, err
 }
 
-func (m *MongoArticleDao) SyncStatus(ctx context.Context, author, id uint64, status domain.ArticleStatus) error {
-	now := time.Now().UnixMilli()
-
-	filter := bson.M{"id": id, "author_id": author}
-	update := bson.D{
-		bson.E{
-			Key: "$set",
-			Value: bson.M{
-				"utime":  now,
-				"status": status.ToUint8(),
-			},
-		},
-	}
-	_, err := m.col.UpdateOne(ctx, filter, update)
-	if err != nil {
-		return nil
-	}
-
-	_, err = m.liveCol.UpdateOne(ctx, filter, update)
-
-	return err
-}
+//func (m *MongoArticleDao) SyncStatus(ctx context.Context, author, id uint64, status domain.ArticleStatus) error {
+//	now := time.Now().UnixMilli()
+//
+//	filter := bson.M{"id": id, "author_id": author}
+//	update := bson.D{
+//		bson.E{
+//			Key: "$set",
+//			Value: bson.M{
+//				"utime":  now,
+//				"status": status.ToUint8(),
+//			},
+//		},
+//	}
+//	_, err := m.col.UpdateOne(ctx, filter, update)
+//	if err != nil {
+//		return nil
+//	}
+//
+//	_, err = m.liveCol.UpdateOne(ctx, filter, update)
+//
+//	return err
+//}

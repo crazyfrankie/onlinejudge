@@ -3,9 +3,7 @@ package dao
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"gorm.io/gorm/clause"
-	"oj/internal/article/domain"
 	"strconv"
 	"time"
 
@@ -86,39 +84,39 @@ func (o *OSSArticleDao) Sync(ctx context.Context, art Article) (uint64, error) {
 	return id, err
 }
 
-func (o *OSSArticleDao) SyncStatus(ctx context.Context, id uint64, authorId uint64, status uint8) error {
-	now := time.Now().UnixMilli()
-	return o.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		res := tx.Model(&Article{}).
-			Where("id = ? AND author_id = ?", id, authorId).
-			Updates(map[string]any{
-				"status": status,
-				"utime":  now,
-			})
-
-		if res.Error != nil {
-			// 数据库有问题
-			return res.Error
-		}
-		if res.RowsAffected != 1 {
-			return fmt.Errorf("有人误操作,uid :%d", id)
-		}
-
-		if status == domain.ArticleStatusPrivate.ToUint8() {
-			o.oss.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
-				Bucket: o.bucket,
-				Key:    ToPtr(strconv.FormatInt(int64(id), 10)),
-			})
-		}
-
-		return tx.Model(&OnlineArticle{}).
-			Where("id = ? ", id).
-			Updates(map[string]any{
-				"status": status,
-				"utime":  now,
-			}).Error
-	})
-}
+//func (o *OSSArticleDao) SyncStatus(ctx context.Context, id uint64, authorId uint64, status uint8) error {
+//	now := time.Now().UnixMilli()
+//	return o.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+//		res := tx.Model(&Article{}).
+//			Where("id = ? AND author_id = ?", id, authorId).
+//			Updates(map[string]any{
+//				"status": status,
+//				"utime":  now,
+//			})
+//
+//		if res.Error != nil {
+//			// 数据库有问题
+//			return res.Error
+//		}
+//		if res.RowsAffected != 1 {
+//			return fmt.Errorf("有人误操作,uid :%d", id)
+//		}
+//
+//		if status == domain.ArticleStatusPrivate.ToUint8() {
+//			o.oss.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
+//				Bucket: o.bucket,
+//				Key:    ToPtr(strconv.FormatInt(int64(id), 10)),
+//			})
+//		}
+//
+//		return tx.Model(&OnlineArticle{}).
+//			Where("id = ? ", id).
+//			Updates(map[string]any{
+//				"status": status,
+//				"utime":  now,
+//			}).Error
+//	})
+//}
 
 func ToPtr(s string) *string {
 	return &s

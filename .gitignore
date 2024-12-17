@@ -1,15 +1,6 @@
 # Ignore .idea
 .idea/
 
-docker-compose.yaml
-
-Dockerfile
-
 *.yaml
 
-onlinejudge
-
-.luarc.json
-/Makefile
-
-/config/
+config/

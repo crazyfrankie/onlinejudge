@@ -1,11 +1,10 @@
 package web
 
 import (
-	"go.uber.org/zap"
-	"oj/common/response"
-
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
+	"oj/common/response"
 	"oj/internal/problem/domain"
 	"oj/internal/problem/service"
 )

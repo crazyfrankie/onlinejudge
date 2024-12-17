@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"oj/common/constant"
-	"oj/common/response"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +11,9 @@ import (
 	"github.com/golang-jwt/jwt"
 	"go.uber.org/zap"
 
-	"oj/internal/user/domain"
+	"oj/common/constant"
+	"oj/common/errors"
+	"oj/common/response"
 	ijwt "oj/internal/user/middleware/jwt"
 	"oj/internal/user/service"
 )
@@ -52,11 +52,7 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Phone string `json:"phone"`
-			Biz   string `json:"biz"`
-		}
-		var req Req
+		var req SendCodeReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error(fmt.Sprintf("%s:绑定参数错误", req.Biz))
 			return
@@ -65,7 +61,7 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error(fmt.Sprintf("%s:校验参数错误", req.Biz))
-			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
@@ -81,14 +77,7 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 
 func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Phone string `json:"phone" validate:"required,len=11"`
-			Code  string `json:"code"`
-			Role  string `json:"role"`
-			Biz   string `json:"biz"`
-		}
-
-		var req Req
+		var req VerifyCodeReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error("校验验证码绑定信息错误", zap.Error(err))
 			return
@@ -105,14 +94,14 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 
 		user, err := ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
 		if err != nil {
-			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:%s", req.Biz, err.Error()), zap.String("error", err.Error()))
+			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:%s", req.Biz, err.Error()), zap.String("errors", err.Error()))
 			response.Error(c, err)
 			return
 		}
 
 		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
 		if tokenErr != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -129,12 +118,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 
 func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Identifier string `json:"identifier"`
-			Password   string `json:"password"`
-		}
-		req := Req{}
-
+		var req LoginReq
 		if err := c.Bind(&req); err != nil {
 			return
 		}
@@ -151,7 +135,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 
 		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
 		if tokenErr != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -163,7 +147,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, ok := c.Get("claims")
 		if !ok {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
@@ -179,11 +163,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 
 func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Password        string `json:"password" validate:"required"`
-			ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
-		}
-		var req Req
+		var req UpdatePwdReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error("绑定用户密码:绑定信息错误", zap.Error(err))
 			return
@@ -191,7 +171,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
@@ -201,14 +181,11 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户信息:信息格式错误", zap.Error(err))
-			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
-		err := ctl.userSvc.UpdatePassword(c.Request.Context(), domain.User{
-			Id:       claim.Id,
-			Password: req.Password,
-		})
+		err := ctl.userSvc.UpdatePassword(c.Request.Context(), claim.Id, req.Password)
 		if err != nil {
 			zap.L().Error("绑定用户密码:系统错误", zap.Error(err))
 			response.Error(c, err)
@@ -222,11 +199,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 
 func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Birthday string `json:"birthday"`
-		}
-
-		var req Req
+		var req UpdateBirthReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error("绑定用户生日:绑定信息错误", zap.Error(err))
 			return
@@ -236,22 +209,19 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户生日:信息格式错误", zap.Error(err))
-			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
 
 		parsedDate, err := time.Parse("2006-01-02", req.Birthday)
-		err = ctl.userSvc.UpdateBirthday(c.Request.Context(), domain.User{
-			Id:       claim.Id,
-			Birthday: parsedDate,
-		})
+		err = ctl.userSvc.UpdateBirthday(c.Request.Context(), claim.Id, parsedDate)
 		if err != nil {
 			zap.L().Error("绑定用户生日:系统错误", zap.Error(err))
 			response.Error(c, err)
@@ -265,11 +235,7 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 
 func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Email string `json:"email" validate:"required,email"`
-		}
-
-		var req Req
+		var req UpdateEmailReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error("绑定用户邮箱:绑定信息错误", zap.Error(err))
 			return
@@ -279,21 +245,18 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户邮箱:信息格式错误", zap.Error(err))
-			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateEmail(c.Request.Context(), domain.User{
-			Id:    claim.Id,
-			Email: req.Email,
-		})
+		err := ctl.userSvc.UpdateEmail(c.Request.Context(), claim.Id, req.Email)
 		if err != nil {
 			zap.L().Error("绑定用户邮箱:系统错误", zap.Error(err))
 			response.Error(c, err)
@@ -307,11 +270,7 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 
 func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Name string `json:"name" validate:"required,min=3,max=20"`
-		}
-
-		var req Req
+		var req UpdateNameReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error("绑定用户名:绑定信息错误", zap.Error(err))
 			return
@@ -321,21 +280,18 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			zap.L().Error("绑定用户名:信息格式错误", zap.Error(err))
-			response.Error(c, service.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateName(c.Request.Context(), domain.User{
-			Id:   claim.Id,
-			Name: req.Name,
-		})
+		err := ctl.userSvc.UpdateName(c.Request.Context(), claim.Id, req.Name)
 		if err != nil {
 			zap.L().Error("绑定用户名:系统错误", zap.Error(err))
 			response.Error(c, err)
@@ -349,11 +305,7 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 
 func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type Req struct {
-			Role uint8 `json:"role"`
-		}
-
-		var req Req
+		var req UpdateRoleReq
 		if err := c.Bind(&req); err != nil {
 			zap.L().Error("绑定用户身份:绑定信息错误", zap.Error(err))
 			return
@@ -361,15 +313,12 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 
 		claims, ok := c.Get("claims")
 		if !ok {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 		claim := claims.(*ijwt.Claims)
 
-		err := ctl.userSvc.UpdateRole(c.Request.Context(), domain.User{
-			Id:   claim.Id,
-			Role: req.Role,
-		})
+		err := ctl.userSvc.UpdateRole(c.Request.Context(), claim.Id, req.Role)
 		if err != nil {
 			zap.L().Error("绑定用户身份:系统错误", zap.Error(err))
 			response.Error(c, err)
@@ -417,7 +366,7 @@ func (ctl *UserHandler) LogOut() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		err := ctl.Handler.ClearToken(c)
 		if err != nil {
-			response.Error(c, service.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
 			return
 		}
 
