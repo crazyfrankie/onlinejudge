@@ -23,11 +23,14 @@ func InitLog() *zap.Logger {
 func InitArticleHandler(db *gorm.DB) *web.ArticleHandler {
 	wire.Build(
 		dao.NewArticleDao,
+		dao.NewInteractiveDao,
 
 		repository.NewArticleRepository,
+		repository.NewInteractiveArtRepository,
 
 		service.NewArticleService,
-
+		service.NewInteractiveService,
+		
 		InitLog,
 
 		web.NewArticleHandler,

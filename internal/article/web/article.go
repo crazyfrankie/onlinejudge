@@ -1,6 +1,7 @@
 package web
 
 import (
+	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -15,18 +16,18 @@ import (
 )
 
 type ArticleHandler struct {
-	svc service.ArticleService
-	//intrSvc service.InteractiveService
-	l   *zap.Logger
-	biz string
+	svc      service.ArticleService
+	interSvc *service.InteractiveService
+	l        *zap.Logger
+	biz      string
 }
 
-func NewArticleHandler(svc service.ArticleService, l *zap.Logger) *ArticleHandler {
+func NewArticleHandler(svc service.ArticleService, l *zap.Logger, interSvc *service.InteractiveService) *ArticleHandler {
 	return &ArticleHandler{
-		svc: svc,
-		//intrSvc: intrSvc,
-		l:   l,
-		biz: "article",
+		svc:      svc,
+		interSvc: interSvc,
+		l:        l,
+		biz:      "article",
 	}
 }
 
@@ -175,6 +176,14 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 		if err != nil {
 			response.Error(c, err)
 		}
+
+		// 增加阅读计数
+		go func() {
+			er := ctl.interSvc.IncrReadCnt(c.Request.Context(), ctl.biz, artID)
+			if er != nil {
+				log.Printf("增加阅读计数失败:aid:%s", artID)
+			}
+		}()
 
 		resp := DetailResp{
 			ID:         art.ID,

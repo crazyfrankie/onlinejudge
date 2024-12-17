@@ -27,23 +27,23 @@ func (req ArticleReq) toDomain(uid uint64) domain.Article {
 }
 
 type ListResp struct {
-	ID         uint64
-	Title      string
-	Abstract   string
-	AuthorID   uint64
-	AuthorName string
-	Status     uint8
-	Ctime      string
-	Utime      string
+	ID         uint64 `json:"id"`
+	Title      string `json:"title"`
+	Abstract   string `json:"abstract"`
+	AuthorID   uint64 `json:"author_id"`
+	AuthorName string `json:"author_name"`
+	Status     uint8  `json:"status"`
+	Ctime      string `json:"ctime"`
+	Utime      string `json:"utime"`
 }
 
 type DetailResp struct {
-	ID         uint64
-	Title      string
-	Content    string
-	AuthorID   uint64
-	AuthorName string
-	Status     uint8
-	Ctime      string
-	Utime      string
+	ID         uint64 `json:"ID"`
+	Title      string `json:"title"`
+	Content    string `json:"content"`
+	AuthorID   uint64 `json:"author_id"`
+	AuthorName string `json:"author_name"`
+	Status     uint8  `json:"status"`
+	Ctime      string `json:"ctime"`
+	Utime      string `json:"utime"`
 }

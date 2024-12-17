@@ -18,11 +18,14 @@ import (
 // Injectors from wire.go:
 
 func InitArticleHandler(db *gorm.DB) *web.ArticleHandler {
-	articleDao := dao.NewArticleDao(db)
-	articleRepository := repository.NewArticleRepository(articleDao)
+	gormArticleDao := dao.NewArticleDao(db)
+	articleRepository := repository.NewArticleRepository(gormArticleDao)
 	logger := InitLog()
 	articleService := service.NewArticleService(articleRepository, logger)
-	articleHandler := web.NewArticleHandler(articleService, logger)
+	interactiveDao := dao.NewInteractiveDao(db)
+	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao)
+	interactiveService := service.NewInteractiveService(interactiveArtRepository)
+	articleHandler := web.NewArticleHandler(articleService, logger, interactiveService)
 	return articleHandler
 }
 

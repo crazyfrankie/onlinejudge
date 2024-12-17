@@ -29,3 +29,15 @@ type OnlineArticle struct {
 	Ctime    int64  `gorm:"index:aid_ctime" bson:"ctime,omitempty"`
 	Utime    int64  `bson:"utime,omitempty"`
 }
+
+type Interactive struct {
+	ID uint64 `gorm:"primaryKey,autoIncrement"`
+	// 业务标识符
+	BizID      uint64 `gorm:"uniqueIndex:biz_id_type"`
+	Biz        string `gorm:"uniqueIndex:biz_id_type"`
+	ReadCnt    int64
+	LikeCnt    int64
+	CollectCnt int64
+	Ctime      int64
+	Utime      int64
+}
