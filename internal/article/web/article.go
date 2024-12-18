@@ -198,3 +198,28 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 		response.Success(c, resp)
 	}
 }
+
+func (ctl *ArticleHandler) Like() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req LikeReq
+		if err := c.Bind(&req); err != nil {
+			return
+		}
+
+		claims := c.MustGet("claims")
+		claim := claims.(*jwt.Claims)
+
+		var err error
+		if req.Like {
+			err = ctl.interSvc.Like(c.Request.Context(), ctl.biz, req.ID, claim.Id)
+		} else {
+			err = ctl.interSvc.CancelLike(c.Request.Context(), ctl.biz, req.ID, claim.Id)
+		}
+
+		if err != nil {
+			response.Error(c, err)
+		}
+
+		response.Success(c, nil)
+	}
+}

@@ -7,9 +7,11 @@
 package article
 
 import (
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"oj/internal/article/repository"
+	"oj/internal/article/repository/cache"
 	"oj/internal/article/repository/dao"
 	"oj/internal/article/service"
 	"oj/internal/article/web"
@@ -17,13 +19,14 @@ import (
 
 // Injectors from wire.go:
 
-func InitArticleHandler(db *gorm.DB) *web.ArticleHandler {
+func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable) *web.ArticleHandler {
 	gormArticleDao := dao.NewArticleDao(db)
 	articleRepository := repository.NewArticleRepository(gormArticleDao)
 	logger := InitLog()
 	articleService := service.NewArticleService(articleRepository, logger)
 	interactiveDao := dao.NewInteractiveDao(db)
-	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao)
+	interactiveCache := cache.NewInteractiveCache(cmd)
+	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
 	interactiveService := service.NewInteractiveService(interactiveArtRepository)
 	articleHandler := web.NewArticleHandler(articleService, logger, interactiveService)
 	return articleHandler

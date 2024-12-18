@@ -34,36 +34,67 @@ func (dao *InteractiveDao) IncrReadCnt(ctx context.Context, biz string, bizId ui
 	}).Error
 }
 
-func (dao *InteractiveDao) IncrLikeCnt(ctx context.Context, biz string, bizId uint64) error {
+func (dao *InteractiveDao) InsertLikeInfo(ctx context.Context, biz string, bizId, uid uint64) error {
 	now := time.Now().UnixMilli()
 
-	return dao.db.WithContext(ctx).Clauses(clause.OnConflict{
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"like_cnt": gorm.Expr("like_cnt + 1"),
-			"utime":    now,
-		}),
-	}).Create(&Interactive{
-		BizID:   bizId,
-		Biz:     biz,
-		LikeCnt: 1,
-		Ctime:   now,
-		Utime:   now,
-	}).Error
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.WithContext(ctx).Clauses(clause.OnConflict{
+			DoUpdates: clause.Assignments(
+				map[string]any{
+					"utime":  now,
+					"status": 1,
+				}),
+		}).Create(&UserLike{
+			Biz:    biz,
+			BizID:  bizId,
+			UID:    uid,
+			Ctime:  now,
+			Utime:  now,
+			Status: 1,
+		}).Error
+
+		if err != nil {
+			return err
+		}
+
+		return tx.WithContext(ctx).Clauses(clause.OnConflict{
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"like_cnt": gorm.Expr("like_cnt + 1"),
+				"utime":    now,
+			}),
+		}).Create(&Interactive{
+			BizID:   bizId,
+			Biz:     biz,
+			LikeCnt: 1,
+			Ctime:   now,
+			Utime:   now,
+		}).Error
+	})
 }
 
-func (dao *InteractiveDao) IncrCollectCnt(ctx context.Context, biz string, bizId uint64) error {
+func (dao *InteractiveDao) DeleteLikeInfo(ctx context.Context, biz string, bizId uint64, uid uint64) error {
 	now := time.Now().UnixMilli()
 
-	return dao.db.WithContext(ctx).Clauses(clause.OnConflict{
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"collect_cnt": gorm.Expr("collect_cnt + 1"),
-			"utime":       now,
-		}),
-	}).Create(&Interactive{
-		BizID:      bizId,
-		Biz:        biz,
-		CollectCnt: 1,
-		Ctime:      now,
-		Utime:      now,
-	}).Error
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.WithContext(ctx).Model(&UserLike{}).Where("uid = ? AND biz = ? AND biz_id = ?", uid, biz, bizId).Updates(map[string]any{
+			"utime":  now,
+			"status": 0,
+		}).Error
+		if err != nil {
+			return err
+		}
+
+		return tx.WithContext(ctx).
+			Model(&Interactive{}).
+			Where("biz = ? AND biz_id = ?", biz, bizId).
+			Updates(map[string]any{
+				"utime":    now,
+				"like_cnt": gorm.Expr("like_cnt - 1"),
+			}).Error
+	})
 }
+
+//func (dao *InteractiveDao) IncrCollectCnt(ctx context.Context, biz string, bizId uint64) error {
+//	now := time.Now().UnixMilli()
+//
+//}

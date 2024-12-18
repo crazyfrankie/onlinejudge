@@ -33,11 +33,21 @@ type OnlineArticle struct {
 type Interactive struct {
 	ID uint64 `gorm:"primaryKey,autoIncrement"`
 	// 业务标识符
-	BizID      uint64 `gorm:"uniqueIndex:biz_id_type"`
-	Biz        string `gorm:"uniqueIndex:biz_id_type"`
-	ReadCnt    int64
-	LikeCnt    int64
-	CollectCnt int64
-	Ctime      int64
-	Utime      int64
+	BizID   uint64 `gorm:"uniqueIndex:biz_id_type"`
+	Biz     string `gorm:"uniqueIndex:biz_id_type;type:varchar(128)"`
+	ReadCnt int64
+	LikeCnt int64
+	Ctime   int64
+	Utime   int64
+}
+
+type UserLike struct {
+	ID    uint64 `gorm:"primaryKey,autoIncrement"`
+	UID   uint64 `gorm:"uniqueIndex:uid_biz_id_type"`
+	BizID uint64 `gorm:"uniqueIndex:uid_biz_id_type;type:varchar(128)"`
+	Biz   string `gorm:"uniqueIndex:uid_biz_id_type"`
+	Ctime int64
+	Utime int64
+	// 软删除
+	Status uint8
 }

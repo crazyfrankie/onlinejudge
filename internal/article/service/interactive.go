@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"oj/common/constant"
-	"oj/common/errors"
 	"strconv"
 
+	"oj/common/constant"
+	"oj/common/errors"
 	"oj/internal/article/repository"
 )
 
@@ -29,9 +29,8 @@ func (svc *InteractiveService) IncrReadCnt(ctx context.Context, biz, bizId strin
 	return nil
 }
 
-func (svc *InteractiveService) IncrLikeCnt(ctx context.Context, biz, bizId string) error {
-	bizID, _ := strconv.Atoi(bizId)
-	err := svc.repo.IncrLikeCnt(ctx, biz, uint64(bizID))
+func (svc *InteractiveService) Like(ctx context.Context, biz string, bizId, uid uint64) error {
+	err := svc.repo.IncrLikeCnt(ctx, biz, bizId, uid)
 	if err != nil {
 		return errors.NewBusinessError(constant.ErrInternalServer)
 	}
@@ -39,9 +38,8 @@ func (svc *InteractiveService) IncrLikeCnt(ctx context.Context, biz, bizId strin
 	return nil
 }
 
-func (svc *InteractiveService) IncrCollectCnt(ctx context.Context, biz, bizId string) error {
-	bizID, _ := strconv.Atoi(bizId)
-	err := svc.repo.IncrCollectCnt(ctx, biz, uint64(bizID))
+func (svc *InteractiveService) CancelLike(ctx context.Context, biz string, bizId, uid uint64) error {
+	err := svc.repo.DecrLikeCnt(ctx, biz, bizId, uid)
 	if err != nil {
 		return errors.NewBusinessError(constant.ErrInternalServer)
 	}

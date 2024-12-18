@@ -47,3 +47,8 @@ type DetailResp struct {
 	Ctime      string `json:"ctime"`
 	Utime      string `json:"utime"`
 }
+
+type LikeReq struct {
+	ID   uint64 `json:"id"`
+	Like bool   `json:"like"`
+}
