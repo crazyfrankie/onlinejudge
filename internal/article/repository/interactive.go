@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
-
+	"log"
+	
+	"oj/internal/article/domain"
 	"oj/internal/article/repository/cache"
 	"oj/internal/article/repository/dao"
 )
@@ -46,4 +48,26 @@ func (r *InteractiveArtRepository) DecrLikeCnt(ctx context.Context, biz string, 
 	}
 
 	return r.cache.DecrLikeCnt(ctx, biz, bizId)
+}
+
+func (r *InteractiveArtRepository) GetInteractive(ctx context.Context, biz string, bizId, uid uint64) (domain.Interactive, error) {
+	// 先从缓存中拿
+	inter, err := r.cache.GetInteractive(ctx, biz, bizId)
+	if err == nil {
+		return inter, nil
+	}
+
+	inter, err = r.dao.GetInteractiveByID(ctx, biz, bizId, uid)
+	if err != nil {
+		return domain.Interactive{}, err
+	}
+
+	go func() {
+		er := r.cache.SetInteractive(ctx, biz, bizId, inter)
+		if er != nil {
+			log.Printf("回写缓存失败:%s", er)
+		}
+	}()
+
+	return inter, nil
 }

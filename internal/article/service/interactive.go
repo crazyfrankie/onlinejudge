@@ -6,6 +6,7 @@ import (
 
 	"oj/common/constant"
 	"oj/common/errors"
+	"oj/internal/article/domain"
 	"oj/internal/article/repository"
 )
 
@@ -45,4 +46,14 @@ func (svc *InteractiveService) CancelLike(ctx context.Context, biz string, bizId
 	}
 
 	return nil
+}
+
+func (svc *InteractiveService) GetInteractive(ctx context.Context, biz string, bizId string, uid uint64) (domain.Interactive, error) {
+	bizID, _ := strconv.Atoi(bizId)
+	inter, err := svc.repo.GetInteractive(ctx, biz, uint64(bizID), uid)
+	if err != nil {
+		return domain.Interactive{}, errors.NewBusinessError(constant.ErrInternalServer)
+	}
+
+	return inter, nil
 }

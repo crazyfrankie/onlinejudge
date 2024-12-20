@@ -6,7 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-
+	"golang.org/x/sync/errgroup"
+	
 	"oj/common/constant"
 	"oj/common/errors"
 	"oj/common/response"
@@ -172,9 +173,24 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 
 		artID := c.Param("id")
 
-		art, err := ctl.svc.Detail(c.Request.Context(), claim.Id, artID)
+		var err error
+		var eg errgroup.Group
+		var art domain.Article
+		eg.Go(func() error {
+			art, err = ctl.svc.Detail(c.Request.Context(), claim.Id, artID)
+			return err
+		})
+
+		var inter domain.Interactive
+		eg.Go(func() error {
+			inter, err = ctl.interSvc.GetInteractive(c.Request.Context(), ctl.biz, artID, claim.Id)
+			return err
+		})
+
+		err = eg.Wait()
 		if err != nil {
 			response.Error(c, err)
+			return
 		}
 
 		// 增加阅读计数
@@ -185,6 +201,10 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 			}
 		}()
 
+		interResp := Interactive{
+			LikeCnt: inter.LikeCnt,
+			ReadCnt: inter.ReadCnt,
+		}
 		resp := DetailResp{
 			ID:         art.ID,
 			Title:      art.Title,
@@ -194,7 +214,10 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 			Ctime:      art.Ctime.String(),
 			Utime:      art.Utime.String(),
 			Status:     art.Status.ToUint8(),
+			Inter:      interResp,
+			Liked:      inter.Liked,
 		}
+
 		response.Success(c, resp)
 	}
 }

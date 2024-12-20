@@ -2,9 +2,12 @@ package dao
 
 import (
 	"context"
+	"time"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"time"
+	
+	"oj/internal/article/domain"
 )
 
 type InteractiveDao struct {
@@ -94,7 +97,30 @@ func (dao *InteractiveDao) DeleteLikeInfo(ctx context.Context, biz string, bizId
 	})
 }
 
-//func (dao *InteractiveDao) IncrCollectCnt(ctx context.Context, biz string, bizId uint64) error {
-//	now := time.Now().UnixMilli()
-//
-//}
+func (dao *InteractiveDao) GetInteractiveByID(ctx context.Context, biz string, bizId, uid uint64) (domain.Interactive, error) {
+	var inter Interactive
+	var userLike UserLike
+
+	err := dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.WithContext(ctx).Model(&Interactive{}).Where("biz = ? AND biz_id = ?", biz, bizId).First(&inter).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.WithContext(ctx).Model(&UserLike{}).Where("biz = ? AND biz_id = ? AND uid = ?", biz, bizId, uid).First(&userLike).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return domain.Interactive{}, err
+	}
+
+	return domain.Interactive{
+		Liked:   userLike.Status == 1,
+		LikeCnt: inter.LikeCnt,
+		ReadCnt: inter.ReadCnt,
+	}, nil
+}

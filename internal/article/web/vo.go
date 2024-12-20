@@ -38,14 +38,21 @@ type ListResp struct {
 }
 
 type DetailResp struct {
-	ID         uint64 `json:"ID"`
-	Title      string `json:"title"`
-	Content    string `json:"content"`
-	AuthorID   uint64 `json:"author_id"`
-	AuthorName string `json:"author_name"`
-	Status     uint8  `json:"status"`
-	Ctime      string `json:"ctime"`
-	Utime      string `json:"utime"`
+	ID         uint64      `json:"ID"`
+	Title      string      `json:"title"`
+	Content    string      `json:"content"`
+	AuthorID   uint64      `json:"author_id"`
+	AuthorName string      `json:"author_name"`
+	Status     uint8       `json:"status"`
+	Ctime      string      `json:"ctime"`
+	Utime      string      `json:"utime"`
+	Inter      Interactive `json:"inter"`
+	Liked      bool        `json:"liked"`
+}
+
+type Interactive struct {
+	LikeCnt int64 `json:"like_cnt"`
+	ReadCnt int64 `json:"read_cnt"`
 }
 
 type LikeReq struct {

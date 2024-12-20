@@ -12,6 +12,12 @@ type Article struct {
 	Status  ArticleStatus
 }
 
+type Interactive struct {
+	LikeCnt int64 `json:"like_cnt"`
+	ReadCnt int64 `json:"read_cnt"`
+	Liked   bool  `json:"liked"`
+}
+
 func (a Article) Abstract() string {
 	// 摘要我们取前几句
 	// 不能直接[:1024]
