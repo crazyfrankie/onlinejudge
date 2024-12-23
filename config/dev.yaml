@@ -8,3 +8,6 @@ redis:
   addr: "localhost:8838"
   poolSize: 15
   minIdleConns: 5
+
+kafka:
+  addr: "localhost:9094"

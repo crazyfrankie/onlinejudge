@@ -20,11 +20,19 @@ func main() {
 	initViper()
 	initLogger()
 
-	router := ioc.InitGin()
+	app := ioc.InitApp()
 
 	server := &http.Server{
 		Addr:    "0.0.0.0:9000",
-		Handler: router,
+		Handler: app.Server,
+	}
+
+	// start consumers
+	for _, consumer := range app.Consumers {
+		err := consumer.Start()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	go func() {

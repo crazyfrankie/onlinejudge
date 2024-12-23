@@ -7,7 +7,6 @@
 package ioc
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"oj/internal/article"
 	"oj/internal/judgement"
@@ -18,7 +17,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitGin() *gin.Engine {
+func InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
 	handler := jwt.NewRedisJWTHandler(cmdable)
@@ -30,11 +29,16 @@ func InitGin() *gin.Engine {
 	localSubmitHandler := judgement.InitLocalJudgement(cmdable, db)
 	submissionHandler := judgement.InitRemoteJudgement(cmdable, db)
 	oAuthGithubHandler := user.InitOAuthGithubHandler(cmdable, db)
-	articleHandler := article.InitArticleHandler(db)
+	client := InitKafka()
+	logger := InitLog()
+	articleHandler := article.InitArticleHandler(db, cmdable, client, logger)
 	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, localSubmitHandler, submissionHandler, oAuthGithubHandler, articleHandler)
-	return engine
+	articleConsumer := article.InitConsumer(db, cmdable, client, logger)
+	v2 := NewConsumers(articleConsumer)
+	app := InitOJ(engine, v2)
+	return app
 }
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitDB, InitRedis)
+var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)

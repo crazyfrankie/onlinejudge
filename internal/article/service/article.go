@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+
 	"strconv"
 
 	"go.uber.org/zap"
@@ -11,6 +12,7 @@ import (
 	"oj/common/constant"
 	er "oj/common/errors"
 	"oj/internal/article/domain"
+	"oj/internal/article/event"
 	"oj/internal/article/repository"
 )
 
@@ -23,14 +25,16 @@ type ArticleService interface {
 }
 
 type articleService struct {
-	repo   *repository.ArticleRepository
-	logger *zap.Logger
+	repo     *repository.ArticleRepository
+	logger   *zap.Logger
+	producer event.Producer
 }
 
-func NewArticleService(repo *repository.ArticleRepository, logger *zap.Logger) ArticleService {
+func NewArticleService(repo *repository.ArticleRepository, logger *zap.Logger, producer event.Producer) ArticleService {
 	return &articleService{
-		repo:   repo,
-		logger: logger,
+		repo:     repo,
+		logger:   logger,
+		producer: producer,
 	}
 }
 
@@ -138,6 +142,13 @@ func (svc *articleService) Detail(ctx context.Context, uid uint64, artID string)
 		log.Printf("有人非法获取文章, UID:%d", uid)
 		return domain.Article{}, er.NewBusinessError(constant.ErrInternalServer)
 	}
+
+	go func() {
+		er := svc.producer.ProduceReadEvent(ctx, event.ReadEvent{Aid: uint64(id), Uid: uid})
+		if er != nil {
+			log.Printf("增加阅读计数失败:%s:aid:%d:uid:%d", er.Error(), id, uid)
+		}
+	}()
 
 	return art, nil
 }

@@ -7,9 +7,11 @@
 package article
 
 import (
+	"github.com/IBM/sarama"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"oj/internal/article/event"
 	"oj/internal/article/repository"
 	"oj/internal/article/repository/cache"
 	"oj/internal/article/repository/dao"
@@ -19,25 +21,35 @@ import (
 
 // Injectors from wire.go:
 
-func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable) *web.ArticleHandler {
+func InitConsumer(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *event.ArticleConsumer {
+	interactiveDao := dao.NewInteractiveDao(db)
+	interactiveCache := cache.NewInteractiveCache(cmd)
+	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
+	articleConsumer := event.NewArticleConsumer(client, interactiveArtRepository, l)
+	return articleConsumer
+}
+
+func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *web.ArticleHandler {
 	gormArticleDao := dao.NewArticleDao(db)
 	articleRepository := repository.NewArticleRepository(gormArticleDao)
-	logger := InitLog()
-	articleService := service.NewArticleService(articleRepository, logger)
+	syncProducer := NewSyncProducer(client)
+	producer := event.NewArticleProducer(syncProducer)
+	articleService := service.NewArticleService(articleRepository, l, producer)
 	interactiveDao := dao.NewInteractiveDao(db)
 	interactiveCache := cache.NewInteractiveCache(cmd)
 	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
 	interactiveService := service.NewInteractiveService(interactiveArtRepository)
-	articleHandler := web.NewArticleHandler(articleService, logger, interactiveService)
+	articleHandler := web.NewArticleHandler(articleService, l, interactiveService)
 	return articleHandler
 }
 
 // wire.go:
 
-func InitLog() *zap.Logger {
-	log, err := zap.NewDevelopment()
+func NewSyncProducer(client sarama.Client) sarama.SyncProducer {
+	res, err := sarama.NewSyncProducerFromClient(client)
 	if err != nil {
 		panic(err)
 	}
-	return log
+
+	return res
 }

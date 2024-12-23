@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"oj/common/constant"
+	er "oj/common/errors"
 	"oj/internal/user/repository"
 	smsSvc "oj/internal/user/service/sms"
 )
@@ -56,16 +57,16 @@ func (svc *CodeSvc) Send(ctx context.Context, biz, receiver string) error {
 	err := svc.repo.Store(ctx, biz, receiver, enCode)
 	if err != nil {
 		if errors.Is(err, ErrSendTooMany) {
-			return NewBusinessError(constant.ErrForbidden)
+			return er.NewBusinessError(constant.ErrForbidden)
 		} else {
-			return NewBusinessError(constant.ErrInternalServer)
+			return er.NewBusinessError(constant.ErrInternalServer)
 		}
 	}
 
 	// 发送出去
 	err = svc.sms.Send(ctx, codeTplId, []string{code}, receiver)
 	if err != nil {
-		return NewBusinessError(constant.ErrInternalServer)
+		return er.NewBusinessError(constant.ErrInternalServer)
 	}
 
 	return nil
@@ -78,9 +79,9 @@ func (svc *CodeSvc) Verify(ctx context.Context, biz, phone, inputCode string) er
 	_, err := svc.repo.Verify(ctx, biz, phone, enCode)
 	if err != nil {
 		if errors.Is(err, ErrVerifyTooMany) {
-			return NewBusinessError(constant.ErrForbidden)
+			return er.NewBusinessError(constant.ErrForbidden)
 		} else {
-			return NewBusinessError(constant.ErrInternalServer)
+			return er.NewBusinessError(constant.ErrInternalServer)
 		}
 	}
 

@@ -3,9 +3,7 @@
 package ioc
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
-
 	"oj/internal/article"
 	"oj/internal/judgement"
 	"oj/internal/problem"
@@ -13,9 +11,9 @@ import (
 	"oj/internal/user/middleware/jwt"
 )
 
-var BaseSet = wire.NewSet(InitDB, InitRedis)
+var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)
 
-func InitGin() *gin.Engine {
+func InitApp() *App {
 	wire.Build(
 		BaseSet,
 
@@ -29,6 +27,7 @@ func InitGin() *gin.Engine {
 		judgement.InitRemoteJudgement,
 
 		article.InitArticleHandler,
+		article.InitConsumer,
 
 		jwt.NewRedisJWTHandler,
 
@@ -38,6 +37,12 @@ func InitGin() *gin.Engine {
 
 		// web 服务器
 		InitWebServer,
+
+
+		NewConsumers,
+
+		InitOJ,
 	)
-	return new(gin.Engine)
+	
+	return new(App)
 }

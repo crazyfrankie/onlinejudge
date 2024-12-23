@@ -1,13 +1,12 @@
 package web
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-	
+
 	"oj/common/constant"
 	"oj/common/errors"
 	"oj/common/response"
@@ -194,12 +193,12 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 		}
 
 		// 增加阅读计数
-		go func() {
-			er := ctl.interSvc.IncrReadCnt(c.Request.Context(), ctl.biz, artID)
-			if er != nil {
-				log.Printf("增加阅读计数失败:aid:%s", artID)
-			}
-		}()
+		//go func() {
+		//	er := ctl.interSvc.IncrReadCnt(c.Request.Context(), ctl.biz, artID)
+		//	if er != nil {
+		//		log.Printf("增加阅读计数失败:aid:%s", artID)
+		//	}
+		//}()
 
 		interResp := Interactive{
 			LikeCnt: inter.LikeCnt,
