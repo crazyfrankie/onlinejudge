@@ -192,14 +192,6 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 			return
 		}
 
-		// 增加阅读计数
-		//go func() {
-		//	er := ctl.interSvc.IncrReadCnt(c.Request.Context(), ctl.biz, artID)
-		//	if er != nil {
-		//		log.Printf("增加阅读计数失败:aid:%s", artID)
-		//	}
-		//}()
-
 		interResp := Interactive{
 			LikeCnt: inter.LikeCnt,
 			ReadCnt: inter.ReadCnt,

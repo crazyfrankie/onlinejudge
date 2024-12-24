@@ -34,8 +34,8 @@ func TestSyncProducer(t *testing.T) {
 	msgCh := producer.Input()
 	// 初始化 Channel, 并发送
 	msgCh <- &sarama.ProducerMessage{
-		Topic: "test_topic",
-		Value: sarama.StringEncoder("this is a test message B"),
+		Topic: "article_read",
+		Value: sarama.StringEncoder(`{"aid":1, "uid":123}`),
 	}
 
 	// 处理结果

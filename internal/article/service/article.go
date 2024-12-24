@@ -138,11 +138,6 @@ func (svc *articleService) Detail(ctx context.Context, uid uint64, artID string)
 		return domain.Article{}, er.NewBusinessError(constant.ErrInternalServer)
 	}
 
-	if art.ID != uid {
-		log.Printf("有人非法获取文章, UID:%d", uid)
-		return domain.Article{}, er.NewBusinessError(constant.ErrInternalServer)
-	}
-
 	go func() {
 		er := svc.producer.ProduceReadEvent(ctx, event.ReadEvent{Aid: uint64(id), Uid: uid})
 		if er != nil {

@@ -40,7 +40,7 @@ func (a *ArticleConsumer) Start() error {
 }
 
 func (a *ArticleConsumer) Consume(msg *sarama.ConsumerMessage, t ReadEvent) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	return a.repo.IncrReadCnt(ctx, "article", t.Aid)
 }

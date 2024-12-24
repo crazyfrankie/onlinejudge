@@ -2,12 +2,17 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	
+
 	"oj/internal/article/domain"
+)
+
+var (
+	ErrNoUserLike = errors.New("no user like this article")
 )
 
 type InteractiveDao struct {
@@ -104,17 +109,33 @@ func (dao *InteractiveDao) GetInteractiveByID(ctx context.Context, biz string, b
 	err := dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		err := tx.WithContext(ctx).Model(&Interactive{}).Where("biz = ? AND biz_id = ?", biz, bizId).First(&inter).Error
 		if err != nil {
-			return err
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+
+			inter.ReadCnt = 1
 		}
 
 		err = tx.WithContext(ctx).Model(&UserLike{}).Where("biz = ? AND biz_id = ? AND uid = ?", biz, bizId, uid).First(&userLike).Error
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrNoUserLike
+			}
+
 			return err
 		}
 
 		return nil
 	})
 	if err != nil {
+		if errors.Is(err, ErrNoUserLike) {
+			return domain.Interactive{
+				Liked:   false,
+				LikeCnt: inter.LikeCnt,
+				ReadCnt: inter.ReadCnt,
+			}, nil
+		}
+
 		return domain.Interactive{}, err
 	}
 

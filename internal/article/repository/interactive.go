@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"log"
-	
+
 	"oj/internal/article/domain"
 	"oj/internal/article/repository/cache"
 	"oj/internal/article/repository/dao"
@@ -63,7 +63,7 @@ func (r *InteractiveArtRepository) GetInteractive(ctx context.Context, biz strin
 	}
 
 	go func() {
-		er := r.cache.SetInteractive(ctx, biz, bizId, inter)
+		er := r.cache.SetInteractive(context.Background(), biz, bizId, inter)
 		if er != nil {
 			log.Printf("回写缓存失败:%s", er)
 		}

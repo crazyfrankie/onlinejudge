@@ -1,7 +1,6 @@
 package ioc
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/spf13/viper"
@@ -9,8 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
-	"oj/internal/problem/repository/dao"
-	udao "oj/internal/user/repository/dao"
+	"oj/internal/article/repository/dao"
 )
 
 func InitDB() *gorm.DB {
@@ -30,7 +28,6 @@ func InitDB() *gorm.DB {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(cfg)
 	db, err := gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true, // 表名不加s
@@ -50,14 +47,17 @@ func InitDB() *gorm.DB {
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)                                    // 最大空闲连接数
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)                                    // 最大打开连接数
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifeTime) * time.Minute) // 连接的最大生命周期
-	Migrate(db)
+	err = Migrate(db)
+	if err != nil {
+		panic(err)
+	}
 
 	return db
 }
 
 func Migrate(db *gorm.DB) error {
 	// 自动迁移，创建表
-	if err := db.AutoMigrate(&dao.TestCase{}, &dao.Problem{}, &dao.Tag{}, &dao.ProblemTag{}, &udao.User{}); err != nil {
+	if err := db.AutoMigrate(&dao.Interactive{}); err != nil {
 		return err
 	}
 	return nil

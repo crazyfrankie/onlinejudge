@@ -15,6 +15,7 @@ elseif expectedCode == code then
 -- 输对了
 -- 用完了不能再用了
     redis.call("set", cntKey, -1)
+    redis.call("expire", cntKey, 600)  -- 重新设置过期时间为 600 秒
     return 0
 else
 -- 用户手抖输错了

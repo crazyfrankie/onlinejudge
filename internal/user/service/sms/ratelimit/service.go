@@ -38,7 +38,7 @@ func (svc *Service) Send(ctx context.Context, tplId string, args []string, numbe
 		return fmt.Errorf("短信服务触发限流 %w", err)
 	}
 
-	err = svc.Send(ctx, tplId, args, numbers...)
+	err = svc.svc.Send(ctx, tplId, args, numbers...)
 	// 也可在这增加新特性
 	return err
 }
