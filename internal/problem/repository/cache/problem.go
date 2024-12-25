@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"oj/internal/problem/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
 )
 
 type ProblemCache interface {

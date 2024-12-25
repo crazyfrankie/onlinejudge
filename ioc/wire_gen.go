@@ -8,11 +8,10 @@ package ioc
 
 import (
 	"github.com/google/wire"
-	"oj/internal/article"
-	"oj/internal/judgement"
-	"oj/internal/problem"
-	"oj/internal/user"
-	"oj/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/article"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement"
+	"github.com/crazyfrankie/onlinejudge/internal/problem"
+	"github.com/crazyfrankie/onlinejudge/internal/user"
 )
 
 // Injectors from wire.go:
@@ -20,22 +19,30 @@ import (
 func InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
-	handler := jwt.NewRedisJWTHandler(cmdable)
-	v := GinMiddlewares(limiter, handler)
 	db := InitDB()
-	userHandler := user.InitUserHandler(cmdable, db)
-	problemHandler := problem.InitProblemHandler(cmdable, db)
-	oAuthWeChatHandler := user.InitOAuthWeChatHandler(cmdable, db)
-	localSubmitHandler := judgement.InitLocalJudgement(cmdable, db)
-	submissionHandler := judgement.InitRemoteJudgement(cmdable, db)
-	oAuthGithubHandler := user.InitOAuthGithubHandler(cmdable, db)
+	module := user.InitModule(cmdable, db)
+	handler := module.JWTHdl
+	v := GinMiddlewares(limiter, handler)
+	userHandler := module.Hdl
+	problemModule := problem.InitModule(cmdable, db)
+	problemHandler := problemModule.Hdl
+	oAuthWeChatHandler := module.WeChatHdl
+	judgementModule := judgement.InitModule(cmdable, db, problemModule)
+	localSubmitHandler := judgementModule.LocHdl
+	submissionHandler := judgementModule.RemHdl
+	oAuthGithubHandler := module.GithubHdl
 	client := InitKafka()
 	logger := InitLog()
-	articleHandler := article.InitArticleHandler(db, cmdable, client, logger)
-	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, localSubmitHandler, submissionHandler, oAuthGithubHandler, articleHandler)
-	articleConsumer := article.InitConsumer(db, cmdable, client, logger)
-	v2 := NewConsumers(articleConsumer)
-	app := InitOJ(engine, v2)
+	articleModule := article.InitModule(db, cmdable, client, logger)
+	articleHandler := articleModule.Hdl
+	adminHandler := articleModule.AdminHdl
+	engine := InitWebServer(v, userHandler, problemHandler, oAuthWeChatHandler, localSubmitHandler, submissionHandler, oAuthGithubHandler, articleHandler, adminHandler)
+	consumer := articleModule.Consumer
+	v2 := NewConsumers(consumer)
+	app := &App{
+		Server:    engine,
+		Consumers: v2,
+	}
 	return app
 }
 

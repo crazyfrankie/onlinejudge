@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"oj/internal/user/domain"
-	"oj/internal/user/repository/cache"
-	"oj/internal/user/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
 )
 
 var (

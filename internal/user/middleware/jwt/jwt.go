@@ -50,7 +50,7 @@ func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, s
 		SSId: ssid,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
-			Issuer:    "oj",
+			Issuer:    "github.com/crazyfrankie/onlinejudge",
 		},
 		UserAgent: ctx.GetHeader("User-Agent"),
 	}
@@ -67,7 +67,7 @@ func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, 
 		SSId: ssid,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24 * 7).Unix(),
-			Issuer:    "oj",
+			Issuer:    "github.com/crazyfrankie/onlinejudge",
 		},
 		UserAgent: ctx.GetHeader("User-Agent"),
 	}

@@ -3,15 +3,15 @@
 package judgement
 
 import (
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/local"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/remote"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/web"
+	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"oj/internal/judgement/repository"
-	"oj/internal/judgement/repository/cache"
-	"oj/internal/judgement/service/local"
-	"oj/internal/judgement/service/remote"
-	"oj/internal/judgement/web"
-	"oj/internal/problem"
 	"os"
 )
 
@@ -19,8 +19,6 @@ var LocalSet = wire.NewSet(
 	cache.NewLocalSubmitCache,
 
 	repository.NewLocalSubmitRepo,
-
-	problem.InitProblemRepo,
 
 	local.NewLocSubmitService,
 
@@ -31,8 +29,6 @@ var RemoteSet = wire.NewSet(
 	cache.NewSubmitCache,
 
 	repository.NewSubmitRepository,
-
-	problem.InitProblemRepo,
 
 	remote.NewSubmitService,
 
@@ -48,17 +44,14 @@ func InitJudgeKey(cmd redis.Cmdable, db *gorm.DB) string {
 	return key
 }
 
-func InitLocalJudgement(cmd redis.Cmdable, db *gorm.DB) *web.LocalSubmitHandler {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, module *problem.Module) *Module {
 	wire.Build(
 		LocalSet,
-	)
-	return new(web.LocalSubmitHandler)
-}
-
-func InitRemoteJudgement(cmd redis.Cmdable, db *gorm.DB) *web.SubmissionHandler {
-	wire.Build(
-		InitJudgeKey,
 		RemoteSet,
+		InitJudgeKey,
+
+		wire.FieldsOf(new(*problem.Module), "Repo"),
+		wire.Struct(new(Module), "*"),
 	)
-	return new(web.SubmissionHandler)
+	return new(Module)
 }

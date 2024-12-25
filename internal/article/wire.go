@@ -8,13 +8,13 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"oj/internal/article/event"
 
-	"oj/internal/article/repository"
-	"oj/internal/article/repository/cache"
-	"oj/internal/article/repository/dao"
-	"oj/internal/article/service"
-	"oj/internal/article/web"
+	"github.com/crazyfrankie/onlinejudge/internal/article/event"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/article/service"
+	"github.com/crazyfrankie/onlinejudge/internal/article/web"
 )
 
 func NewSyncProducer(client sarama.Client) sarama.SyncProducer {
@@ -26,19 +26,7 @@ func NewSyncProducer(client sarama.Client) sarama.SyncProducer {
 	return res
 }
 
-func InitConsumer(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *event.ArticleConsumer {
-	wire.Build(
-		dao.NewInteractiveDao,
-		cache.NewInteractiveCache,
-
-		repository.NewInteractiveArtRepository,
-
-		event.NewArticleConsumer,
-	)
-	return new(event.ArticleConsumer)
-}
-
-func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *web.ArticleHandler {
+func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *Module {
 	wire.Build(
 		dao.NewArticleDao,
 		dao.NewInteractiveDao,
@@ -48,12 +36,16 @@ func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l 
 		repository.NewInteractiveArtRepository,
 
 		NewSyncProducer,
-
 		event.NewArticleProducer,
+		event.NewArticleConsumer,
+
 		service.NewArticleService,
 		service.NewInteractiveService,
 
 		web.NewArticleHandler,
+		web.NewAdminHandler,
+
+		wire.Struct(new(Module), "*"),
 	)
-	return new(web.ArticleHandler)
+	return new(Module)
 }

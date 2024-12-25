@@ -1,21 +1,21 @@
 package ioc
 
 import (
+	"github.com/crazyfrankie/onlinejudge/internal/article"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement"
+	"github.com/crazyfrankie/onlinejudge/internal/problem"
+	"github.com/crazyfrankie/onlinejudge/internal/user"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
+	rate "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"oj/internal/article"
-	"oj/internal/auth"
-	"oj/internal/judgement"
-	"oj/internal/problem"
-	"oj/internal/user"
-	ijwt "oj/internal/user/middleware/jwt"
-	"oj/internal/user/middleware/ratelimit"
-	"oj/internal/user/web/third"
-	rate "oj/pkg/ratelimit"
 	"time"
 )
 
-func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler) *gin.Engine {
+func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler, adminHdl *article.AdminHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdl...)
 	// 注册路由
@@ -26,6 +26,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	remoteHdl.RegisterRoute(server)
 	gitHdl.RegisterRoute(server)
 	artHdl.RegisterRoute(server)
+	adminHdl.RegisterRoute(server)
 	return server
 }
 

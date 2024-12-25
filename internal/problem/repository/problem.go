@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository/cache"
 	"log"
-	"oj/internal/problem/domain"
-	"oj/internal/problem/repository/cache"
 
-	"oj/internal/problem/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository/dao"
 )
 
 var (

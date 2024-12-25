@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 	"time"
 
-	"oj/internal/user/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 )
 
 var (

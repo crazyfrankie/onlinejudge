@@ -9,25 +9,24 @@ package problem
 import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"oj/internal/problem/repository"
-	"oj/internal/problem/repository/cache"
-	"oj/internal/problem/repository/dao"
-	"oj/internal/problem/service"
-	"oj/internal/problem/web"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/service"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/web"
 )
 
 // Injectors from wire.go:
 
-func InitProblemRepo(cmd redis.Cmdable, db *gorm.DB) repository.ProblemRepository {
+func InitModule(cmd redis.Cmdable, db *gorm.DB) *Module {
 	problemDao := dao.NewProblemDao(db)
 	problemCache := cache.NewProblemCache(cmd)
 	problemRepository := repository.NewProblemRepository(problemDao, problemCache)
-	return problemRepository
-}
-
-func InitProblemHandler(cmd redis.Cmdable, db *gorm.DB) *web.ProblemHandler {
-	problemRepository := InitProblemRepo(cmd, db)
 	problemService := service.NewProblemService(problemRepository)
 	problemHandler := web.NewProblemHandler(problemService)
-	return problemHandler
+	module := &Module{
+		Hdl:  problemHandler,
+		Repo: problemRepository,
+	}
+	return module
 }

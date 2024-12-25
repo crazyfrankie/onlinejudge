@@ -8,82 +8,52 @@ package user
 
 import (
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"gorm.io/gorm"
-	"oj/internal/user/middleware/jwt"
-	"oj/internal/user/repository"
-	"oj/internal/user/repository/cache"
-	"oj/internal/user/repository/dao"
-	"oj/internal/user/service"
-	"oj/internal/user/service/oauth/github"
-	"oj/internal/user/service/oauth/wechat"
-	"oj/internal/user/service/sms"
-	"oj/internal/user/service/sms/failover"
-	"oj/internal/user/service/sms/memory"
-	ratelimit2 "oj/internal/user/service/sms/ratelimit"
-	"oj/internal/user/web"
-	"oj/internal/user/web/third"
-	"oj/pkg/ratelimit"
-	"oj/pkg/zapx"
-	"os"
+	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/failover"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/memory"
+	ratelimit2 "github.com/crazyfrankie/onlinejudge/internal/user/service/sms/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
+	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	"time"
 )
 
 // Injectors from wire.go:
 
-func InitUserService(cmd redis.Cmdable, db *gorm.DB) service.UserService {
+func InitModule(cmd redis.Cmdable, db *gorm.DB) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
-	return userService
-}
-
-func InitUserHandler(cmd redis.Cmdable, db *gorm.DB) *web.UserHandler {
-	userService := InitUserService(cmd, db)
 	codeCache := cache.NewRedisCodeCache(cmd)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	limiter := InitSlideWindow(cmd)
 	smsService := InitSMSService(limiter)
 	codeService := service.NewCodeService(codeRepository, smsService)
 	handler := jwt.NewRedisJWTHandler(cmd)
-	logger := InitLogger()
-	userHandler := web.NewUserHandler(userService, codeService, handler, logger)
-	return userHandler
-}
-
-func InitOAuthGithubHandler(cmd redis.Cmdable, db *gorm.DB) *third.OAuthGithubHandler {
-	githubService := InitGithubService()
-	userService := InitUserService(cmd, db)
-	handler := jwt.NewRedisJWTHandler(cmd)
+	userHandler := web.NewUserHandler(userService, codeService, handler)
+	githubService := github.NewService()
 	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
-	return oAuthGithubHandler
-}
-
-func InitOAuthWeChatHandler(cmd redis.Cmdable, db *gorm.DB) *third.OAuthWeChatHandler {
-	wechatService := InitWechatService()
-	handler := jwt.NewRedisJWTHandler(cmd)
-	userService := InitUserService(cmd, db)
-	oAuthWeChatHandler := third.NewOAuthHandler(wechatService, handler, userService)
-	return oAuthWeChatHandler
+	wechatService := wechat.NewService()
+	oAuthWeChatHandler := third.NewOAuthWeChatHandler(wechatService, handler, userService)
+	module := &Module{
+		Hdl:       userHandler,
+		JWTHdl:    handler,
+		GithubHdl: oAuthGithubHandler,
+		WeChatHdl: oAuthWeChatHandler,
+	}
+	return module
 }
 
 // wire.go:
-
-func InitWechatService() wechat.Service {
-	appId, ok := os.LookupEnv("WECHAT_APP_ID")
-	if !ok {
-		panic("environment variable appId not found")
-	}
-
-	var appKey string
-	appKey, ok = os.LookupEnv("WECHAT_APP_KEY")
-	if !ok {
-		panic("environment variable appKey not found")
-	}
-	return wechat.NewService(appId, appKey)
-}
 
 func InitSMSService(limiter ratelimit.Limiter) sms.Service {
 	memoryService := memory.NewService()
@@ -94,20 +64,6 @@ func InitSMSService(limiter ratelimit.Limiter) sms.Service {
 	rateLimitService := ratelimit2.NewService(memoryService, limiter)
 	failOverService := failover.NewFailOver(append(services, rateLimitService))
 	return failOverService
-}
-
-func InitGithubService() github.Service {
-	return github.NewService()
-}
-
-func InitLogger() *zap.Logger {
-	encodeConfig := zap.NewDevelopmentEncoderConfig()
-	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encodeConfig), zapcore.AddSync(os.Stdout), zapcore.DebugLevel)
-
-	customCore := zapx.NewCustomCore(core)
-	logger := zap.New(customCore)
-
-	return logger
 }
 
 func InitSlideWindow(cmd redis.Cmdable) ratelimit.Limiter {

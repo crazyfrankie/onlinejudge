@@ -3,45 +3,38 @@
 package user
 
 import (
-	"os"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/failover"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/memory"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"time"
 
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"gorm.io/gorm"
 
-	"oj/internal/user/middleware/jwt"
-	"oj/internal/user/repository"
-	"oj/internal/user/repository/cache"
-	"oj/internal/user/repository/dao"
-	"oj/internal/user/service"
-	"oj/internal/user/service/oauth/github"
-	"oj/internal/user/service/oauth/wechat"
-	"oj/internal/user/service/sms"
-	"oj/internal/user/service/sms/failover"
-	"oj/internal/user/service/sms/memory"
-	"oj/internal/user/service/sms/ratelimit"
-	"oj/internal/user/web"
-	"oj/internal/user/web/third"
-	ratelimit2 "oj/pkg/ratelimit"
-	"oj/pkg/zapx"
+	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
+
+	ratelimit2 "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
-func InitWechatService() wechat.Service {
-	appId, ok := os.LookupEnv("WECHAT_APP_ID")
-	if !ok {
-		panic("environment variable appId not found")
-	}
-
-	var appKey string
-	appKey, ok = os.LookupEnv("WECHAT_APP_KEY")
-	if !ok {
-		panic("environment variable appKey not found")
-	}
-	return wechat.NewService(appId, appKey)
-}
+//func InitLogger() *zap.Logger {
+//	encodeConfig := zap.NewDevelopmentEncoderConfig()
+//	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encodeConfig), zapcore.AddSync(os.Stdout), zapcore.DebugLevel)
+//
+//	customCore := zapx.NewCustomCore(core)
+//	logger := zap.New(customCore)
+//
+//	return logger
+//}
 
 func InitSMSService(limiter ratelimit2.Limiter) sms.Service {
 	memoryService := memory.NewService()
@@ -54,73 +47,32 @@ func InitSMSService(limiter ratelimit2.Limiter) sms.Service {
 	return failOverService
 }
 
-func InitGithubService() github.Service {
-	return github.NewService()
-}
-
-func InitLogger() *zap.Logger {
-	encodeConfig := zap.NewDevelopmentEncoderConfig()
-	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encodeConfig), zapcore.AddSync(os.Stdout), zapcore.DebugLevel)
-
-	customCore := zapx.NewCustomCore(core)
-	logger := zap.New(customCore)
-
-	return logger
-}
-
 func InitSlideWindow(cmd redis.Cmdable) ratelimit2.Limiter {
 	return ratelimit2.NewRedisSlideWindowLimiter(cmd, time.Second, 3000)
 }
 
-func InitUserService(cmd redis.Cmdable, db *gorm.DB) service.UserService {
+func InitModule(cmd redis.Cmdable, db *gorm.DB) *Module {
 	wire.Build(
 		dao.NewUserDao,
 		cache.NewUserCache,
-
-		repository.NewUserRepository,
-
-		service.NewUserService,
-	)
-	return new(service.UserSvc)
-}
-
-func InitUserHandler(cmd redis.Cmdable, db *gorm.DB) *web.UserHandler {
-	wire.Build(
 		cache.NewRedisCodeCache,
 
 		repository.NewCodeRepository,
+		repository.NewUserRepository,
 
-		InitSlideWindow,
-
-		InitUserService,
+		service.NewUserService,
 		service.NewCodeService,
+		github.NewService,
+		wechat.NewService,
+		InitSlideWindow,
 		InitSMSService,
 
 		jwt.NewRedisJWTHandler,
-
 		web.NewUserHandler,
-
-		InitLogger,
-	)
-	return new(web.UserHandler)
-}
-
-func InitOAuthGithubHandler(cmd redis.Cmdable, db *gorm.DB) *third.OAuthGithubHandler {
-	wire.Build(
-		InitUserService,
-		InitGithubService,
-		jwt.NewRedisJWTHandler,
 		third.NewOAuthGithubHandler,
-	)
-	return new(third.OAuthGithubHandler)
-}
+		third.NewOAuthWeChatHandler,
 
-func InitOAuthWeChatHandler(cmd redis.Cmdable, db *gorm.DB) *third.OAuthWeChatHandler {
-	wire.Build(
-		InitUserService,
-		jwt.NewRedisJWTHandler,
-		InitWechatService,
-		third.NewOAuthHandler,
+		wire.Struct(new(Module), "*"),
 	)
-	return new(third.OAuthWeChatHandler)
+	return new(Module)
 }

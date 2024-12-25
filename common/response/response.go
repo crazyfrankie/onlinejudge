@@ -3,8 +3,8 @@ package response
 import (
 	"net/http"
 
-	"oj/common/constant"
-	"oj/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
 
 	"github.com/gin-gonic/gin"
 )

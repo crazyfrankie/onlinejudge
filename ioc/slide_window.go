@@ -1,9 +1,11 @@
 package ioc
 
 import (
-	"github.com/redis/go-redis/v9"
-	"oj/pkg/ratelimit"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+
+	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
 func InitSlideWindow(cmd redis.Cmdable) ratelimit.Limiter {

@@ -8,28 +8,20 @@ package article
 
 import (
 	"github.com/IBM/sarama"
+	"github.com/crazyfrankie/onlinejudge/internal/article/event"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/article/service"
+	"github.com/crazyfrankie/onlinejudge/internal/article/web"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"oj/internal/article/event"
-	"oj/internal/article/repository"
-	"oj/internal/article/repository/cache"
-	"oj/internal/article/repository/dao"
-	"oj/internal/article/service"
-	"oj/internal/article/web"
 )
 
 // Injectors from wire.go:
 
-func InitConsumer(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *event.ArticleConsumer {
-	interactiveDao := dao.NewInteractiveDao(db)
-	interactiveCache := cache.NewInteractiveCache(cmd)
-	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
-	articleConsumer := event.NewArticleConsumer(client, interactiveArtRepository, l)
-	return articleConsumer
-}
-
-func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *web.ArticleHandler {
+func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *Module {
 	gormArticleDao := dao.NewArticleDao(db)
 	articleRepository := repository.NewArticleRepository(gormArticleDao)
 	syncProducer := NewSyncProducer(client)
@@ -39,8 +31,15 @@ func InitArticleHandler(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l 
 	interactiveCache := cache.NewInteractiveCache(cmd)
 	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
 	interactiveService := service.NewInteractiveService(interactiveArtRepository)
-	articleHandler := web.NewArticleHandler(articleService, l, interactiveService)
-	return articleHandler
+	articleHandler := web.NewArticleHandler(articleService, interactiveService)
+	adminHandler := web.NewAdminHandler(articleService)
+	consumer := event.NewArticleConsumer(client, interactiveArtRepository, l)
+	module := &Module{
+		Hdl:      articleHandler,
+		AdminHdl: adminHandler,
+		Consumer: consumer,
+	}
+	return module
 }
 
 // wire.go:

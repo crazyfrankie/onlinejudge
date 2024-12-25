@@ -4,9 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"oj/common/response"
-	"oj/internal/problem/domain"
-	"oj/internal/problem/service"
+	"github.com/crazyfrankie/onlinejudge/common/response"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/service"
 )
 
 type ProblemHandler struct {

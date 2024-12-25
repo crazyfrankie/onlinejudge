@@ -2,24 +2,15 @@ package ioc
 
 import (
 	"github.com/IBM/sarama"
-	"github.com/spf13/viper"
+	"github.com/crazyfrankie/onlinejudge/config"
 
-	"oj/internal/article/event"
+	"github.com/crazyfrankie/onlinejudge/internal/article/event"
 )
 
 func InitKafka() sarama.Client {
-	type Config struct {
-		Addr string `yaml:"addr"`
-	}
 	saramaCfg := sarama.NewConfig()
 	saramaCfg.Producer.Return.Successes = true
-	var cfg Config
-	err := viper.UnmarshalKey("kafka", &cfg)
-	if err != nil {
-		panic(err)
-	}
-
-	client, err := sarama.NewClient([]string{cfg.Addr}, saramaCfg)
+	client, err := sarama.NewClient([]string{config.GetConf().Kafka.Addr}, saramaCfg)
 	if err != nil {
 		panic(err)
 	}
@@ -27,6 +18,6 @@ func InitKafka() sarama.Client {
 	return client
 }
 
-func NewConsumers(csm *event.ArticleConsumer) []event.Consumer {
+func NewConsumers(csm event.Consumer) []event.Consumer {
 	return []event.Consumer{csm}
 }

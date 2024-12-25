@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
-	"oj/internal/article/domain"
-	"oj/internal/article/repository/cache"
-	"oj/internal/article/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 )
 
 type InteractiveArtRepository struct {

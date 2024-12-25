@@ -2,12 +2,12 @@ package web
 
 import (
 	"errors"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/remote"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"oj/internal/judgement/domain"
-	"oj/internal/judgement/service/remote"
 
-	"oj/internal/judgement/service/local"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/local"
 )
 
 type LocalSubmitHandler struct {

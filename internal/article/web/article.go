@@ -1,171 +1,70 @@
 package web
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"oj/common/constant"
-	"oj/common/errors"
-	"oj/common/response"
-	"oj/internal/article/domain"
-	"oj/internal/article/service"
-	"oj/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/response"
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/article/service"
+	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+)
+
+const (
+	Biz = "article"
 )
 
 type ArticleHandler struct {
 	svc      service.ArticleService
 	interSvc *service.InteractiveService
-	l        *zap.Logger
-	biz      string
 }
 
-func NewArticleHandler(svc service.ArticleService, l *zap.Logger, interSvc *service.InteractiveService) *ArticleHandler {
+func NewArticleHandler(svc service.ArticleService, interSvc *service.InteractiveService) *ArticleHandler {
 	return &ArticleHandler{
 		svc:      svc,
 		interSvc: interSvc,
-		l:        l,
-		biz:      "article",
 	}
 }
 
 func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
-	postGroup := r.Group("articles")
+	artGroup := r.Group("articles")
 	{
-		postGroup.POST("/edit", ctl.Edit())
-		postGroup.POST("/publish", ctl.Publish())
-		postGroup.POST("/:id/withdraw", ctl.WithDraw())
-		postGroup.POST("/:id/detail", ctl.Detail())
+		//artGroup.POST("/list", ctl.PubList())
+		artGroup.POST("pub/detail/:id", ctl.PubDetail())
+		artGroup.POST("like", ctl.Like())
 	}
 }
 
-func (ctl *ArticleHandler) Edit() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req ArticleReq
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
-		claim := claims.(jwt.Claims)
-
-		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
-		if err != nil {
-			ctl.l.Error("创建/更新帖子:系统错误")
-			response.Error(c, err)
-			return
-		}
-
-		ctl.l.Info("帖子创建/更新成功")
-		response.Success(c, id)
-	}
-}
-
-func (ctl *ArticleHandler) Publish() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req ArticleReq
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
-		claim := claims.(jwt.Claims)
-
-		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
-		if err != nil {
-			ctl.l.Error("发布帖子:系统错误")
-			response.Error(c, err)
-			return
-		}
-
-		ctl.l.Info("帖子发布成功")
-		response.Success(c, id)
-	}
-}
-
-func (ctl *ArticleHandler) WithDraw() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Query("id")
-
-		claims := c.MustGet("claims")
-		claim := claims.(jwt.Claims)
-
-		Id, _ := strconv.Atoi(id)
-		err := ctl.svc.WithDraw(c.Request.Context(), domain.Article{
-			ID: uint64(Id),
-			Author: domain.Author{
-				Id: claim.Id,
-			},
-		})
-		if err != nil {
-			ctl.l.Error("撤回帖子:系统错误")
-			response.Error(c, err)
-			return
-		}
-
-		ctl.l.Info("帖子撤回成功")
-		response.Success(c, nil)
-	}
-}
-
-// 首先库（表）分制作库（表）和线上库（表）
-// 对于 web 层来说
-// Edit:作者新建帖子/修改已有帖子并保存到制作库
-// Publish:作者新建帖子/修改已有帖子并保存到线上库
-// 到 service 层
-// SaveDraft:如果存在文章 Id:代表是修改并保存,如果不存在是新建并保存
-// Publish:如果存在文章 Id:代表是修改并发布,如果不存在是新建并发布
-// 到 Repo 层
-// 由于有制作库和线上库,实际就是查询时查哪个库,将 Repo 分为 AuthorRepo 和 ReaderRepo
-// 在 service 层面做数据同步
-// Save 接口啥也不用改，因为它只改制作库
-// Publish 接口先改制作库，然后同步到线上库
-
-func (ctl *ArticleHandler) List() gin.HandlerFunc {
+func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ListReq
-		if err := c.Bind(&req); err != nil {
+		if err := c.ShouldBind(&req); err != nil {
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
-		claims := c.MustGet("claims")
-		claim := claims.(*jwt.Claims)
-
-		res, err := ctl.svc.List(c.Request.Context(), claim.Id, req.Offset, req.Limit)
+		res, err := ctl.svc.PubList(c.Request.Context(), req.Offset, req.Limit)
 		if err != nil {
 			response.Error(c, err)
 			return
 		}
 
-		var resp []ListResp
+		var resp []PubListResp
 		for _, art := range res {
-			resp = append(resp, ListResp{
-				ID:         art.ID,
-				Title:      art.Title,
-				Abstract:   art.Abstract(),
-				AuthorID:   art.Author.Id,
-				AuthorName: art.Author.Name,
-				Status:     art.Status.ToUint8(),
-				Ctime:      art.Ctime.String(),
-				Utime:      art.Utime.String(),
+			resp = append(resp, PubListResp{
+				ID:     art.ID,
+				Title:  art.Title,
+				Status: art.Status.ToUint8(),
+				Ctime:  art.Ctime.String(),
+				Utime:  art.Utime.String(),
 			})
 		}
-
-		response.Success(c, resp)
 	}
 }
 
-func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
+func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := c.MustGet("claims")
 		claim := claims.(*jwt.Claims)
@@ -176,13 +75,13 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 		var eg errgroup.Group
 		var art domain.Article
 		eg.Go(func() error {
-			art, err = ctl.svc.Detail(c.Request.Context(), claim.Id, artID)
+			art, err = ctl.svc.PubDetail(c.Request.Context(), claim.Id, artID)
 			return err
 		})
 
 		var inter domain.Interactive
 		eg.Go(func() error {
-			inter, err = ctl.interSvc.GetInteractive(c.Request.Context(), ctl.biz, artID, claim.Id)
+			inter, err = ctl.interSvc.GetInteractive(c.Request.Context(), Biz, artID, claim.Id)
 			return err
 		})
 
@@ -196,7 +95,7 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 			LikeCnt: inter.LikeCnt,
 			ReadCnt: inter.ReadCnt,
 		}
-		resp := DetailResp{
+		resp := PubDetailResp{
 			ID:         art.ID,
 			Title:      art.Title,
 			Content:    art.Content,
@@ -216,7 +115,8 @@ func (ctl *ArticleHandler) Detail() gin.HandlerFunc {
 func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req LikeReq
-		if err := c.Bind(&req); err != nil {
+		if err := c.ShouldBind(&req); err != nil {
+			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
@@ -225,9 +125,9 @@ func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 
 		var err error
 		if req.Like {
-			err = ctl.interSvc.Like(c.Request.Context(), ctl.biz, req.ID, claim.Id)
+			err = ctl.interSvc.Like(c.Request.Context(), Biz, req.ID, claim.Id)
 		} else {
-			err = ctl.interSvc.CancelLike(c.Request.Context(), ctl.biz, req.ID, claim.Id)
+			err = ctl.interSvc.CancelLike(c.Request.Context(), Biz, req.ID, claim.Id)
 		}
 
 		if err != nil {

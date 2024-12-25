@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
+	repomocks "github.com/crazyfrankie/onlinejudge/internal/user/repository/mocks"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
-	"oj/internal/middleware"
-	"oj/internal/user/domain"
-	"oj/internal/user/repository"
-	repomocks "oj/internal/user/repository/mocks"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

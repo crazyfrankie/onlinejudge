@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"oj/internal/judgement/domain"
-	"oj/internal/judgement/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/cache"
 )
 
 type SubmitRepository interface {

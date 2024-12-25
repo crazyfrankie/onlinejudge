@@ -1,6 +1,6 @@
 package web
 
-import "oj/internal/article/domain"
+import "github.com/crazyfrankie/onlinejudge/internal/article/domain"
 
 // View Object
 
@@ -27,6 +27,14 @@ func (req ArticleReq) toDomain(uid uint64) domain.Article {
 }
 
 type ListResp struct {
+	ID     uint64 `json:"id"`
+	Title  string `json:"title"`
+	Status uint8  `json:"status"`
+	Ctime  string `json:"ctime"`
+	Utime  string `json:"utime"`
+}
+
+type PubListResp struct {
 	ID         uint64 `json:"id"`
 	Title      string `json:"title"`
 	Abstract   string `json:"abstract"`
@@ -38,6 +46,15 @@ type ListResp struct {
 }
 
 type DetailResp struct {
+	ID      uint64 `json:"ID"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	Status  uint8  `json:"status"`
+	Ctime   string `json:"ctime"`
+	Utime   string `json:"utime"`
+}
+
+type PubDetailResp struct {
 	ID         uint64      `json:"ID"`
 	Title      string      `json:"title"`
 	Content    string      `json:"content"`

@@ -6,8 +6,8 @@ package daomocks
 
 import (
 	context "context"
-	domain "oj/internal/user/domain"
-	dao "oj/internal/user/repository/dao"
+	domain "github.com/crazyfrankie/onlinejudge/internal/user/domain"
+	dao "github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

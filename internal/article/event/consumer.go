@@ -2,11 +2,13 @@ package event
 
 import (
 	"context"
+	"time"
+
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
-	"oj/internal/article/repository"
-	"oj/pkg/saramax"
-	"time"
+
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository"
+	"github.com/crazyfrankie/onlinejudge/pkg/saramax"
 )
 
 type ArticleConsumer struct {
@@ -15,7 +17,7 @@ type ArticleConsumer struct {
 	l      *zap.Logger
 }
 
-func NewArticleConsumer(client sarama.Client, repo *repository.InteractiveArtRepository, l *zap.Logger) *ArticleConsumer {
+func NewArticleConsumer(client sarama.Client, repo *repository.InteractiveArtRepository, l *zap.Logger) Consumer {
 	return &ArticleConsumer{
 		client: client,
 		repo:   repo,

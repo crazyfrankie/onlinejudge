@@ -10,13 +10,13 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 
-	"oj/common/constant"
-	er "oj/common/errors"
-	"oj/common/response"
-	"oj/internal/user/domain"
-	ijwt "oj/internal/user/middleware/jwt"
-	"oj/internal/user/service"
-	"oj/internal/user/service/oauth/github"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/response"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
 )
 
 type OAuthGithubHandler struct {

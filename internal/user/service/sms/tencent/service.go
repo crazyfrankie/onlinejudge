@@ -3,8 +3,8 @@ package tencent
 import (
 	"context"
 	"fmt"
+	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
-	"oj/pkg/ratelimit"
 )
 
 type Service struct {

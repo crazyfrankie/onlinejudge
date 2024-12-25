@@ -3,11 +3,11 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/ioc"
 	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
-	"oj/internal/article/repository/dao"
-	"oj/ioc"
 	"testing"
 
 	"github.com/gin-gonic/gin"

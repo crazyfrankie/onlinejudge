@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"oj/internal/article/domain"
-	"oj/internal/article/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 )
 
 var (
@@ -34,13 +34,17 @@ func (repo *ArticleRepository) Sync(ctx context.Context, art domain.Article) (ui
 	return repo.dao.SyncToPublish(ctx, repo.articleDomainToDao(art))
 }
 
-func (repo *ArticleRepository) onlineArticleDomainToDao(art domain.Article) dao.OnlineArticle {
-	return dao.OnlineArticle{
-		ID:       art.ID,
-		Title:    art.Title,
-		Content:  art.Content,
-		AuthorID: art.Author.Id,
-		Status:   art.Status.ToUint8(),
+func (repo *ArticleRepository) onlineArticleDaoToDomain(art dao.OnlineArticle) domain.Article {
+	return domain.Article{
+		ID:      art.ID,
+		Title:   art.Title,
+		Content: art.Content,
+		Author: domain.Author{
+			Id: art.AuthorID,
+		},
+		Status: domain.ArticleStatus(art.Status),
+		Ctime:  time.UnixMilli(art.Ctime),
+		Utime:  time.UnixMilli(art.Utime),
 	}
 }
 
@@ -72,8 +76,8 @@ func (repo *ArticleRepository) SyncStatus(ctx context.Context, id uint64, author
 	return repo.dao.SyncStatus(ctx, id, authorId, private.ToUint8())
 }
 
-func (repo *ArticleRepository) List(ctx context.Context, uid uint64, offset, limit int) ([]domain.Article, error) {
-	res, err := repo.dao.List(ctx, uid, offset, limit)
+func (repo *ArticleRepository) GetListByID(ctx context.Context, offset, limit int) ([]domain.Article, error) {
+	res, err := repo.dao.GetListByID(ctx, offset, limit)
 	if err != nil {
 		return []domain.Article{}, err
 	}
@@ -86,11 +90,34 @@ func (repo *ArticleRepository) List(ctx context.Context, uid uint64, offset, lim
 	return arts, nil
 }
 
-func (repo *ArticleRepository) GetByID(ctx context.Context, artID uint64) (domain.Article, error) {
-	art, err := repo.dao.GetByID(ctx, artID)
+func (repo *ArticleRepository) GetPubListByID(ctx context.Context, offset, limit int) ([]domain.Article, error) {
+	res, err := repo.dao.GetPubListByID(ctx, offset, limit)
+	if err != nil {
+		return []domain.Article{}, err
+	}
+
+	var arts []domain.Article
+	for _, art := range res {
+		arts = append(arts, repo.onlineArticleDaoToDomain(art))
+	}
+
+	return arts, nil
+}
+
+func (repo *ArticleRepository) GetByID(ctx context.Context, aid uint64) (domain.Article, error) {
+	art, err := repo.dao.GetByID(ctx, aid)
 	if err != nil {
 		return domain.Article{}, err
 	}
 
 	return repo.articleDaoToDomain(art), nil
+}
+
+func (repo *ArticleRepository) GetPubByID(ctx context.Context, aid uint64) (domain.Article, error) {
+	art, err := repo.dao.GetPubByID(ctx, aid)
+	if err != nil {
+		return domain.Article{}, err
+	}
+
+	return repo.onlineArticleDaoToDomain(art), nil
 }

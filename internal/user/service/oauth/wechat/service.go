@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/crazyfrankie/onlinejudge/config"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"net/http"
 	"net/url"
-	"oj/internal/user/domain"
 )
 
 var (
@@ -19,9 +20,9 @@ type Service interface {
 }
 
 type AuthSvc struct {
-	appId     string
-	appSecret string
-	client    *http.Client
+	appId  string
+	appKey string
+	client *http.Client
 }
 
 type Result struct {
@@ -37,11 +38,11 @@ type Result struct {
 	UnionId string `json:"unionid"`
 }
 
-func NewService(appId string, appSecret string) Service {
+func NewService() Service {
 	return &AuthSvc{
-		appId:     appId,
-		appSecret: appSecret,
-		client:    http.DefaultClient,
+		appId:  config.GetConf().WeChat.AppId,
+		appKey: config.GetConf().WeChat.AppKey,
+		client: http.DefaultClient,
 	}
 }
 
@@ -52,7 +53,7 @@ func (s *AuthSvc) AuthURL(ctx context.Context, state string) (string, error) {
 
 func (s *AuthSvc) VerifyCode(ctx context.Context, code string) (domain.WeChatInfo, error) {
 	const targetPattern = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
-	target := fmt.Sprintf(targetPattern, s.appId, s.appSecret, code)
+	target := fmt.Sprintf(targetPattern, s.appId, s.appKey, code)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, nil)
 	if err != nil {
 		return domain.WeChatInfo{}, err

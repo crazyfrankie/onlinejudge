@@ -4,10 +4,10 @@ import (
 	"context"
 	"strconv"
 
-	"oj/common/constant"
-	"oj/common/errors"
-	"oj/internal/article/domain"
-	"oj/internal/article/repository"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/article/repository"
 )
 
 type InteractiveService struct {

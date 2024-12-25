@@ -5,8 +5,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/redis/go-redis/v9"
-	"oj/internal/article/domain"
 	"strconv"
 	"time"
 )

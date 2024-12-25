@@ -8,8 +8,9 @@ package failover
 import (
 	"context"
 	"errors"
-	"oj/internal/user/service/sms"
 	"sync/atomic"
+
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
 )
 
 type SMSFailOver struct {

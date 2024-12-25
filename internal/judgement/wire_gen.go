@@ -10,41 +10,40 @@ import (
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"oj/internal/judgement/repository"
-	"oj/internal/judgement/repository/cache"
-	"oj/internal/judgement/service/local"
-	"oj/internal/judgement/service/remote"
-	"oj/internal/judgement/web"
-	"oj/internal/problem"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/local"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/remote"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/web"
+	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"os"
 )
 
 // Injectors from wire.go:
 
-func InitLocalJudgement(cmd redis.Cmdable, db *gorm.DB) *web.LocalSubmitHandler {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, module *problem.Module) *Module {
 	localSubmitCache := cache.NewLocalSubmitCache(cmd)
 	localSubmitRepo := repository.NewLocalSubmitRepo(localSubmitCache)
-	problemRepository := problem.InitProblemRepo(cmd, db)
+	problemRepository := module.Repo
 	locSubmitService := local.NewLocSubmitService(localSubmitRepo, problemRepository)
 	localSubmitHandler := web.NewLocalSubmitHandler(locSubmitService)
-	return localSubmitHandler
-}
-
-func InitRemoteJudgement(cmd redis.Cmdable, db *gorm.DB) *web.SubmissionHandler {
 	submitCache := cache.NewSubmitCache(cmd)
 	submitRepository := repository.NewSubmitRepository(submitCache)
-	problemRepository := problem.InitProblemRepo(cmd, db)
 	string2 := InitJudgeKey(cmd, db)
 	submitService := remote.NewSubmitService(submitRepository, problemRepository, string2)
 	submissionHandler := web.NewSubmissionHandler(submitService)
-	return submissionHandler
+	judgementModule := &Module{
+		LocHdl: localSubmitHandler,
+		RemHdl: submissionHandler,
+	}
+	return judgementModule
 }
 
 // wire.go:
 
-var LocalSet = wire.NewSet(cache.NewLocalSubmitCache, repository.NewLocalSubmitRepo, problem.InitProblemRepo, local.NewLocSubmitService, web.NewLocalSubmitHandler)
+var LocalSet = wire.NewSet(cache.NewLocalSubmitCache, repository.NewLocalSubmitRepo, local.NewLocSubmitService, web.NewLocalSubmitHandler)
 
-var RemoteSet = wire.NewSet(cache.NewSubmitCache, repository.NewSubmitRepository, problem.InitProblemRepo, remote.NewSubmitService, web.NewSubmissionHandler)
+var RemoteSet = wire.NewSet(cache.NewSubmitCache, repository.NewSubmitRepository, remote.NewSubmitService, web.NewSubmissionHandler)
 
 func InitJudgeKey(cmd redis.Cmdable, db *gorm.DB) string {
 	key, ok := os.LookupEnv("RAPIDAPI_KEY")

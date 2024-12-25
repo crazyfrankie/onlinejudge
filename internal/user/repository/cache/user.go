@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"oj/internal/user/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 )
 
 type UserCache interface {

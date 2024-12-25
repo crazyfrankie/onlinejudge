@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"oj/common/constant"
-	er "oj/common/errors"
-	"oj/internal/problem/domain"
-	"oj/internal/problem/repository"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository"
 	"strconv"
 )
 

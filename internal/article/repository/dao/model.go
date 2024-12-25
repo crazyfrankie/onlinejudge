@@ -24,10 +24,10 @@ type OnlineArticle struct {
 	ID       uint64 `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
 	Title    string `gorm:"type:varchar(1024)" bson:"title,omitempty"`
 	Content  string `gorm:"type:BLOB" bson:"content,omitempty"`
-	AuthorID uint64 `gorm:"index:aid_ctime" bson:"author_id,omitempty"`
+	AuthorID uint64 `gorm:"index:aid_time" bson:"author_id,omitempty"`
 	Status   uint8  `bson:"status,omitempty"`
-	Ctime    int64  `gorm:"index:aid_ctime" bson:"ctime,omitempty"`
-	Utime    int64  `bson:"utime,omitempty"`
+	Ctime    int64  `gorm:"index:aid_time" bson:"ctime,omitempty"`
+	Utime    int64  `gorm:"index:aid_time" bson:"utime,omitempty"`
 }
 
 type Interactive struct {

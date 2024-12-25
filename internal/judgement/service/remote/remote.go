@@ -16,10 +16,10 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"oj/internal/judgement/domain"
-	"oj/internal/judgement/repository"
-	domain2 "oj/internal/problem/domain"
-	repository2 "oj/internal/problem/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
+	domain2 "github.com/crazyfrankie/onlinejudge/internal/problem/domain"
+	repository2 "github.com/crazyfrankie/onlinejudge/internal/problem/repository"
 )
 
 var (

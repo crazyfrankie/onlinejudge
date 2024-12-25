@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"oj/pkg/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
 type Builder struct {

@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"oj/internal/article/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 )
 
 var (

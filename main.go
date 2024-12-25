@@ -10,14 +10,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 
-	"oj/ioc"
+	"github.com/crazyfrankie/onlinejudge/ioc"
 )
 
 func main() {
-	initViper()
+	err := godotenv.Load("config/.env")
+	if err != nil {
+		panic(err)
+	}
+
 	initLogger()
 
 	app := ioc.InitApp()
@@ -61,14 +65,6 @@ func main() {
 	}
 
 	zap.L().Info("Server exited gracefully")
-}
-
-func initViper() {
-	viper.SetConfigFile("config/dev.yaml")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
 }
 
 func initLogger() {

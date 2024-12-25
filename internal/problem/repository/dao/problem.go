@@ -9,7 +9,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 
-	"oj/internal/problem/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
 )
 
 var (

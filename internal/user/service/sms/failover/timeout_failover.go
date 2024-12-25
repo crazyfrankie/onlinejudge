@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"oj/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
 )
 
 type TimeOutService struct {

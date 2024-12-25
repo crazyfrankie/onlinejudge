@@ -137,13 +137,23 @@ func (dao *GORMArticleDao) SyncStatus(ctx context.Context, id uint64, authorId u
 	})
 }
 
-func (dao *GORMArticleDao) List(ctx context.Context, uid uint64, offset, limit int) ([]Article, error) {
+func (dao *GORMArticleDao) GetListByID(ctx context.Context, offset, limit int) ([]Article, error) {
 	var arts []Article
 	err := dao.db.WithContext(ctx).Model(&Article{}).
-		Where("author_id = ?", uid).
+		Order("id DESC").
 		Offset(offset).
 		Limit(limit).
+		Find(&arts).Error
+
+	return arts, err
+}
+
+func (dao *GORMArticleDao) GetPubListByID(ctx context.Context, offset int, limit int) ([]OnlineArticle, error) {
+	var arts []OnlineArticle
+	err := dao.db.WithContext(ctx).Model(&OnlineArticle{}).
 		Order("utime DESC").
+		Offset(offset).
+		Limit(limit).
 		Find(&arts).Error
 
 	return arts, err
@@ -159,6 +169,21 @@ func (dao *GORMArticleDao) GetByID(ctx context.Context, id uint64) (Article, err
 		}
 
 		return Article{}, err
+	}
+
+	return art, nil
+}
+
+func (dao *GORMArticleDao) GetPubByID(ctx context.Context, aid uint64) (OnlineArticle, error) {
+	var art OnlineArticle
+
+	err := dao.db.WithContext(ctx).Model(&OnlineArticle{}).Where("id = ?", aid).First(&art).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return OnlineArticle{}, ErrRecordNotFound
+		}
+
+		return OnlineArticle{}, err
 	}
 
 	return art, nil

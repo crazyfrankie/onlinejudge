@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/redis/go-redis/v9"
 
-	ijwt "oj/internal/user/middleware/jwt"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
 )
 
 var (

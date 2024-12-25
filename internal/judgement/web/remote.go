@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"oj/internal/judgement/domain"
-	"oj/internal/judgement/service/remote"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/remote"
 )
 
 type SubmissionHandler struct {

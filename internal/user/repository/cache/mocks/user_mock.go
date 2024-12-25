@@ -6,7 +6,7 @@ package cachemocks
 
 import (
 	context "context"
-	domain "oj/internal/user/domain"
+	domain "github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

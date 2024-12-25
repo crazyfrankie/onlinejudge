@@ -9,8 +9,8 @@ import (
 	"context"
 	"fmt"
 
-	"oj/internal/user/service/sms"
-	"oj/pkg/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
 type Service struct {

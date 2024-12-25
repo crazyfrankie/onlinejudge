@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -11,26 +10,24 @@ import (
 	"github.com/golang-jwt/jwt"
 	"go.uber.org/zap"
 
-	"oj/common/constant"
-	"oj/common/errors"
-	"oj/common/response"
-	ijwt "oj/internal/user/middleware/jwt"
-	"oj/internal/user/service"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/response"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 )
 
 type UserHandler struct {
 	userSvc service.UserService
 	codeSvc service.CodeService
-	logger  *zap.Logger
 	ijwt.Handler
 }
 
-func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler, logger *zap.Logger) *UserHandler {
+func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
 	return &UserHandler{
 		userSvc: userSvc,
 		codeSvc: codeSvc,
 		Handler: jwtHdl,
-		logger:  logger,
 	}
 }
 
@@ -54,13 +51,11 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req SendCodeReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error(fmt.Sprintf("%s:绑定参数错误", req.Biz))
 			return
 		}
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			zap.L().Error(fmt.Sprintf("%s:校验参数错误", req.Biz))
 			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
@@ -79,7 +74,6 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req VerifyCodeReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("校验验证码绑定信息错误", zap.Error(err))
 			return
 		}
 
@@ -94,7 +88,6 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 
 		user, err := ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
 		if err != nil {
-			zap.L().Error(fmt.Sprintf("%s:查找或创建用户:%s", req.Biz, err.Error()), zap.String("errors", err.Error()))
 			response.Error(c, err)
 			return
 		}
@@ -105,8 +98,8 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
-		zap.L().Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", maskedPhone))
+		//maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
+		//zap.L().Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", maskedPhone))
 
 		response.Success(c, map[string]interface{}{
 			"id":    user.Id,
@@ -165,7 +158,6 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdatePwdReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("绑定用户密码:绑定信息错误", zap.Error(err))
 			return
 		}
 
@@ -180,19 +172,16 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			zap.L().Error("绑定用户信息:信息格式错误", zap.Error(err))
 			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
 
 		err := ctl.userSvc.UpdatePassword(c.Request.Context(), claim.Id, req.Password)
 		if err != nil {
-			zap.L().Error("绑定用户密码:系统错误", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
-		zap.L().Info("绑定用户密码成功")
 		response.Success(c, nil)
 	}
 }
@@ -201,14 +190,12 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateBirthReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("绑定用户生日:绑定信息错误", zap.Error(err))
 			return
 		}
 
 		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			zap.L().Error("绑定用户生日:信息格式错误", zap.Error(err))
 			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
@@ -223,12 +210,10 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 		parsedDate, err := time.Parse("2006-01-02", req.Birthday)
 		err = ctl.userSvc.UpdateBirthday(c.Request.Context(), claim.Id, parsedDate)
 		if err != nil {
-			zap.L().Error("绑定用户生日:系统错误", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
-		zap.L().Info("绑定用户生日成功")
 		response.Success(c, nil)
 	}
 }
@@ -237,14 +222,12 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateEmailReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("绑定用户邮箱:绑定信息错误", zap.Error(err))
 			return
 		}
 
 		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			zap.L().Error("绑定用户邮箱:信息格式错误", zap.Error(err))
 			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
@@ -258,12 +241,10 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 
 		err := ctl.userSvc.UpdateEmail(c.Request.Context(), claim.Id, req.Email)
 		if err != nil {
-			zap.L().Error("绑定用户邮箱:系统错误", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
-		zap.L().Info("绑定用户邮箱成功")
 		response.Success(c, nil)
 	}
 }
@@ -279,7 +260,6 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			zap.L().Error("绑定用户名:信息格式错误", zap.Error(err))
 			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
 			return
 		}
@@ -293,12 +273,10 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 
 		err := ctl.userSvc.UpdateName(c.Request.Context(), claim.Id, req.Name)
 		if err != nil {
-			zap.L().Error("绑定用户名:系统错误", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
-		zap.L().Info("绑定用户名成功")
 		response.Success(c, nil)
 	}
 }
@@ -307,7 +285,6 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateRoleReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("绑定用户身份:绑定信息错误", zap.Error(err))
 			return
 		}
 
@@ -320,12 +297,10 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 
 		err := ctl.userSvc.UpdateRole(c.Request.Context(), claim.Id, req.Role)
 		if err != nil {
-			zap.L().Error("绑定用户身份:系统错误", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
-		zap.L().Info("绑定用户身份成功")
 		response.Success(c, nil)
 	}
 }

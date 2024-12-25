@@ -3,33 +3,27 @@
 package problem
 
 import (
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/repository/dao"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/service"
+	"github.com/crazyfrankie/onlinejudge/internal/problem/web"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"oj/internal/problem/repository"
-	"oj/internal/problem/repository/cache"
-	"oj/internal/problem/repository/dao"
-	"oj/internal/problem/service"
-	"oj/internal/problem/web"
 )
 
-func InitProblemRepo(cmd redis.Cmdable, db *gorm.DB) repository.ProblemRepository {
+func InitModule(cmd redis.Cmdable, db *gorm.DB) *Module {
 	wire.Build(
 		cache.NewProblemCache,
 		dao.NewProblemDao,
 
 		repository.NewProblemRepository,
-	)
-	return new(repository.CacheProblemRepo)
-}
-
-func InitProblemHandler(cmd redis.Cmdable, db *gorm.DB) *web.ProblemHandler {
-	wire.Build(
-		InitProblemRepo,
-
 		service.NewProblemService,
 
 		web.NewProblemHandler,
+
+		wire.Struct(new(Module), "*"),
 	)
-	return new(web.ProblemHandler)
+	return new(Module)
 }

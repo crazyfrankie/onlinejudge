@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/redis/go-redis/v9"
-	"oj/internal/judgement/domain"
 	"time"
 )
 

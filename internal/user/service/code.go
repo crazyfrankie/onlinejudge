@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"oj/common/constant"
-	er "oj/common/errors"
-	"oj/internal/user/repository"
-	smsSvc "oj/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
+	smsSvc "github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
 )
 
 const (

@@ -10,10 +10,10 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"oj/common/constant"
-	er "oj/common/errors"
-	"oj/internal/user/domain"
-	"oj/internal/user/repository"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
+	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 )
 
 var (

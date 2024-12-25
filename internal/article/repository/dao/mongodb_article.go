@@ -3,7 +3,7 @@ package dao
 import (
 	"context"
 	"errors"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+
 	"time"
 
 	"github.com/crazyfrankie/snow-flake"
@@ -90,7 +90,7 @@ func (m *MongoArticleDao) Sync(ctx context.Context, art Article) (int64, error) 
 	update := bson.E{Key: "$set", Value: OnlineArticle(art)}
 	upsert := bson.E{Key: "$setOnInsert", Value: bson.D{bson.E{Key: "ctime", Value: now}}}
 	filter := bson.M{"id": art.ID}
-	_, err = m.liveCol.UpdateOne(ctx, filter, bson.D{update, upsert}, options.Update().SetUpsert(true))
+	_, err = m.liveCol.UpdateOne(ctx, filter, bson.D{update, upsert})
 
 	return id, err
 }

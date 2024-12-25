@@ -3,7 +3,7 @@ package errors
 import (
 	"errors"
 
-	"oj/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
 )
 
 type BusinessError struct {
