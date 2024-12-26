@@ -13,7 +13,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 )
 

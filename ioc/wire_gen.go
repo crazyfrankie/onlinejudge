@@ -7,11 +7,12 @@
 package ioc
 
 import (
-	"github.com/google/wire"
 	"github.com/crazyfrankie/onlinejudge/internal/article"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
@@ -19,18 +20,19 @@ import (
 func InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
-	db := InitDB()
-	module := user.InitModule(cmdable, db)
-	handler := module.JWTHdl
+	module := auth.InitModule(limiter, cmdable)
+	handler := module.Hdl
 	v := GinMiddlewares(limiter, handler)
-	userHandler := module.Hdl
+	db := InitDB()
+	userModule := user.InitModule(cmdable, db, limiter, module)
+	userHandler := userModule.Hdl
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl
-	oAuthWeChatHandler := module.WeChatHdl
+	oAuthWeChatHandler := userModule.WeChatHdl
 	judgementModule := judgement.InitModule(cmdable, db, problemModule)
 	localSubmitHandler := judgementModule.LocHdl
 	submissionHandler := judgementModule.RemHdl
-	oAuthGithubHandler := module.GithubHdl
+	oAuthGithubHandler := userModule.GithubHdl
 	client := InitKafka()
 	logger := InitLog()
 	articleModule := article.InitModule(db, cmdable, client, logger)

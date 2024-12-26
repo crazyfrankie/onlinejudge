@@ -11,7 +11,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
-	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
 )
 
 type AdminHandler struct {

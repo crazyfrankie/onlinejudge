@@ -4,6 +4,7 @@ package ioc
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/article"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
@@ -15,6 +16,8 @@ var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)
 func InitApp() *App {
 	wire.Build(
 		BaseSet,
+
+		auth.InitModule,
 
 		user.InitModule,
 
@@ -33,9 +36,8 @@ func InitApp() *App {
 
 		NewConsumers,
 
-		wire.FieldsOf(new(*article.Module), "Consumer"),
+		wire.FieldsOf(new(*auth.Module), "Hdl"),
 		wire.FieldsOf(new(*user.Module), "Hdl"),
-		wire.FieldsOf(new(*user.Module), "JWTHdl"),
 		wire.FieldsOf(new(*user.Module), "GithubHdl"),
 		wire.FieldsOf(new(*user.Module), "WeChatHdl"),
 		wire.FieldsOf(new(*problem.Module), "Hdl"),
@@ -43,6 +45,7 @@ func InitApp() *App {
 		wire.FieldsOf(new(*judgement.Module), "RemHdl"),
 		wire.FieldsOf(new(*article.Module), "Hdl"),
 		wire.FieldsOf(new(*article.Module), "AdminHdl"),
+		wire.FieldsOf(new(*article.Module), "Consumer"),
 		wire.Struct(new(App), "*"),
 	)
 

@@ -7,9 +7,7 @@
 package user
 
 import (
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
-	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
@@ -23,34 +21,33 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
-	"time"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, module *auth.Module) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
 	codeCache := cache.NewRedisCodeCache(cmd)
 	codeRepository := repository.NewCodeRepository(codeCache)
-	limiter := InitSlideWindow(cmd)
 	smsService := InitSMSService(limiter)
 	codeService := service.NewCodeService(codeRepository, smsService)
-	handler := jwt.NewRedisJWTHandler(cmd)
+	handler := module.Hdl
 	userHandler := web.NewUserHandler(userService, codeService, handler)
 	githubService := github.NewService()
 	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
 	wechatService := wechat.NewService()
 	oAuthWeChatHandler := third.NewOAuthWeChatHandler(wechatService, handler, userService)
-	module := &Module{
+	userModule := &Module{
 		Hdl:       userHandler,
-		JWTHdl:    handler,
 		GithubHdl: oAuthGithubHandler,
 		WeChatHdl: oAuthWeChatHandler,
 	}
-	return module
+	return userModule
 }
 
 // wire.go:
@@ -64,8 +61,4 @@ func InitSMSService(limiter ratelimit.Limiter) sms.Service {
 	rateLimitService := ratelimit2.NewService(memoryService, limiter)
 	failOverService := failover.NewFailOver(append(services, rateLimitService))
 	return failOverService
-}
-
-func InitSlideWindow(cmd redis.Cmdable) ratelimit.Limiter {
-	return ratelimit.NewRedisSlideWindowLimiter(cmd, time.Second, 3000)
 }

@@ -3,11 +3,11 @@ package ioc
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/article"
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth/ratelimit"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
-	"github.com/crazyfrankie/onlinejudge/internal/user/middleware/ratelimit"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	rate "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	"github.com/gin-contrib/cors"

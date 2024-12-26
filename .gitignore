@@ -3,4 +3,6 @@
 
 *.yaml
 
-config/
+.luarc.json
+
+.air.conf

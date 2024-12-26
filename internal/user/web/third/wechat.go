@@ -3,6 +3,7 @@ package third
 import (
 	"errors"
 	"fmt"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
 	"net/http"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/user/middleware/jwt"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
 )
