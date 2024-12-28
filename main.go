@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
 	"github.com/crazyfrankie/onlinejudge/ioc"
@@ -23,6 +24,7 @@ func main() {
 	}
 
 	initLogger()
+	initPrometheus()
 
 	app := ioc.InitApp()
 
@@ -65,6 +67,16 @@ func main() {
 	}
 
 	zap.L().Info("Server exited gracefully")
+}
+
+func initPrometheus() {
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(":8081", nil)
+		if err != nil {
+			panic(err)
+		}
+	}()
 }
 
 func initLogger() {

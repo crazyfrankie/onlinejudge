@@ -24,7 +24,7 @@ func (svc *InteractiveService) IncrReadCnt(ctx context.Context, biz, bizId strin
 	bizID, _ := strconv.Atoi(bizId)
 	err := svc.repo.IncrReadCnt(ctx, biz, uint64(bizID))
 	if err != nil {
-		return errors.NewBusinessError(constant.ErrInternalServer)
+		return errors.NewBizError(constant.ErrInternalServer)
 	}
 
 	return nil
@@ -33,7 +33,7 @@ func (svc *InteractiveService) IncrReadCnt(ctx context.Context, biz, bizId strin
 func (svc *InteractiveService) Like(ctx context.Context, biz string, bizId, uid uint64) error {
 	err := svc.repo.IncrLikeCnt(ctx, biz, bizId, uid)
 	if err != nil {
-		return errors.NewBusinessError(constant.ErrInternalServer)
+		return errors.NewBizError(constant.ErrInternalServer)
 	}
 
 	return nil
@@ -42,7 +42,7 @@ func (svc *InteractiveService) Like(ctx context.Context, biz string, bizId, uid 
 func (svc *InteractiveService) CancelLike(ctx context.Context, biz string, bizId, uid uint64) error {
 	err := svc.repo.DecrLikeCnt(ctx, biz, bizId, uid)
 	if err != nil {
-		return errors.NewBusinessError(constant.ErrInternalServer)
+		return errors.NewBizError(constant.ErrInternalServer)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func (svc *InteractiveService) GetInteractive(ctx context.Context, biz string, b
 	bizID, _ := strconv.Atoi(bizId)
 	inter, err := svc.repo.GetInteractive(ctx, biz, uint64(bizID), uid)
 	if err != nil {
-		return domain.Interactive{}, errors.NewBusinessError(constant.ErrInternalServer)
+		return domain.Interactive{}, errors.NewBizError(constant.ErrInternalServer)
 	}
 
 	return inter, nil

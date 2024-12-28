@@ -16,22 +16,13 @@ var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)
 func InitApp() *App {
 	wire.Build(
 		BaseSet,
-
 		auth.InitModule,
-
 		user.InitModule,
-
 		problem.InitModule,
-
 		judgement.InitModule,
-
 		article.InitModule,
-
 		InitSlideWindow,
-		// gin 的中间件
 		GinMiddlewares,
-
-		// web 服务器
 		InitWebServer,
 
 		NewConsumers,

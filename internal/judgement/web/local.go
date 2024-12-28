@@ -21,7 +21,7 @@ func NewLocalSubmitHandler(svc local.LocSubmitService) *LocalSubmitHandler {
 }
 
 func (ctl *LocalSubmitHandler) RegisterRoute(r *gin.Engine) {
-	submitGroup := r.Group("/local")
+	submitGroup := r.Group("api/local")
 	{
 		submitGroup.POST("run", ctl.RunCode())
 		submitGroup.POST("submit", ctl.SubmitCode())

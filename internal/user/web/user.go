@@ -2,19 +2,17 @@ package web
 
 import (
 	"context"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt"
-	"go.uber.org/zap"
-
 	"github.com/crazyfrankie/onlinejudge/common/constant"
-	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt"
 )
 
 type UserHandler struct {
@@ -32,10 +30,10 @@ func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jw
 }
 
 func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
-	userGroup := r.Group("user")
+	userGroup := r.Group("api/user")
 	{
 		userGroup.POST("login", ctl.IdentifierLogin())
-		userGroup.POST("logout", ctl.LogOut())
+		userGroup.POST("logout", ctl.Logout())
 		userGroup.POST("send-code", ctl.SendVerificationCode())
 		userGroup.POST("verify-code", ctl.VerificationCode())
 		userGroup.GET("info", ctl.GetUserInfo())
@@ -56,7 +54,7 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
@@ -94,7 +92,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 
 		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
 		if tokenErr != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, err)
 			return
 		}
 
@@ -116,7 +114,6 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 			return
 		}
 
-		// 检查 Identifier 是否是邮箱
 		validate := validator.New()
 		isEmail := validate.Var(req.Identifier, "email") == nil
 
@@ -128,7 +125,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 
 		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
 		if tokenErr != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, err)
 			return
 		}
 
@@ -138,11 +135,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 
 func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims := c.MustGet("claims")
 		claim := claims.(*ijwt.Claims)
 
 		user, err := ctl.userSvc.GetInfo(c.Request.Context(), claim.Id)
@@ -161,18 +154,12 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
-
+		claims := c.MustGet("claims")
 		claim := claims.(*ijwt.Claims)
 
-		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
@@ -193,18 +180,13 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 			return
 		}
 
-		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims := c.MustGet("claims")
 		claim := claims.(*ijwt.Claims)
 
 		parsedDate, err := time.Parse("2006-01-02", req.Birthday)
@@ -225,18 +207,13 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 			return
 		}
 
-		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims := c.MustGet("claims")
 		claim := claims.(*ijwt.Claims)
 
 		err := ctl.userSvc.UpdateEmail(c.Request.Context(), claim.Id, req.Email)
@@ -253,22 +230,16 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UpdateNameReq
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("绑定用户名:绑定信息错误", zap.Error(err))
 			return
 		}
 
-		// 使用 validator 进行字段验证
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims := c.MustGet("claims")
 		claim := claims.(*ijwt.Claims)
 
 		err := ctl.userSvc.UpdateName(c.Request.Context(), claim.Id, req.Name)
@@ -288,11 +259,7 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims := c.MustGet("claims")
 		claim := claims.(*ijwt.Claims)
 
 		err := ctl.userSvc.UpdateRole(c.Request.Context(), claim.Id, req.Role)
@@ -337,11 +304,11 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) LogOut() gin.HandlerFunc {
+func (ctl *UserHandler) Logout() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		err := ctl.Handler.ClearToken(c)
 		if err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, err)
 			return
 		}
 

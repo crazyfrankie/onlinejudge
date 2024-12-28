@@ -32,15 +32,10 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 
 func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
-		//func(c *gin.Context) {
-		//	c.Set("claims", ijwt.Claims{
-		//		Id: 1,
-		//	})
-		//},
 		cors.New(cors.Config{
-			AllowOrigins:     []string{"http://localhost:8081"}, // 允许的前端域名
+			AllowOrigins:     []string{"http://localhost:8081"},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "x-jwt-token", "x-refresh-token"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 			ExposeHeaders:    []string{"Content-Length", "x-jwt-token", "x-refresh-token"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
@@ -49,23 +44,19 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 		ratelimit.NewBuilder(limiter).Build(),
 
 		auth.NewLoginJWTMiddlewareBuilder(jwtHdl).
-			IgnorePaths("/user/signup").
-			IgnorePaths("/user/login").
-			IgnorePaths("/user/send-code").
-			IgnorePaths("/user/verify-code").
-			IgnorePaths("/oauth/wechat/url").
-			IgnorePaths("/oauth/github/url").
-			IgnorePaths("/oauth/github/callback").
-			IgnorePaths("/user/refresh-token").
-			//IgnorePaths("/remote/run").
-			//IgnorePaths("/articles/edit").
-			//IgnorePaths("/remote/submit").
-			//IgnorePaths("/local/run").
-			AdminPaths("/admin/problem").
-			AdminPaths("/admin/problem/update").
-			AdminPaths("/admin/tags/create").
-			AdminPaths("/admin/tags/modify").
-			AdminPaths("/admin/tags").
+			IgnorePaths("/api/user/login").
+			IgnorePaths("/api/user/send-code").
+			IgnorePaths("/api/user/verify-code").
+			IgnorePaths("/api/user/refresh-token").
+			IgnorePaths("/api/oauth/wechat/url").
+			IgnorePaths("/api/oauth/github/url").
+			IgnorePaths("/api/oauth/github/callback").
+			IgnorePaths("/api/oauth/wechat/callback").
+			AdminPaths("/api/admin/problem").
+			AdminPaths("/api/admin/problem/update").
+			AdminPaths("/api/admin/tags/create").
+			AdminPaths("/api/admin/tags/modify").
+			AdminPaths("/api/admin/tags").
 			CheckLogin(),
 	}
 }

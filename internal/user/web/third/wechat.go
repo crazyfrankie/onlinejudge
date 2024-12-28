@@ -53,12 +53,12 @@ func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
 		state := uuid.New().String()
 		url, err := h.svc.AuthURL(c.Request.Context(), state)
 		if err != nil {
-			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrInternalServer))
 			return
 		}
 
@@ -87,13 +87,13 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		err := h.VerifyState(c)
 		if err != nil {
-			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrInternalServer))
 			return
 		}
 
 		info, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrInternalServer))
 			return
 		}
 
@@ -104,7 +104,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		tokens, err := h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			response.Error(c, er.NewBusinessError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrInternalServer))
 			return
 		}
 

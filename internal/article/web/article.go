@@ -29,9 +29,9 @@ func NewArticleHandler(svc service.ArticleService, interSvc *service.Interactive
 }
 
 func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
-	artGroup := r.Group("articles")
+	artGroup := r.Group("api/articles")
 	{
-		//artGroup.POST("/list", ctl.PubList())
+		artGroup.POST("pub/list", ctl.PubList())
 		artGroup.POST("pub/detail/:id", ctl.PubDetail())
 		artGroup.POST("like", ctl.Like())
 	}
@@ -41,7 +41,7 @@ func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ListReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
@@ -61,6 +61,8 @@ func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 				Utime:  art.Utime.String(),
 			})
 		}
+
+		response.Success(c, resp)
 	}
 }
 
@@ -116,7 +118,7 @@ func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req LikeReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 

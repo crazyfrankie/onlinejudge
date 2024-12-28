@@ -6,7 +6,7 @@ package svcmocks
 
 import (
 	context "context"
-	domain "github.com/crazyfrankie/onlinejudge//internal/article/domain"
+	domain "github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"

@@ -21,7 +21,7 @@ func NewSubmissionHandler(svc remote.SubmitService) *SubmissionHandler {
 }
 
 func (ctl *SubmissionHandler) RegisterRoute(r *gin.Engine) {
-	submitGroup := r.Group("/remote")
+	submitGroup := r.Group("api/remote")
 	{
 		submitGroup.POST("run", ctl.RunCode())
 		submitGroup.POST("submit", ctl.SubmitCode())

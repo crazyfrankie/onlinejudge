@@ -59,22 +59,6 @@ func NewUserDao(db *gorm.DB) UserDao {
 	}
 }
 
-//func handleDBError(err errors) errors {
-//	var mysqlErr *mysql.MySQLError
-//	const uniqueConflictErrNo uint16 = 1062
-//
-//	if errors.As(err, &mysqlErr) && mysqlErr.Number == uniqueConflictErrNo {
-//		if strings.Contains(mysqlErr.Message, "email") {
-//			return ErrUserDuplicateEmail
-//		} else if strings.Contains(mysqlErr.Message, "name") {
-//			return ErrUserDuplicateName
-//		} else if strings.Contains(mysqlErr.Message, "phone") {
-//			return ErrUserDuplicatePhone
-//		}
-//	}
-//	return err
-//}
-
 func (dao *GormUserDao) Insert(ctx context.Context, user domain.User) error {
 	u := User{
 		Phone: user.Phone,

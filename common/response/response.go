@@ -3,14 +3,14 @@ package response
 import (
 	"net/http"
 
-	"github.com/crazyfrankie/onlinejudge/common/constant"
-	"github.com/crazyfrankie/onlinejudge/common/errors"
-
+	"github.com/crazyfrankie/gem/gerrors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/crazyfrankie/onlinejudge/common/constant"
 )
 
 type Response struct {
-	Code    int         `json:"code"`
+	Code    int32       `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
@@ -25,17 +25,11 @@ func Success(ctx *gin.Context, data interface{}) {
 
 func Error(ctx *gin.Context, err error) {
 	// 使用类型断言判断是否为业务错误
-	if businessErr, ok := errors.IsBusinessError(err); ok {
+	if businessErr, ok := gerrors.FromBizStatusError(err); ok {
 		ctx.JSON(http.StatusOK, Response{
-			Code:    businessErr.Code(),
+			Code:    businessErr.BizStatusCode(),
 			Message: businessErr.Error(),
 		})
 		return
 	}
-
-	// 非业务错误统一返回服务器错误
-	ctx.JSON(http.StatusOK, Response{
-		Code:    constant.ErrInternalServer.Code,
-		Message: constant.ErrInternalServer.Message,
-	})
 }

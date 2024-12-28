@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -56,26 +57,25 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 
 		claims, err := ParseToken(tokenHeader)
 		if err != nil {
-			code, msg := handleTokenError(err)
-			c.JSON(code, msg)
-			c.Abort()
+			errCode := handleTokenError(err)
+			c.AbortWithStatusJSON(http.StatusOK, errCode)
 			return
 		}
 
 		if claims.UserAgent != c.Request.UserAgent() {
 			// 严重的安全问题
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusOK, constant.ErrUnauthorized)
 			return
 		}
 
 		err = l.Handler.CheckSession(c, claims.SSId)
 		if err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusOK, constant.ErrSessExpired)
 			return
 		}
 
 		if _, ok := l.adminPaths[c.Request.URL.Path]; ok && claims.Role != 1 {
-			c.AbortWithStatusJSON(http.StatusForbidden, "access denied")
+			c.AbortWithStatusJSON(http.StatusOK, constant.ErrForbidden)
 			return
 		}
 
@@ -111,22 +111,19 @@ func ParseToken(token string) (*ijwt.Claims, error) {
 	return nil, ErrTokenInvalid
 }
 
-func handleTokenError(err error) (int, string) {
-	var code int
-	var msg string
+func handleTokenError(err error) constant.ErrorCode {
+	var errCode constant.ErrorCode
+
 	switch {
-	case errors.Is(err, ErrTokenExpired):
-		code = http.StatusUnauthorized
-		msg = "token is expired"
 	case errors.Is(err, ErrTokenInvalid):
-		code = http.StatusUnauthorized
-		msg = "token is invalid"
+		errCode = constant.ErrInvalidToken
+	case errors.Is(err, ErrTokenExpired):
+		errCode = constant.ErrTokenExpired
 	case errors.Is(err, ErrLoginYet):
-		code = http.StatusUnauthorized
-		msg = "have not logged in yet"
+		errCode = constant.ErrLoginYet
 	default:
-		code = http.StatusInternalServerError
-		msg = "parse Token failed"
+		errCode = constant.ErrInternalServer
 	}
-	return code, msg
+
+	return errCode
 }

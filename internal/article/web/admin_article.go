@@ -25,7 +25,7 @@ func NewAdminHandler(svc service.ArticleService) *AdminHandler {
 }
 
 func (ctl *AdminHandler) RegisterRoute(r *gin.Engine) {
-	admin := r.Group("articles")
+	admin := r.Group("api/articles")
 	{
 		admin.POST("save", ctl.Edit())
 		admin.POST("list", ctl.List())
@@ -38,15 +38,11 @@ func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ArticleReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims:= c.MustGet("claims")
 		claim := claims.(jwt.Claims)
 
 		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
@@ -63,15 +59,11 @@ func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ArticleReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 
-		claims, ok := c.Get("claims")
-		if !ok {
-			response.Error(c, errors.NewBusinessError(constant.ErrInternalServer))
-			return
-		}
+		claims:= c.MustGet("claims")
 		claim := claims.(jwt.Claims)
 
 		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
@@ -124,7 +116,7 @@ func (ctl *AdminHandler) List() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ListReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBusinessError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
 			return
 		}
 

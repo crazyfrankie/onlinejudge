@@ -21,7 +21,7 @@ func NewProblemHandler(svc service.ProblemService) *ProblemHandler {
 
 func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 	//  管理员题目的增改查
-	modifyGroup := r.Group("admin/problem")
+	modifyGroup := r.Group("api/admin/problem")
 	{
 		modifyGroup.POST("create", ctl.AddProblem())
 		modifyGroup.GET("")
@@ -29,7 +29,7 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 	}
 
 	// 题目获取
-	getGroup := r.Group("")
+	getGroup := r.Group("api/")
 	{
 		getGroup.GET("problemset", ctl.GetProblemSet())              // 获取所有分类问题集
 		getGroup.GET("problem-list/:tag", ctl.GetPmListByCategory()) // 获取特定分类的问题集
