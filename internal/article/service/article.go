@@ -50,7 +50,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 	if art.ID > 0 {
 		err := svc.repo.UpdateDraft(ctx, art)
 		if err != nil {
-			return 0, er.NewBizError(constant.ErrUpdateDraft)
+			return 0, er.NewBizError(constant.ErrInternalServer)
 		}
 
 		return art.ID, nil
@@ -58,7 +58,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 
 	id, err := svc.repo.CreateDraft(ctx, art)
 	if err != nil {
-		return 0, er.NewBizError(constant.ErrAddDraft)
+		return 0, er.NewBizError(constant.ErrInternalServer)
 	}
 
 	return id, nil
@@ -70,7 +70,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uint64, error) {
 	id, err := svc.repo.Sync(ctx, art)
 	if err != nil {
-		return 0, er.NewBizError(constant.ErrSyncPublish)
+		return 0, er.NewBizError(constant.ErrInternalServer)
 	}
 
 	return id, nil
@@ -79,7 +79,7 @@ func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uin
 func (svc *articleService) WithDraw(ctx context.Context, art domain.Article) error {
 	err := svc.repo.SyncStatus(ctx, art.ID, art.Author.Id, domain.ArticleStatusPrivate)
 	if err != nil {
-		return er.NewBizError(constant.ErrWithdrawArt)
+		return er.NewBizError(constant.ErrInternalServer)
 	}
 
 	return nil

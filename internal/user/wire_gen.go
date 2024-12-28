@@ -7,7 +7,7 @@
 package user
 
 import (
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
@@ -27,7 +27,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, module *auth.Module) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, module *middleware.Module) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)

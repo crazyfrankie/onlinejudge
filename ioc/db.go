@@ -8,9 +8,9 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+	"gorm.io/plugin/prometheus"
 
 	"github.com/crazyfrankie/onlinejudge/config"
-	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 )
 
 func InitDB() *gorm.DB {
@@ -37,18 +37,18 @@ func InitDB() *gorm.DB {
 	sqlDB.SetMaxIdleConns(config.GetConf().MySQL.MaxIdleConns)                                    // 最大空闲连接数
 	sqlDB.SetMaxOpenConns(config.GetConf().MySQL.MaxOpenConns)                                    // 最大打开连接数
 	sqlDB.SetConnMaxLifetime(time.Duration(config.GetConf().MySQL.ConnMaxLifeTime) * time.Minute) // 连接的最大生命周期
-	err = Migrate(db)
+
+	// prometheus 埋点
+	err = db.Use(prometheus.New(prometheus.Config{
+		DBName:          "onlinejudge",
+		RefreshInterval: 15,
+		MetricsCollector: []prometheus.MetricsCollector{
+			&prometheus.MySQL{},
+		},
+	}))
 	if err != nil {
 		panic(err)
 	}
 
 	return db
-}
-
-func Migrate(db *gorm.DB) error {
-	// 自动迁移，创建表
-	if err := db.AutoMigrate(&dao.OnlineArticle{}); err != nil {
-		return err
-	}
-	return nil
 }

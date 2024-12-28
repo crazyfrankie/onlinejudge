@@ -11,7 +11,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
-	"github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
 )
 
 type AdminHandler struct {
@@ -42,7 +42,7 @@ func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 			return
 		}
 
-		claims:= c.MustGet("claims")
+		claims := c.MustGet("claims")
 		claim := claims.(jwt.Claims)
 
 		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
@@ -63,7 +63,7 @@ func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 			return
 		}
 
-		claims:= c.MustGet("claims")
+		claims := c.MustGet("claims")
 		claim := claims.(jwt.Claims)
 
 		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))

@@ -19,7 +19,6 @@ type Config struct {
 	Redis  Redis  `yaml:"redis"`
 	WeChat WeChat `yaml:"wechat"`
 	Kafka  Kafka  `yaml:"kafka"`
-	//Registry Registry `yaml:"registry"`
 }
 
 type MySQL struct {
@@ -30,12 +29,9 @@ type MySQL struct {
 }
 
 type Redis struct {
-	Address      string `yaml:"addr"`
+	Address      string `yaml:"address"`
 	PoolSize     int    `yaml:"poolSize"`
 	MinIdleConns int    `yaml:"minIdleConns"`
-	//Username string `yaml:"username"`
-	//Password string `yaml:"password"`
-	//DB       int    `yaml:"db"`
 }
 
 type WeChat struct {
@@ -46,12 +42,6 @@ type WeChat struct {
 type Kafka struct {
 	Addr string `yaml:"addr"`
 }
-
-//type Registry struct {
-//	RegistryAddress []string `yaml:"registry_address"`
-//	Username        string   `yaml:"username"`
-//	Password        string   `yaml:"password"`
-//}
 
 // GetConf gets configuration instance
 func GetConf() *Config {

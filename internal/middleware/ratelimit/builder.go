@@ -3,10 +3,11 @@ package ratelimit
 import (
 	_ "embed" // 导入 embed 包，用于在编译时将文件嵌入到 Go 二进制文件中
 	"fmt"
-	"log"
-	"net/http"
-
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/gin-gonic/gin"
+	"log"
 
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
@@ -38,13 +39,13 @@ func (b *Builder) Build() gin.HandlerFunc {
 		if err != nil {
 			// 如果执行限流时发生错误，返回 500 错误码
 			log.Println(err)
-			c.AbortWithStatus(http.StatusInternalServerError)
+			response.Error(c, errors.NewBizError(constant.ErrInternalServer))
 			return
 		}
 		if limited {
 			// 如果请求被限流，返回 429 Too Many Requests 错误码
 			log.Println(err)
-			c.AbortWithStatus(http.StatusTooManyRequests)
+			response.Error(c, errors.NewBizError(constant.ErrTooManyRequests))
 			return
 		}
 		// 如果未限流，继续处理下一个中间件或请求处理程序

@@ -3,13 +3,12 @@ package auth
 import (
 	"errors"
 	"github.com/crazyfrankie/onlinejudge/common/constant"
-	"net/http"
-
+	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/response"
+	jwt3 "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/redis/go-redis/v9"
-
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
 )
 
 var (
@@ -22,11 +21,11 @@ var (
 type LoginJWTMiddlewareBuilder struct {
 	ignorePaths map[string]struct{}
 	adminPaths  map[string]struct{}
-	ijwt.Handler
+	jwt3.Handler
 	cmd redis.Cmdable
 }
 
-func NewLoginJWTMiddlewareBuilder(jwtHdl ijwt.Handler) *LoginJWTMiddlewareBuilder {
+func NewLoginJWTMiddlewareBuilder(jwtHdl jwt3.Handler) *LoginJWTMiddlewareBuilder {
 	return &LoginJWTMiddlewareBuilder{
 		ignorePaths: make(map[string]struct{}),
 		adminPaths:  make(map[string]struct{}),
@@ -58,24 +57,24 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 		claims, err := ParseToken(tokenHeader)
 		if err != nil {
 			errCode := handleTokenError(err)
-			c.AbortWithStatusJSON(http.StatusOK, errCode)
+			response.Error(c, errCode)
 			return
 		}
 
 		if claims.UserAgent != c.Request.UserAgent() {
 			// 严重的安全问题
-			c.AbortWithStatusJSON(http.StatusOK, constant.ErrUnauthorized)
+			response.Error(c, er.NewBizError(constant.ErrUnauthorized))
 			return
 		}
 
 		err = l.Handler.CheckSession(c, claims.SSId)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusOK, constant.ErrSessExpired)
+			response.Error(c, er.NewBizError(constant.ErrSessExpired))
 			return
 		}
 
 		if _, ok := l.adminPaths[c.Request.URL.Path]; ok && claims.Role != 1 {
-			c.AbortWithStatusJSON(http.StatusOK, constant.ErrForbidden)
+			response.Error(c, er.NewBizError(constant.ErrForbidden))
 			return
 		}
 
@@ -86,9 +85,9 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 	}
 }
 
-func ParseToken(token string) (*ijwt.Claims, error) {
-	tokenClaims, err := jwt.ParseWithClaims(token, &ijwt.Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return ijwt.SecretKey, nil
+func ParseToken(token string) (*jwt3.Claims, error) {
+	tokenClaims, err := jwt.ParseWithClaims(token, &jwt3.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwt3.SecretKey, nil
 	})
 	if err != nil {
 		var ve *jwt.ValidationError
@@ -104,14 +103,14 @@ func ParseToken(token string) (*ijwt.Claims, error) {
 		return nil, err
 	}
 	if tokenClaims != nil {
-		if claims, ok := tokenClaims.Claims.(*ijwt.Claims); ok && tokenClaims.Valid {
+		if claims, ok := tokenClaims.Claims.(*jwt3.Claims); ok && tokenClaims.Valid {
 			return claims, nil
 		}
 	}
 	return nil, ErrTokenInvalid
 }
 
-func handleTokenError(err error) constant.ErrorCode {
+func handleTokenError(err error) *er.BizError {
 	var errCode constant.ErrorCode
 
 	switch {
@@ -125,5 +124,5 @@ func handleTokenError(err error) constant.ErrorCode {
 		errCode = constant.ErrInternalServer
 	}
 
-	return errCode
+	return er.NewBizError(errCode)
 }

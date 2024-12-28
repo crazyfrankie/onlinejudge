@@ -3,7 +3,7 @@
 package user
 
 import (
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/failover"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/memory"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/ratelimit"
@@ -45,7 +45,7 @@ func InitSMSService(limiter ratelimit2.Limiter) sms.Service {
 	return failOverService
 }
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, module *auth.Module) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, module *middleware.Module) *Module {
 	wire.Build(
 		dao.NewUserDao,
 		cache.NewUserCache,
@@ -64,7 +64,7 @@ func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, modu
 		third.NewOAuthGithubHandler,
 		third.NewOAuthWeChatHandler,
 
-		wire.FieldsOf(new(*auth.Module), "Hdl"),
+		wire.FieldsOf(new(*middleware.Module), "Hdl"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module)

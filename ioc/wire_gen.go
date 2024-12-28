@@ -8,8 +8,8 @@ package ioc
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/article"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
 	"github.com/google/wire"
@@ -20,7 +20,7 @@ import (
 func InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
-	module := auth.InitModule(limiter, cmdable)
+	module := middleware.InitModule(cmdable)
 	handler := module.Hdl
 	v := GinMiddlewares(limiter, handler)
 	db := InitDB()

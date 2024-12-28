@@ -3,10 +3,10 @@ package response
 import (
 	"net/http"
 
-	"github.com/crazyfrankie/gem/gerrors"
 	"github.com/gin-gonic/gin"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
 )
 
 type Response struct {
@@ -25,9 +25,9 @@ func Success(ctx *gin.Context, data interface{}) {
 
 func Error(ctx *gin.Context, err error) {
 	// 使用类型断言判断是否为业务错误
-	if businessErr, ok := gerrors.FromBizStatusError(err); ok {
-		ctx.JSON(http.StatusOK, Response{
-			Code:    businessErr.BizStatusCode(),
+	if businessErr, ok := errors.FromBizStatusError(err); ok {
+		ctx.JSON(businessErr.StatusCode(), Response{
+			Code:    businessErr.BizCode(),
 			Message: businessErr.Error(),
 		})
 		return

@@ -2,17 +2,18 @@ package web
 
 import (
 	"context"
-	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"net/http"
 	"time"
 
-	"github.com/crazyfrankie/onlinejudge/common/constant"
-	"github.com/crazyfrankie/onlinejudge/common/response"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
-	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
+
+	"github.com/crazyfrankie/onlinejudge/common/constant"
+	"github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/common/response"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 )
 
 type UserHandler struct {

@@ -2,12 +2,14 @@ package ioc
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/article"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/auth/jwt"
-	"github.com/crazyfrankie/onlinejudge/internal/auth/ratelimit"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware/auth"
+	ijwt "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware/metrics"
+	"github.com/crazyfrankie/onlinejudge/internal/middleware/ratelimit"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	rate "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	"github.com/gin-contrib/cors"
@@ -27,6 +29,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	gitHdl.RegisterRoute(server)
 	artHdl.RegisterRoute(server)
 	adminHdl.RegisterRoute(server)
+	(&web.MetricHandler{}).RegisterRoute(server)
 	return server
 }
 
@@ -41,6 +44,13 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			MaxAge:           12 * time.Hour,
 		}),
 
+		(&metrics.MetricsBuidler{
+			Namespace: "cfc_studio_frank",
+			Subsystem: "onlinejudge",
+			Name:      "gin_http",
+			Help:      "统计 Gin 的 HTTP 接口",
+		}).Builder(),
+
 		ratelimit.NewBuilder(limiter).Build(),
 
 		auth.NewLoginJWTMiddlewareBuilder(jwtHdl).
@@ -52,6 +62,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/api/oauth/github/url").
 			IgnorePaths("/api/oauth/github/callback").
 			IgnorePaths("/api/oauth/wechat/callback").
+			IgnorePaths("/api/test/metric").
 			AdminPaths("/api/admin/problem").
 			AdminPaths("/api/admin/problem/update").
 			AdminPaths("/api/admin/tags/create").
