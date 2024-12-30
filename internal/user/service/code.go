@@ -13,8 +13,8 @@ import (
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	smsSvc "github.com/crazyfrankie/onlinejudge/internal/sms/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
-	smsSvc "github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
 )
 
 const (
@@ -57,16 +57,16 @@ func (svc *CodeSvc) Send(ctx context.Context, biz, receiver string) error {
 	err := svc.repo.Store(ctx, biz, receiver, enCode)
 	if err != nil {
 		if errors.Is(err, ErrSendTooMany) {
-			return er.NewBizError(constant.ErrForbidden)
+			return er.NewBizError(constant.ErrUserForbidden)
 		} else {
-			return er.NewBizError(constant.ErrInternalServer)
+			return er.NewBizError(constant.ErrCodeInternalServer)
 		}
 	}
 
 	// 发送出去
 	err = svc.sms.Send(ctx, codeTplId, []string{code}, receiver)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrCodeInternalServer)
 	}
 
 	return nil
@@ -81,7 +81,7 @@ func (svc *CodeSvc) Verify(ctx context.Context, biz, phone, inputCode string) er
 		if errors.Is(err, ErrVerifyTooMany) {
 			return er.NewBizError(constant.ErrVerifyTooMany)
 		} else {
-			return er.NewBizError(constant.ErrInternalServer)
+			return er.NewBizError(constant.ErrCodeInternalServer)
 		}
 	}
 

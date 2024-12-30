@@ -5,9 +5,10 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"time"
+
 	ca "github.com/patrickmn/go-cache"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 var (
@@ -44,6 +45,7 @@ func (c *RedisCodeCache) Set(ctx context.Context, biz, phone, code string) error
 	if err != nil {
 		return err
 	}
+
 	switch res {
 	case 0:
 		// 毫无问题

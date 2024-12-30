@@ -5,11 +5,11 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/sms/service"
 )
 
 type TimeOutService struct {
-	svc []sms.Service
+	svc []service.Service
 	idx int32
 	// 计数器
 	cnt int32
@@ -18,7 +18,7 @@ type TimeOutService struct {
 	threshold int32
 }
 
-func NewTimeOutService(svc []sms.Service) sms.Service {
+func NewTimeOutService(svc []service.Service) service.Service {
 	return &TimeOutService{
 		svc:       svc,
 		threshold: 100,

@@ -10,15 +10,15 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/sms/service"
 )
 
 type SMSFailOver struct {
-	svc []sms.Service
+	svc []service.Service
 	idx uint64
 }
 
-func NewFailOver(svc []sms.Service) sms.Service {
+func NewFailOver(svc []service.Service) service.Service {
 	return &SMSFailOver{
 		svc: svc,
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type MetricsBuidler struct {
+type MetricsBuilder struct {
 	Namespace  string
 	Subsystem  string
 	Name       string
@@ -16,7 +16,7 @@ type MetricsBuidler struct {
 	InstanceID string
 }
 
-func (m *MetricsBuidler) Builder() gin.HandlerFunc {
+func (m *MetricsBuilder) Builder() gin.HandlerFunc {
 	labels := []string{"method", "pattern", "status"}
 	summary := prometheus.NewSummaryVec(prometheus.SummaryOpts{
 		Namespace: m.Namespace,

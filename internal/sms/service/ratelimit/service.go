@@ -8,17 +8,17 @@ package ratelimit
 import (
 	"context"
 	"fmt"
-
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	
+	"github.com/crazyfrankie/onlinejudge/internal/sms/service"
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
 type Service struct {
-	svc     sms.Service
+	svc     service.Service
 	limiter ratelimit.Limiter
 }
 
-func NewService(svc sms.Service, limiter ratelimit.Limiter) sms.Service {
+func NewService(svc service.Service, limiter ratelimit.Limiter) service.Service {
 	return &Service{
 		svc:     svc,
 		limiter: limiter,

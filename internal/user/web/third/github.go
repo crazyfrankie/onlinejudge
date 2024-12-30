@@ -50,12 +50,12 @@ func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 
 		url, err := h.svc.AuthUrl(c.Request.Context(), state)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
@@ -91,14 +91,14 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 		//var res github.Result
 		res, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
 		var info domain.GithubInfo
 		info, err = h.svc.AcquireUserInfo(c.Request.Context(), res.AccessToken)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
@@ -106,7 +106,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		tokens, err := h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 

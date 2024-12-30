@@ -68,12 +68,12 @@ func (svc *UserSvc) FindOrCreateUser(ctx context.Context, phone string) (domain.
 
 	err = svc.repo.Create(ctx, u)
 	if err != nil {
-		return domain.User{}, er.NewBizError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	user, err = svc.repo.FindByPhone(ctx, phone)
 	if err != nil {
-		return domain.User{}, er.NewBizError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return user, nil
@@ -92,7 +92,7 @@ func (svc *UserSvc) Login(ctx context.Context, identifier, password string, isEm
 		if errors.Is(err, ErrUserNotFound) {
 			return domain.User{}, er.NewBizError(constant.ErrUserNotFound)
 		} else {
-			return domain.User{}, er.NewBizError(constant.ErrInternalServer)
+			return domain.User{}, er.NewBizError(constant.ErrUserInternalServer)
 		}
 	}
 
@@ -111,7 +111,7 @@ func (svc *UserSvc) GetInfo(ctx context.Context, id uint64) (domain.User, error)
 			return domain.User{}, er.NewBizError(constant.ErrUserNotFound)
 		}
 
-		return domain.User{}, er.NewBizError(constant.ErrInternalServer)
+		return domain.User{}, er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return user, nil
@@ -132,7 +132,7 @@ func (svc *UserSvc) FindOrCreateByWechat(ctx context.Context, info domain.WeChat
 
 	err = svc.repo.CreateByWeChat(ctx, user)
 	if err != nil {
-		return user, er.NewBizError(constant.ErrInternalServer)
+		return user, er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return svc.repo.FindByWechat(ctx, info.OpenID)
@@ -154,7 +154,7 @@ func (svc *UserSvc) FindOrCreateByGithub(ctx context.Context, id int) (domain.Us
 
 	err = svc.repo.CreateByGithub(ctx, user)
 	if err != nil {
-		return user, er.NewBizError(constant.ErrInternalServer)
+		return user, er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return svc.repo.FindByGithub(ctx, gitId)
@@ -163,13 +163,13 @@ func (svc *UserSvc) FindOrCreateByGithub(ctx context.Context, id int) (domain.Us
 func (svc *UserSvc) UpdatePassword(ctx context.Context, uid uint64, password string) error {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrUserInternalServer)
 	}
 	password = string(hashPassword)
 
 	err = svc.repo.UpdatePassword(ctx, uid, password)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return nil
@@ -178,7 +178,7 @@ func (svc *UserSvc) UpdatePassword(ctx context.Context, uid uint64, password str
 func (svc *UserSvc) UpdateName(ctx context.Context, uid uint64, name string) error {
 	err := svc.repo.UpdateName(ctx, uid, name)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return nil
@@ -187,7 +187,7 @@ func (svc *UserSvc) UpdateName(ctx context.Context, uid uint64, name string) err
 func (svc *UserSvc) UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error {
 	err := svc.repo.UpdateBirthday(ctx, uid, birth)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return nil
@@ -196,7 +196,7 @@ func (svc *UserSvc) UpdateBirthday(ctx context.Context, uid uint64, birth time.T
 func (svc *UserSvc) UpdateEmail(ctx context.Context, uid uint64, email string) error {
 	err := svc.repo.UpdateEmail(ctx, uid, email)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return nil
@@ -205,7 +205,7 @@ func (svc *UserSvc) UpdateEmail(ctx context.Context, uid uint64, email string) e
 func (svc *UserSvc) UpdateRole(ctx context.Context, uid uint64, role uint8) error {
 	err := svc.repo.UpdateRole(ctx, uid, role)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrUserInternalServer)
 	}
 
 	return nil

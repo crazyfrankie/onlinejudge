@@ -75,6 +75,8 @@ github.com/cloudwego/base64x v0.1.4/go.mod h1:0zlkT4Wn5C6NdauXdJRhSKRlJvmclQ1hhJ
 github.com/cloudwego/iasm v0.2.0 h1:1KNIy1I1H9hNNFEEH3DVnI4UujN+1zjpuk6gwHLTssg=
 github.com/cloudwego/iasm v0.2.0/go.mod h1:8rXZaNYT2n95jn+zTI1sDr+IgcD2GVs0nlbbQPiEFhY=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
+github.com/crazyfrankie/gem v0.0.5 h1:n0CawgjKCTUXi4gOWZImIoDtlExMLdWkMlQEjR5ETFY=
+github.com/crazyfrankie/gem v0.0.5/go.mod h1:9UIBOqPCLsfictyc6u5UoT0xDmj3cZyx5pqc9yPURcA=
 github.com/crazyfrankie/snow-flake v1.0.1 h1:p7eObPu9P16TOQN9Z9jbUsSNfRkla0T95AgKtzXDnzQ=
 github.com/crazyfrankie/snow-flake v1.0.1/go.mod h1:rmvJWfEu9QT/kzUTX+4oIxLSGxtTEZrylPxOdg1kQZo=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=

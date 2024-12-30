@@ -63,18 +63,18 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 
 		if claims.UserAgent != c.Request.UserAgent() {
 			// 严重的安全问题
-			response.Error(c, er.NewBizError(constant.ErrUnauthorized))
+			response.Error(c, er.NewBizError(constant.ErrUserUnauthorized))
 			return
 		}
 
 		err = l.Handler.CheckSession(c, claims.SSId)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrSessExpired))
+			response.Error(c, er.NewBizError(constant.ErrUserSessExpired))
 			return
 		}
 
 		if _, ok := l.adminPaths[c.Request.URL.Path]; ok && claims.Role != 1 {
-			response.Error(c, er.NewBizError(constant.ErrForbidden))
+			response.Error(c, er.NewBizError(constant.ErrUserForbidden))
 			return
 		}
 
@@ -115,13 +115,13 @@ func handleTokenError(err error) *er.BizError {
 
 	switch {
 	case errors.Is(err, ErrTokenInvalid):
-		errCode = constant.ErrInvalidToken
+		errCode = constant.ErrUserInvalidToken
 	case errors.Is(err, ErrTokenExpired):
-		errCode = constant.ErrTokenExpired
+		errCode = constant.ErrUserTokenExpired
 	case errors.Is(err, ErrLoginYet):
-		errCode = constant.ErrLoginYet
+		errCode = constant.ErrUserLoginYet
 	default:
-		errCode = constant.ErrInternalServer
+		errCode = constant.ErrUserInternalServer
 	}
 
 	return er.NewBizError(errCode)

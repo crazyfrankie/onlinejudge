@@ -3,12 +3,14 @@ package auth
 import (
 	"context"
 	"errors"
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
+	
 	"github.com/golang-jwt/jwt"
+
+	"github.com/crazyfrankie/onlinejudge/internal/sms/service"
 )
 
 type SMSService struct {
-	svc sms.Service
+	svc service.Service
 	key string
 }
 

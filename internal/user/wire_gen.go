@@ -8,16 +8,13 @@ package user
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/middleware"
+	"github.com/crazyfrankie/onlinejudge/internal/sms"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms"
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/failover"
-	"github.com/crazyfrankie/onlinejudge/internal/user/service/sms/memory"
-	ratelimit2 "github.com/crazyfrankie/onlinejudge/internal/user/service/sms/ratelimit"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
@@ -27,38 +24,25 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, module *middleware.Module) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
 	codeCache := cache.NewRedisCodeCache(cmd)
 	codeRepository := repository.NewCodeRepository(codeCache)
-	smsService := InitSMSService(limiter)
-	codeService := service.NewCodeService(codeRepository, smsService)
-	handler := module.Hdl
+	serviceService := smsModule.SmsSvc
+	codeService := service.NewCodeService(codeRepository, serviceService)
+	handler := mdlModule.Hdl
 	userHandler := web.NewUserHandler(userService, codeService, handler)
 	githubService := github.NewService()
 	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
 	wechatService := wechat.NewService()
 	oAuthWeChatHandler := third.NewOAuthWeChatHandler(wechatService, handler, userService)
-	userModule := &Module{
+	module := &Module{
 		Hdl:       userHandler,
 		GithubHdl: oAuthGithubHandler,
 		WeChatHdl: oAuthWeChatHandler,
 	}
-	return userModule
-}
-
-// wire.go:
-
-func InitSMSService(limiter ratelimit.Limiter) sms.Service {
-	memoryService := memory.NewService()
-
-	services := []sms.Service{
-		memoryService,
-	}
-	rateLimitService := ratelimit2.NewService(memoryService, limiter)
-	failOverService := failover.NewFailOver(append(services, rateLimitService))
-	return failOverService
+	return module
 }

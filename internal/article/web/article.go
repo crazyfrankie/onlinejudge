@@ -41,7 +41,7 @@ func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ListReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
@@ -118,7 +118,7 @@ func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req LikeReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 

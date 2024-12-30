@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/middleware/auth"
@@ -14,6 +15,7 @@ import (
 	rate "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"time"
 )
 
@@ -34,6 +36,12 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 }
 
 func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
+	response.InitCouter(prometheus.CounterOpts{
+		Namespace: "cfc_studio_frank",
+		Subsystem: "onlinejudge",
+		Name:      "http_biz_code",
+		Help:      "HTTP 的业务错误码",
+	})
 	return []gin.HandlerFunc{
 		cors.New(cors.Config{
 			AllowOrigins:     []string{"http://localhost:8081"},
@@ -44,7 +52,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			MaxAge:           12 * time.Hour,
 		}),
 
-		(&metrics.MetricsBuidler{
+		(&metrics.MetricsBuilder{
 			Namespace: "cfc_studio_frank",
 			Subsystem: "onlinejudge",
 			Name:      "gin_http",

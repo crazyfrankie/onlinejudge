@@ -2,11 +2,12 @@ package ioc
 
 import (
 	"context"
+	"time"
+
 	snowflake "github.com/crazyfrankie/snow-flake"
 	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	"time"
 )
 
 func InitMongoDB() (*mongo.Database, *snowflake.Node) {

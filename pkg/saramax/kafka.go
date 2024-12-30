@@ -2,6 +2,7 @@ package saramax
 
 import (
 	"encoding/json"
+	
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
 )

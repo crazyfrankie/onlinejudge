@@ -2,8 +2,8 @@ package ioc
 
 import (
 	"github.com/IBM/sarama"
-	"github.com/crazyfrankie/onlinejudge/config"
 
+	"github.com/crazyfrankie/onlinejudge/config"
 	"github.com/crazyfrankie/onlinejudge/internal/article/event"
 )
 

@@ -55,7 +55,7 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
 
@@ -160,7 +160,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
 
@@ -183,7 +183,7 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
 
@@ -210,7 +210,7 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
 
@@ -236,7 +236,7 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
 

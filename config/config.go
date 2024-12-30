@@ -1,11 +1,13 @@
 package config
 
 import (
-	"github.com/kr/pretty"
-	"github.com/spf13/viper"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
+
+	"github.com/kr/pretty"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -50,19 +52,19 @@ func GetConf() *Config {
 }
 
 func initConf() {
-	viper.SetConfigFile("config/dev.yaml")
+	prefix := "config"
+	contentFilePath := filepath.Join(prefix, filepath.Join(GetEnv(), "conf.yaml"))
+	viper.SetConfigFile(contentFilePath)
 	if err := viper.ReadInConfig(); err != nil {
-		// 这里可以改成更优雅的错误处理
 		log.Fatalf("Failed to read config file: %v", err)
 	}
 
 	conf = new(Config)
 	if err := viper.Unmarshal(&conf); err != nil {
-		// 更优雅的错误处理
 		log.Fatalf("Failed to unmarshal config: %v", err)
 	}
 
-	conf.Env = GetEnv() // Ensure GetEnv() works as expected
+	conf.Env = GetEnv()
 	// 打印配置，方便调试
 	pretty.Printf("%+v\n", conf)
 }

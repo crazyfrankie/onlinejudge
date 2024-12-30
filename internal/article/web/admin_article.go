@@ -38,7 +38,7 @@ func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ArticleReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
@@ -59,7 +59,7 @@ func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ArticleReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
@@ -116,7 +116,7 @@ func (ctl *AdminHandler) List() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ListReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrInvalidParams))
+			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 

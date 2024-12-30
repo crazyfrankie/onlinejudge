@@ -2,11 +2,13 @@ package response
 
 import (
 	"net/http"
+	"strconv"
 
+	"github.com/crazyfrankie/gem/gerrors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
-	"github.com/crazyfrankie/onlinejudge/common/errors"
 )
 
 type Response struct {
@@ -15,7 +17,17 @@ type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+var vector *prometheus.CounterVec
+
+func InitCouter(opt prometheus.CounterOpts) {
+	vector = prometheus.NewCounterVec(opt, []string{"code"})
+	prometheus.MustRegister(vector)
+}
+
 func Success(ctx *gin.Context, data interface{}) {
+	// 监控
+	vector.WithLabelValues(strconv.Itoa(int(constant.Success.Code))).Inc()
+
 	ctx.JSON(http.StatusOK, Response{
 		Code:    constant.Success.Code,
 		Message: constant.Success.Message,
@@ -25,11 +37,15 @@ func Success(ctx *gin.Context, data interface{}) {
 
 func Error(ctx *gin.Context, err error) {
 	// 使用类型断言判断是否为业务错误
-	if businessErr, ok := errors.FromBizStatusError(err); ok {
-		ctx.JSON(businessErr.StatusCode(), Response{
-			Code:    businessErr.BizCode(),
+	if businessErr, ok := gerrors.FromBizStatusError(err); ok {
+		ctx.JSON(http.StatusOK, Response{
+			Code:    businessErr.BizStatusCode(),
 			Message: businessErr.Error(),
 		})
+
+		// 监控
+		vector.WithLabelValues(strconv.Itoa(int(businessErr.BizStatusCode()))).Inc()
+
 		return
 	}
 }

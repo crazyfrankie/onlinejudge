@@ -1,48 +1,61 @@
 package constant
 
-import "net/http"
-
 type ErrorCode struct {
 	Code    int32
 	Message string
-	Status  int
 }
+
+// 错误码采用五位设计
+// 第一位代表错误类型 4 代表客户端错误、 5 代表服务端错误
+// 后两位代表模块
+// 最后两位代表具体错误，从 00 开始递增
 
 // 通用错误
 var (
 	Success = ErrorCode{Code: 00000, Message: "success"}
 
-	ErrInvalidParams   = ErrorCode{Code: 00400, Message: "invalid parameters", Status: http.StatusBadRequest}
-	ErrTooManyRequests = ErrorCode{Code: 00401, Message: "too many requests", Status: http.StatusTooManyRequests}
-	ErrInternalServer  = ErrorCode{Code: 00500, Message: "internal server errors", Status: http.StatusInternalServerError}
-)
-
-// 身份校验错误
-var (
-	ErrInvalidToken = ErrorCode{Code: 10400, Message: "invalid token", Status: http.StatusUnauthorized}
-	ErrTokenExpired = ErrorCode{Code: 10401, Message: "token expired", Status: http.StatusUnauthorized}
-	ErrLoginYet     = ErrorCode{Code: 10402, Message: "have not logged in yet", Status: http.StatusUnauthorized}
-	ErrSessExpired  = ErrorCode{Code: 10403, Message: "session expired", Status: http.StatusUnauthorized}
-	ErrUnauthorized = ErrorCode{Code: 10404, Message: "unauthorized", Status: http.StatusUnauthorized}
-	ErrForbidden    = ErrorCode{Code: 10405, Message: "forbidden", Status: http.StatusForbidden}
+	ErrTooManyRequests = ErrorCode{Code: 40000, Message: "too many requests"}
+	ErrInternalServer  = ErrorCode{Code: 50001, Message: "internal server errors"}
 )
 
 // 用户相关错误
 var (
-	ErrUserNotFound       = ErrorCode{Code: 20400, Message: "user not found", Status: http.StatusNotFound}
-	ErrVerifyTooMany      = ErrorCode{Code: 20401, Message: "verify code req too frequent", Status: http.StatusTooManyRequests}
-	ErrInvalidCredentials = ErrorCode{Code: 20500, Message: "invalid username or password", Status: http.StatusUnauthorized}
+	ErrUserInvalidParams  = ErrorCode{Code: 40100, Message: "invalid parameters"}
+	ErrUserInvalidToken   = ErrorCode{Code: 40101, Message: "invalid token"}
+	ErrUserTokenExpired   = ErrorCode{Code: 40102, Message: "token expired"}
+	ErrUserLoginYet       = ErrorCode{Code: 40103, Message: "have not logged in yet"}
+	ErrUserSessExpired    = ErrorCode{Code: 40104, Message: "session expired"}
+	ErrUserUnauthorized   = ErrorCode{Code: 40105, Message: "unauthorized"}
+	ErrUserForbidden      = ErrorCode{Code: 40106, Message: "forbidden"}
+	ErrUserNotFound       = ErrorCode{Code: 40107, Message: "user not found"}
+	ErrVerifyTooMany      = ErrorCode{Code: 40108, Message: "verify code req too frequent"}
+	ErrInvalidCredentials = ErrorCode{Code: 40109, Message: "invalid username or password"}
+	ErrUserInternalServer = ErrorCode{Code: 50103, Message: "internal server errors"}
 )
 
 // 题目相关错误
 var (
-	ErrProblemNotFound = ErrorCode{Code: 30400, Message: "problem not found", Status: http.StatusNotFound}
-	ErrProblemExists   = ErrorCode{Code: 30501, Message: "problem already exists", Status: http.StatusConflict}
-	ErrTagExists       = ErrorCode{Code: 30502, Message: "tag already exists", Status: http.StatusConflict}
-	ErrNoTags          = ErrorCode{Code: 30503, Message: "no tag be found", Status: http.StatusNotFound}
+	ErrProblemNotFound       = ErrorCode{Code: 40200, Message: "problem not found"}
+	ErrProblemExists         = ErrorCode{Code: 40201, Message: "problem already exists"}
+	ErrProblemTagExists      = ErrorCode{Code: 40202, Message: "tag already exists"}
+	ErrProblemNoTags         = ErrorCode{Code: 40203, Message: "no tag be found"}
+	ErrProblemInternalServer = ErrorCode{Code: 50204, Message: "internal server error"}
 )
 
 // 文章相关错误
 var (
-	ErrArticleNotFound = ErrorCode{Code: 40504, Message: "article not found", Status: http.StatusNotFound}
+	ErrArticleInvalidParams  = ErrorCode{Code: 40300, Message: "invalid parameters"}
+	ErrArticleNotFound       = ErrorCode{Code: 40301, Message: "article not found"}
+	ErrArtilceForbidden      = ErrorCode{Code: 40302, Message: "forbidden"}
+	ErrArticleInternalServer = ErrorCode{Code: 50303, Message: "internal server error"}
+)
+
+// 交互系统相关错误
+var (
+	ErrInteractiveInternalServer = ErrorCode{Code: 50400, Message: "internal server error"}
+)
+
+// 验证码系统相关错误
+var (
+	ErrCodeInternalServer = ErrorCode{Code: 50500, Message: "internal server error"}
 )

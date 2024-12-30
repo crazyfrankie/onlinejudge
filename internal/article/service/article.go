@@ -50,7 +50,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 	if art.ID > 0 {
 		err := svc.repo.UpdateDraft(ctx, art)
 		if err != nil {
-			return 0, er.NewBizError(constant.ErrInternalServer)
+			return 0, er.NewBizError(constant.ErrArticleInternalServer)
 		}
 
 		return art.ID, nil
@@ -58,7 +58,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 
 	id, err := svc.repo.CreateDraft(ctx, art)
 	if err != nil {
-		return 0, er.NewBizError(constant.ErrInternalServer)
+		return 0, er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	return id, nil
@@ -70,7 +70,7 @@ func (svc *articleService) SaveDraft(ctx context.Context, art domain.Article) (u
 func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uint64, error) {
 	id, err := svc.repo.Sync(ctx, art)
 	if err != nil {
-		return 0, er.NewBizError(constant.ErrInternalServer)
+		return 0, er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	return id, nil
@@ -79,7 +79,7 @@ func (svc *articleService) Publish(ctx context.Context, art domain.Article) (uin
 func (svc *articleService) WithDraw(ctx context.Context, art domain.Article) error {
 	err := svc.repo.SyncStatus(ctx, art.ID, art.Author.Id, domain.ArticleStatusPrivate)
 	if err != nil {
-		return er.NewBizError(constant.ErrInternalServer)
+		return er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	return nil
@@ -88,7 +88,7 @@ func (svc *articleService) WithDraw(ctx context.Context, art domain.Article) err
 func (svc *articleService) List(ctx context.Context, offset, limit int) ([]domain.Article, error) {
 	res, err := svc.repo.GetListByID(ctx, offset, limit)
 	if err != nil {
-		return []domain.Article{}, er.NewBizError(constant.ErrInternalServer)
+		return []domain.Article{}, er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	return res, nil
@@ -97,7 +97,7 @@ func (svc *articleService) List(ctx context.Context, offset, limit int) ([]domai
 func (svc *articleService) PubList(ctx context.Context, offset, limit int) ([]domain.Article, error) {
 	res, err := svc.repo.GetPubListByID(ctx, offset, limit)
 	if err != nil {
-		return []domain.Article{}, er.NewBizError(constant.ErrInternalServer)
+		return []domain.Article{}, er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	return res, nil
@@ -112,11 +112,11 @@ func (svc *articleService) Detail(ctx context.Context, uid uint64, artID string)
 			return domain.Article{}, er.NewBizError(constant.ErrArticleNotFound)
 		}
 
-		return domain.Article{}, er.NewBizError(constant.ErrInternalServer)
+		return domain.Article{}, er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	if uid != art.Author.Id {
-		return domain.Article{}, er.NewBizError(constant.ErrForbidden)
+		return domain.Article{}, er.NewBizError(constant.ErrArtilceForbidden)
 	}
 
 	return art, nil
@@ -131,7 +131,7 @@ func (svc *articleService) PubDetail(ctx context.Context, uid uint64, artID stri
 			return domain.Article{}, er.NewBizError(constant.ErrArticleNotFound)
 		}
 
-		return domain.Article{}, er.NewBizError(constant.ErrInternalServer)
+		return domain.Article{}, er.NewBizError(constant.ErrArticleInternalServer)
 	}
 
 	go func() {

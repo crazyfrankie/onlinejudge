@@ -11,6 +11,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/middleware"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
+	"github.com/crazyfrankie/onlinejudge/internal/sms"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
 	"github.com/google/wire"
 )
@@ -24,7 +25,8 @@ func InitApp() *App {
 	handler := module.Hdl
 	v := GinMiddlewares(limiter, handler)
 	db := InitDB()
-	userModule := user.InitModule(cmdable, db, limiter, module)
+	smsModule := sms.NewModule(limiter)
+	userModule := user.InitModule(cmdable, db, limiter, module, smsModule)
 	userHandler := userModule.Hdl
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl
