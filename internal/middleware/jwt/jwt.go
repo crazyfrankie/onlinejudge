@@ -89,7 +89,7 @@ func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
 	}
 	return tokenHeader
 }
-
+	
 func (h *RedisJWTHandler) CheckSession(ctx *gin.Context, ssid string) error {
 	_, err := h.cmd.Exists(ctx.Request.Context(), fmt.Sprintf("user:ssid:%s", ssid)).Result()
 	return err

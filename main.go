@@ -26,10 +26,12 @@ func main() {
 	initLogger()
 	initPrometheus()
 
+	closeFunc := ioc.InitOTEL()
+
 	app := ioc.InitApp()
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:9000",
+		Addr:    "0.0.0.0:8081",
 		Handler: app.Server,
 	}
 
@@ -46,7 +48,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	zap.L().Info("Server is running", zap.String("address", "http://localhost:9000"))
+	zap.L().Info("Server is running", zap.String("address", "http://localhost:8081"))
 
 	// 创建通道监听信号
 	quit := make(chan os.Signal, 1)
@@ -65,6 +67,11 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		zap.L().Error("Server forced shutting down", zap.Error(err))
 	}
+
+	// 关闭 OTEL 连接
+	newCtx, cancelFunc := context.WithTimeout(context.Background(), time.Minute)
+	defer cancelFunc()
+	closeFunc(newCtx)
 
 	zap.L().Info("Server exited gracefully")
 }

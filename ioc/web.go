@@ -1,6 +1,13 @@
 package ioc
 
 import (
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
@@ -10,13 +17,8 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/middleware/ratelimit"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
-	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	rate "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus"
-	"time"
 )
 
 func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler, adminHdl *article.AdminHandler) *gin.Engine {
@@ -31,7 +33,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	gitHdl.RegisterRoute(server)
 	artHdl.RegisterRoute(server)
 	adminHdl.RegisterRoute(server)
-	(&web.MetricHandler{}).RegisterRoute(server)
+
 	return server
 }
 
@@ -59,6 +61,8 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			Help:      "统计 Gin 的 HTTP 接口",
 		}).Builder(),
 
+		otelgin.Middleware("onlinejudge"),
+
 		ratelimit.NewBuilder(limiter).Build(),
 
 		auth.NewLoginJWTMiddlewareBuilder(jwtHdl).
@@ -70,7 +74,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/api/oauth/github/url").
 			IgnorePaths("/api/oauth/github/callback").
 			IgnorePaths("/api/oauth/wechat/callback").
-			IgnorePaths("/api/test/metric").
+			IgnorePaths("/api/user/test").
 			AdminPaths("/api/admin/problem").
 			AdminPaths("/api/admin/problem/update").
 			AdminPaths("/api/admin/tags/create").

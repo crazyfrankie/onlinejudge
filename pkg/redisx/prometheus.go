@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -43,11 +44,11 @@ func (p *PrometheusHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 		defer func() {
 			duration := time.Since(startTime).Microseconds()
 			// 是否命中缓存
-			if cmd.Name() == "get" {
-				keyExists := errors.Is(err, redis.Nil)
+			if strings.Contains(cmd.Name(), "get") {
+				keyExists := !errors.Is(err, redis.Nil)
 				p.vector.WithLabelValues(cmd.Name(), strconv.FormatBool(keyExists)).Observe(float64(duration))
 			} else {
-				p.vector.WithLabelValues(cmd.Name()).Observe(float64(duration))
+				p.vector.WithLabelValues(cmd.Name(), "").Observe(float64(duration))
 			}
 		}()
 		// 在 Redis 执行之后

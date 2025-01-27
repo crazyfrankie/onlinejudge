@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+	"gorm.io/plugin/opentelemetry/tracing"
 	"gorm.io/plugin/prometheus"
 
 	"github.com/crazyfrankie/onlinejudge/config"
@@ -55,6 +57,14 @@ func InitDB() *gorm.DB {
 	// 监控 GORM 的执行时间
 	callbacks := newCallbacks()
 	callbacks.registerAll(db)
+
+	err = db.Use(tracing.NewPlugin(tracing.WithDBName("onlinejudge"), tracing.WithQueryFormatter(func(query string) string {
+		log.Println(query)
+		return query
+	}), tracing.WithoutMetrics()))
+	if err != nil {
+		panic(err)
+	}
 
 	return db
 }

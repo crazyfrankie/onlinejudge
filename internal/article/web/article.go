@@ -95,7 +95,7 @@ func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 
 		interResp := Interactive{
 			LikeCnt: inter.LikeCnt,
-			ReadCnt: inter.ReadCnt,
+			ReadCnt: inter.ReadCnt + 1,
 		}
 		resp := PubDetailResp{
 			ID:         art.ID,

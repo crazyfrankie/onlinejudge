@@ -5,10 +5,12 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
-	"github.com/redis/go-redis/v9"
 	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+
+	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 )
 
 //go:embed lua/interactive.lua

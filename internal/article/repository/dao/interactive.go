@@ -113,29 +113,21 @@ func (dao *InteractiveDao) GetInteractiveByID(ctx context.Context, biz string, b
 				return err
 			}
 
-			inter.ReadCnt = 1
+			inter.ReadCnt = 0
 		}
 
 		err = tx.WithContext(ctx).Model(&UserLike{}).Where("biz = ? AND biz_id = ? AND uid = ?", biz, bizId, uid).First(&userLike).Error
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return ErrNoUserLike
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
 			}
 
-			return err
+			inter.LikeCnt = 0
 		}
 
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrNoUserLike) {
-			return domain.Interactive{
-				Liked:   false,
-				LikeCnt: inter.LikeCnt,
-				ReadCnt: inter.ReadCnt,
-			}, nil
-		}
-
 		return domain.Interactive{}, err
 	}
 

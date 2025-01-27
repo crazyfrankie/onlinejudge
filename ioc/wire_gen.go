@@ -18,7 +18,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitApp() *App {
+func  InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
 	module := middleware.InitModule(cmdable)
