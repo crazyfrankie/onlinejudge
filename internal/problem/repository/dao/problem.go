@@ -31,7 +31,7 @@ type ProblemDao interface {
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
 	FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
-	FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
+	FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, string, error)
 }
 
 type GormProblemDao struct {
@@ -284,22 +284,22 @@ func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) ([]domai
 	return testCases[:3], nil
 }
 
-func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, string, error) {
 	var problem Problem
 
-	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error
+	err := dao.db.WithContext(ctx).Where("id = ?", id).Select("template_code", "test_cases").First(&problem).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []domain.TestCase{}, ErrProblemNotFound
+			return []domain.TestCase{}, "", ErrProblemNotFound
 		}
-		return []domain.TestCase{}, err
+		return []domain.TestCase{}, "", err
 	}
 
 	var testCases []domain.TestCase
 	err = json.Unmarshal([]byte(problem.TestCases), &testCases)
 	if err != nil {
-		return testCases, err
+		return testCases, "", err
 	}
 
-	return testCases, nil
+	return testCases, problem.TemplateCode, nil
 }

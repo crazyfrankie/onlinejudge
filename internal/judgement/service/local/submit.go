@@ -4,15 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
-	"log"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
-	"time"
+	"text/template"
 
-	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
 	domain2 "github.com/crazyfrankie/onlinejudge/internal/problem/domain"
 	repository2 "github.com/crazyfrankie/onlinejudge/internal/problem/repository"
@@ -23,15 +20,6 @@ var (
 )
 
 type LocSubmitService interface {
-	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
-	//SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, errors)
-
-	ValidateCode(language, way string, submission domain.Submission) (error, bool)
-	GoFormat(code, way string, userId, problemId uint64) bool
-	JavaFormat(code, way string, userId, problemId uint64) bool
-	CppFormat(code, way string, userId, problemId uint64) bool
-	PythonFormat(code, way string, userId, problemId uint64) bool
-	GetFileWithUser(userId, problemId uint64, suffix, way string) string
 }
 
 type LocSubmitSvc struct {
@@ -54,303 +42,121 @@ func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.Pro
 	}
 }
 
+//RunCode 运行前端提交的代码，并写入结果到数据库
 func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
-	// 先去查缓存
-	evals, err := svc.repo.AcquireEvaluationResult(ctx, submission.UserId, submission.ProblemID)
-	if err == nil {
-		return evals, nil
-	}
-
-	// 语言支持验证
-	_, ok := svc.language[language]
-	if !ok {
-		return evals, errors.New("no language to fit")
-	}
-
-	// 代码格式检查
-	err, done := svc.ValidateCode(language, "run", submission)
-	if !done {
-		return evals, err
-	}
-
-	// 创建临时文件保存代码
-	tempDir, err := os.MkdirTemp("", "code_run_*")
+	ts, tmpl, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
 	if err != nil {
-		return nil, errors.New("failed to create temp directory")
-	}
-	defer func(path string) {
-		err := os.RemoveAll(path)
-		if err != nil {
-			log.Printf("failed to remove temp directory: %v", err)
-		}
-	}(tempDir)
-
-	tempFilePath := filepath.Join(tempDir, "main."+language)
-	if err := os.WriteFile(tempFilePath, []byte(submission.Code), 0644); err != nil {
-		return nil, errors.New("failed to write code to temp file")
+		return nil, err
 	}
 
-	// 获取测试用例
-	testCases, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
+	temp := os.TempDir()
+	// 用户源代码文件
+	user, err := os.CreateTemp(temp, "main_*.go")
 	if err != nil {
-		return evals, fmt.Errorf("failed to get test cases: %w", err)
+		return nil, err
 	}
-
-	imageName, err := svc.RunDocker(language, tempDir, err)
+	defer os.Remove(user.Name())
+	// 用户输出文件
+	output, err := os.CreateTemp(temp, "user_out_*.txt")
 	if err != nil {
-		return evals, err
+		return nil, err
 	}
+	defer os.Remove(output.Name())
 
-	evals, err = svc.GetResult(testCases, imageName, evals)
+	err = svc.parseTemplate(ts, tmpl, submission.Code, user.Name())
 	if err != nil {
-		return evals, err
+		return nil, err
 	}
 
-	// 记录评估结果
-	cacheErr := svc.repo.StoreEvaluationResult(ctx, submission.UserId, submission.ProblemID, evals)
-	if cacheErr != nil {
-		return nil, errors.New("failed to store execution result in cache")
+	// 动态引入 import
+	err = fixImport(user.Name())
+	if err != nil {
+		return nil, err
 	}
 
-	return evals, nil
+	// 编译
+	cmd := exec.Command("go", "build", user.Name())
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	// 可执行文件名称
+	name := user.Name()[:len(user.Name())-2] + ".exe"
+	defer os.Remove(name)
+
+	err = Run(name, output.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
-func (svc *LocSubmitSvc) GetResult(testCases []domain2.TestCase, imageName string, evals []domain.Evaluation) ([]domain.Evaluation, error) {
-	// 运行 Docker 容器并传递输入用例
-	for _, testCase := range testCases {
-		var inputBuffer bytes.Buffer
-		inputBuffer.WriteString(testCase.Input) // 将测试用例的输入写入缓冲区
+func Run(execPath, output string) error {
+	cmd := exec.Command(execPath)
 
-		runCmd := exec.Command("sudo", "docker", "run", "--rm", "-i", "--runtime=runsc", imageName)
-		runCmd.Stdin = &inputBuffer // 使用缓冲区作为标准输入
+	out, err := os.OpenFile(output, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	cmd.Stdout = out
+	if err := cmd.Run(); err != nil {
+		return err
+	}
 
-		fmt.Println("Input to container:", testCase.Input)
+	return nil
+}
 
-		output, err := runCmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("Container run errors output: %s\n", string(output)) // 打印错误输出
-			return nil, fmt.Errorf("code execution errors: %s", err.Error())
-		}
-
-		fmt.Printf("Raw output from container: %s\n", string(output))
-
-		// 解析输出，获取实际结果
-		outputLines := strings.Split(strings.TrimSpace(string(output)), "\n")
-		actualOutput := outputLines[0] // 假设第一行是实际结果，后续可以是其他信息
-
-		// 对比输出与测试用例并构造评估结果
-		status := "failed"
-		if strings.TrimSpace(actualOutput) == strings.TrimSpace(testCase.Output) {
-			status = "passed"
+// parseTemplate
+// 拿到测试用例
+// 拿到用户代码
+// 构建模板变量
+// 解析模板
+// 执行模板渲染
+// 写入 Go 文件
+func (svc *LocSubmitSvc) parseTemplate(testCases []domain2.TestCase, tmplCode, userCode, targetFile string) error {
+	// 构建测试用例
+	tcs := make([]TestCase, len(testCases))
+	for _, tc := range testCases {
+		inputs := strings.Fields(tc.Input)
+		tc := TestCase{
+			Input:  inputs,
+			Expect: tc.Output,
 		}
 
-		eval := domain.Evaluation{
-			Status:  status,
-			RunTime: "N/A", // 这里可以根据实际需要设置运行时间
-			RunMem:  0,     // 这里可以根据实际需要设置内存使用
-		}
-		evals = append(evals, eval)
+		tcs = append(tcs, tc)
 	}
-	return evals, nil
+
+	// 构建模板变量
+	data := TemplateData{
+		ParamNames: []string{"[]int", "int"},
+		TestCases:  tcs,
+		UserCode:   userCode,
+	}
+
+	// 解析
+	tmpl, err := template.New("code").Parse(tmplCode)
+	if err != nil {
+		return err
+	}
+
+	// 渲染
+	var output bytes.Buffer
+	err = tmpl.Execute(&output, data)
+	if err != nil {
+		return err
+	}
+
+	// 写入
+	err = os.WriteFile(targetFile, output.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (svc *LocSubmitSvc) RunDocker(language string, tempDir string, err error) (string, error) {
-	// 创建 Docker 镜像
-	imageName := fmt.Sprintf("code_run_%d", time.Now().UnixNano())
-	dockerfileContent := fmt.Sprintf(`
-	FROM golang:1.23.2
-	RUN mkdir /app
-	WORKDIR /app
-	COPY main.%s .
-	RUN go build -o onlinejudge main.%s
-	CMD ["./onlinejudge"]
-	`, language, language)
-
-	dockerfilePath := filepath.Join(tempDir, "Dockerfile")
-	if err := os.WriteFile(dockerfilePath, []byte(dockerfileContent), 0644); err != nil {
-		return "", errors.New("failed to write Dockerfile")
-	}
-
-	// 构建 Docker 镜像
-	buildCmd := exec.Command("sudo", "docker", "build", "--no-cache", "-t", imageName, tempDir)
-	outPut, err := buildCmd.CombinedOutput() // 获取输出
-	if err != nil {
-		return "", fmt.Errorf("failed to build Docker image: %s: %s", err.Error(), string(outPut))
-	}
-
-	fmt.Printf("Raw output from container: %s\n", string(outPut))
-	return imageName, nil
-}
-
-//func (svc *LocSubmitSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, errors) {
-//
-//}
-
-func (svc *LocSubmitSvc) ValidateCode(language, way string, submission domain.Submission) (error, bool) {
-	// 代码格式检查
-	var formatOk bool
-	switch language {
-	case "go":
-		formatOk = svc.GoFormat(submission.Code, way, submission.ProblemID, submission.UserId)
-	case "java":
-		formatOk = svc.JavaFormat(submission.Code, way, submission.ProblemID, submission.UserId)
-	case "py":
-		formatOk = svc.PythonFormat(submission.Code, way, submission.ProblemID, submission.UserId)
-	case "cpp":
-		formatOk = svc.CppFormat(submission.Code, way, submission.ProblemID, submission.UserId)
-	}
-	if !formatOk {
-		return ErrSyntax, false
-	}
-	return nil, true
-}
-
-func (svc *LocSubmitSvc) GoFormat(code, way string, userId, problemId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "service", "local", "temp", "go")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "go"))
-
-	// 将代码写入 temp.go 文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 使用 go vet 或 go build 来检测语法
-	cmd := exec.Command("go", "vet", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *LocSubmitSvc) JavaFormat(code, way string, userId, problemId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "temp", "service", "local", "temp", "java")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "java"))
-
-	// 将代码写入文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	cmd := exec.Command("javac", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *LocSubmitSvc) CppFormat(code, way string, userId, problemId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "temp", "service", "local", "temp", "cpp")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "cpp"))
-
-	// 将代码写入文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	cmd := exec.Command("g++", "-fsyntax-only", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *LocSubmitSvc) PythonFormat(code, way string, userId, problemId uint64) bool {
-	// 定义目标文件夹路径
-	currDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建路径
-	dir := filepath.Join(currDir, "internal", "judgement", "temp", "service", "local", "temp", "python")
-
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	// 构建文件的完整路径
-	filePath := filepath.Join(dir, svc.GetFileWithUser(userId, problemId, way, "py"))
-
-	// 将代码写入文件中
-	err = os.WriteFile(filePath, []byte(code), 0644)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-
-	cmd := exec.Command("python3", "-m", "py_compile", filePath)
-	_, err = cmd.CombinedOutput()
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-func (svc *LocSubmitSvc) GetFileWithUser(userId, problemId uint64, suffix, way string) string {
-	return fmt.Sprintf("user%dproblem:%d:%s.%s", userId, problemId, way, suffix)
+// CheckResult 由前端发起调用，轮询评测结果，CheckResult 不断从数据库中查询数据，直到评测结果插入
+func (svc *LocSubmitSvc) CheckResult(ctx context.Context) error {
+	return nil
 }

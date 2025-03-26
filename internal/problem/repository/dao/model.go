@@ -1,19 +1,20 @@
 package dao
 
 type Problem struct {
-	ID         uint64 `gorm:"primaryKey,autoIncrement"`
-	Title      string `gorm:"unique;not null"`
-	Content    string
-	Difficulty uint8
-	UserId     uint64
-	PassRate   string
-	Prompt     string `gorm:"type:json"`
-	TestCases  string `gorm:"type:json"`
-	MaxMem     int
-	MaxRuntime int
-	Ctime      int64
-	Uptime     int64
-	Deltime    int64
+	ID           uint64 `gorm:"primaryKey,autoIncrement"`
+	Title        string `gorm:"unique;not null"`
+	Content      string
+	Difficulty   uint8
+	UserId       uint64
+	PassRate     string
+	Prompt       string `gorm:"type:json"`
+	TestCases    string `gorm:"type:json"`
+	TemplateCode string
+	MaxMem       int
+	MaxRuntime   int
+	Ctime        int64
+	Uptime       int64
+	Deltime      int64
 }
 
 type Tag struct {

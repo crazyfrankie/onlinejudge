@@ -143,7 +143,7 @@ func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Subm
 	encodedCode := base64.StdEncoding.EncodeToString([]byte(submission.Code))
 
 	// 获取测试用例
-	testCases, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
+	testCases, _, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
 	if err != nil {
 		return evals, fmt.Errorf("failed to get test cases: %w", err)
 	}

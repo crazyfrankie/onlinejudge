@@ -44,7 +44,7 @@ type Interactive struct {
 type UserLike struct {
 	ID    uint64 `gorm:"primaryKey,autoIncrement"`
 	UID   uint64 `gorm:"uniqueIndex:uid_biz_id_type"`
-	BizID uint64 `gorm:"uniqueIndex:uid_biz_id_type;type:varchar(128)"`
+	BizID uint64 `gorm:"uniqueIndex:uid_biz_id_type"`
 	Biz   string `gorm:"uniqueIndex:uid_biz_id_type;type:varchar(128)"`
 	Ctime int64
 	Utime int64
