@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"os"
 	"os/exec"
 	"strings"
 	"text/template"
 
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
 	domain2 "github.com/crazyfrankie/onlinejudge/internal/problem/domain"
 	repository2 "github.com/crazyfrankie/onlinejudge/internal/problem/repository"
@@ -23,27 +23,19 @@ type LocSubmitService interface {
 }
 
 type LocSubmitSvc struct {
-	repo     repository.LocalSubmitRepo
-	pmRepo   repository2.ProblemRepository
-	language map[string]int8
+	repo   repository.LocalSubmitRepo
+	pmRepo repository2.ProblemRepository
 }
 
 func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.ProblemRepository) LocSubmitService {
-	lang := map[string]int8{
-		"cpp":  1,
-		"go":   2,
-		"java": 3,
-		"py":   4,
-	}
 	return &LocSubmitSvc{
-		repo:     repo,
-		pmRepo:   pmRepo,
-		language: lang,
+		repo:   repo,
+		pmRepo: pmRepo,
 	}
 }
 
 //RunCode 运行前端提交的代码，并写入结果到数据库
-func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
+func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission) ([]domain.Evaluation, error) {
 	ts, tmpl, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
 	if err != nil {
 		return nil, err

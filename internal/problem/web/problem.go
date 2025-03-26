@@ -61,6 +61,8 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 			Prompt     []string          `json:"prompt"`
 			TestCases  []domain.TestCase `json:"testCases"`
 			PassRate   string            `json:"passRate"`
+			FuncName   string            `json:"funcName"`
+			PreDefine  string            `json:"preDefine"`
 			MaxMem     int               `json:"maxMem"`
 			MaxRunTime int               `json:"maxRunTime"`
 			Difficulty uint8             `json:"difficulty"`
@@ -81,6 +83,8 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 			TestCases:  make([]domain.TestCase, len(req.TestCases)),
 			PassRate:   req.PassRate,
 			MaxMem:     req.MaxMem,
+			FuncName:   req.FuncName,
+			PreDefine:  req.PreDefine,
 			MaxRuntime: req.MaxRunTime,
 			Difficulty: req.Difficulty,
 		}

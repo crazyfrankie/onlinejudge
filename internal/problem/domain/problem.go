@@ -9,6 +9,8 @@ type Problem struct {
 	PassRate   string     `json:"passRate"`
 	Prompt     []string   `json:"prompt"`
 	TestCases  []TestCase `json:"testCases"`
+	FuncName   string     `json:"funcName"`
+	PreDefine  string     `json:"preDefine"`
 	MaxMem     int        `json:"maxMem"`
 	MaxRuntime int        `json:"maxRuntime"`
 	Difficulty uint8      `json:"difficulty"`

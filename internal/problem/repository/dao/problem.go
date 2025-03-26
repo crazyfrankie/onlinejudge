@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -57,16 +58,19 @@ func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Pro
 		return err
 	}
 
+	tmpl := fmt.Sprintf(QuestionTemplate, problem.FuncName)
 	pm := Problem{
-		Title:      problem.Title,
-		Content:    problem.Content,
-		Difficulty: problem.Difficulty,
-		UserId:     problem.UserId,
-		PassRate:   problem.PassRate,
-		Prompt:     string(promptJSON),
-		TestCases:  string(testCasesJSON),
-		Ctime:      now,
-		Uptime:     now,
+		Title:        problem.Title,
+		Content:      problem.Content,
+		Difficulty:   problem.Difficulty,
+		UserId:       problem.UserId,
+		PassRate:     problem.PassRate,
+		Prompt:       string(promptJSON),
+		TestCases:    string(testCasesJSON),
+		PreDefine:    problem.PreDefine,
+		TemplateCode: tmpl,
+		Ctime:        now,
+		Uptime:       now,
 	}
 
 	err = dao.db.WithContext(ctx).Create(&pm).Error

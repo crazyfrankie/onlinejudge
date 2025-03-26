@@ -21,33 +21,6 @@ type TemplateData struct {
 	UserCode     string
 }
 
-const (
-	QuestionTemplate = `package main
-
-import (
-	"fmt"
-)
-
-func main() {
-	testCases := []struct {
-		input  []interface{}
-		expect interface{}
-	}{
-		{{range .TestCases}}
-		{input: []interface{}{ {{range .Input}} {{.}}, {{end}} }, expect: {{.Expect}} },
-		{{end}}
-	}
-
-	for _, tc := range testCases {
-		result := %s({{range $index, $value := .ParamNames}}{{if $index}}, {{end}}tc.input[{{$index}}].({{$value}}){{end}})
-		fmt.Println(result, tc.expect)
-	}
-}
-
-{{.UserCode}}
-`
-)
-
 // fixImport 动态修复 import
 func fixImport(filePath string) error {
 	// 运行 go vet 检查缺少的包

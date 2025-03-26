@@ -10,6 +10,7 @@ type Problem struct {
 	Prompt       string `gorm:"type:json"`
 	TestCases    string `gorm:"type:json"`
 	TemplateCode string
+	PreDefine    string
 	MaxMem       int
 	MaxRuntime   int
 	Ctime        int64
@@ -31,3 +32,30 @@ type TestCase struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
 }
+
+const (
+	QuestionTemplate = `package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	testCases := []struct {
+		input  []interface{}
+		expect interface{}
+	}{
+		{{range .TestCases}}
+		{input: []interface{}{ {{range .Input}} {{.}}, {{end}} }, expect: {{.Expect}} },
+		{{end}}
+	}
+
+	for _, tc := range testCases {
+		result := %s({{range $index, $value := .ParamNames}}{{if $index}}, {{end}}tc.input[{{$index}}].({{$value}}){{end}})
+		fmt.Println(result, tc.expect)
+	}
+}
+
+{{.UserCode}}
+`
+)
