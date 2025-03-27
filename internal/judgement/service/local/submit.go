@@ -16,6 +16,7 @@ import (
 	repository2 "github.com/crazyfrankie/onlinejudge/internal/problem/repository"
 
 	"github.com/crazyfrankie/judge-go"
+	jc "github.com/crazyfrankie/judge-go/constant"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 )
 
 type LocSubmitService interface {
-	RunCode(ctx context.Context, submission *domain.Submission) (uint64, error)
+	RunCode(ctx context.Context, submission domain.Submission) (uint64, error)
 	CheckResult(ctx context.Context, submitId uint64) (domain.Evaluation, error)
 }
 
@@ -40,8 +41,14 @@ func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.Pro
 }
 
 //RunCode 运行前端提交的代码，并写入结果到数据库
-func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission *domain.Submission) (uint64, error) {
+func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission) (uint64, error) {
 	ts, tmpl, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
+	if err != nil {
+		return 0, err
+	}
+
+	var submitID uint64
+	submitID, err = svc.repo.CreateSubmit(ctx, submission)
 	if err != nil {
 		return 0, err
 	}
@@ -82,23 +89,46 @@ func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission *domain.Submiss
 
 	// 创建评测实例
 	jd := createJudge(name, output.Name())
-	_, err = jd.Run(ctx)
+	res, err := jd.Run(ctx)
 	if err != nil {
 		return 0, err
 	}
 
 	// 评测结果存入数据库
-	// TODO
-
-	_, err = jd.Check()
+	err = svc.repo.CreateEvaluate(ctx, domain.Evaluation{
+		SubmissionId: submitID,
+		ProblemId:    submission.ProblemID,
+		Lang:         submission.Language,
+		CpuTimeUsed:  res.CpuTimeUsed,
+		RealTimeUsed: res.RealTimeUsed,
+		MemoryUsed:   res.MemoryUsed,
+		StatusMsg:    res.RuntimeErrorMessage,
+		State:        "PENDING",
+	})
 	if err != nil {
 		return 0, err
 	}
 
-	// 修改数据库状态
-	// TODO
+	// 校验结果
+	status, err := jd.Check()
+	if err != nil {
+		return 0, err
+	}
+	var state string
+	switch status {
+	case jc.Success:
+		state = "SUCCESS"
+	case jc.Fail:
+		state = "FAILED"
+	}
 
-	return 0, nil
+	// 修改数据库状态
+	err = svc.repo.UpdateEvaluate(ctx, submission.ProblemID, submitID, state)
+	if err != nil {
+		return 0, err
+	}
+
+	return submitID, nil
 }
 
 func createJudge(execPath, userOut string) *judge.Judge {
@@ -187,5 +217,10 @@ func (svc *LocSubmitSvc) parseTemplate(testCases []domain2.TestCase, tmplCode, u
 // the database until the evaluation results are inserted.
 func (svc *LocSubmitSvc) CheckResult(ctx context.Context, submitId uint64) (domain.Evaluation, error) {
 	// 查询数据库
-	return domain.Evaluation{}, nil
+	res, err := svc.repo.FindEvaluate(ctx, submitId)
+	if err != nil {
+		return domain.Evaluation{}, err
+	}
+
+	return res, nil
 }

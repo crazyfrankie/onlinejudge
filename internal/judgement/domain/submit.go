@@ -10,7 +10,13 @@ type Submission struct {
 }
 
 type Evaluation struct {
-	Status  string `json:"status"`
-	RunTime string `json:"runTime"`
-	RunMem  int    `json:"runMem"`
+	Id           int64  `json:"id"`
+	SubmissionId uint64 `json:"submission_id"`
+	ProblemId    uint64 `json:"problem_id"`
+	Lang         string `json:"lang"`
+	CpuTimeUsed  int64  `json:"cpu_time_used"`
+	RealTimeUsed int64  `json:"real_time_used"`
+	MemoryUsed   int64  `json:"memory_used"`
+	StatusMsg    string `json:"status_msg"`
+	State        string `json:"state"`
 }

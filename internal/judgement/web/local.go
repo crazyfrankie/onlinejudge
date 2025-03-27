@@ -48,7 +48,7 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 		claims := c.MustGet("claims")
 		claim, _ := claims.(*jwt.Claims)
 
-		submitId, err := ctl.svc.RunCode(c.Request.Context(), &domain.Submission{
+		submitId, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
 			ProblemID:  req.ProblemId,
 			UserId:     claim.Id,
 			Code:       req.TypedCode,
