@@ -8,11 +8,14 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
 	domain2 "github.com/crazyfrankie/onlinejudge/internal/problem/domain"
 	repository2 "github.com/crazyfrankie/onlinejudge/internal/problem/repository"
+
+	"github.com/crazyfrankie/judge-go"
 )
 
 var (
@@ -20,6 +23,8 @@ var (
 )
 
 type LocSubmitService interface {
+	RunCode(ctx context.Context, submission *domain.Submission) (uint64, error)
+	CheckResult(ctx context.Context, submitId uint64) (domain.Evaluation, error)
 }
 
 type LocSubmitSvc struct {
@@ -35,77 +40,106 @@ func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.Pro
 }
 
 //RunCode 运行前端提交的代码，并写入结果到数据库
-func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission) ([]domain.Evaluation, error) {
+func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission *domain.Submission) (uint64, error) {
 	ts, tmpl, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	temp := os.TempDir()
 	// 用户源代码文件
 	user, err := os.CreateTemp(temp, "main_*.go")
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer os.Remove(user.Name())
 	// 用户输出文件
 	output, err := os.CreateTemp(temp, "user_out_*.txt")
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer os.Remove(output.Name())
 
 	err = svc.parseTemplate(ts, tmpl, submission.Code, user.Name())
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 动态引入 import
 	err = fixImport(user.Name())
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// 编译
 	cmd := exec.Command("go", "build", user.Name())
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return 0, err
 	}
 	// 可执行文件名称
 	name := user.Name()[:len(user.Name())-2] + ".exe"
 	defer os.Remove(name)
 
-	err = Run(name, output.Name())
+	// 创建评测实例
+	jd := createJudge(name, output.Name())
+	_, err = jd.Run(ctx)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return nil, nil
+	// 评测结果存入数据库
+	// TODO
+
+	_, err = jd.Check()
+	if err != nil {
+		return 0, err
+	}
+
+	// 修改数据库状态
+	// TODO
+
+	return 0, nil
 }
 
-func Run(execPath, output string) error {
-	cmd := exec.Command(execPath)
+func createJudge(execPath, userOut string) *judge.Judge {
+	jg := judge.NewJudge(&judge.Config{
+		Limits: struct {
+			CPU    time.Duration
+			Memory int64
+			Stack  int64
+			Output int64
+		}{
+			CPU:    2 * time.Second,
+			Memory: 128 * 1024 * 1024,
+			Stack:  8 * 1024 * 1024,
+			Output: 10 * 1024 * 1024,
+		},
+		Exec: struct {
+			Path string
+			Args []string
+			Env  []string
+		}{
+			Path: "./" + execPath,
+		},
+		Files: struct {
+			UserOutput string
+			CgroupPath string
+		}{
+			UserOutput: userOut,
+			CgroupPath: "cgroup",
+		},
+	})
 
-	out, err := os.OpenFile(output, os.O_RDWR, 0644)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	cmd.Stdout = out
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	return nil
+	return jg
 }
 
 // parseTemplate
-// 拿到测试用例
-// 拿到用户代码
-// 构建模板变量
-// 解析模板
-// 执行模板渲染
-// 写入 Go 文件
+// Get the test case
+// Get the user code
+// Build the template variables
+// Parsing the template
+// Perform template rendering
+// Write the Go file
 func (svc *LocSubmitSvc) parseTemplate(testCases []domain2.TestCase, tmplCode, userCode, targetFile string) error {
 	// 构建测试用例
 	tcs := make([]TestCase, len(testCases))
@@ -148,7 +182,10 @@ func (svc *LocSubmitSvc) parseTemplate(testCases []domain2.TestCase, tmplCode, u
 	return nil
 }
 
-// CheckResult 由前端发起调用，轮询评测结果，CheckResult 不断从数据库中查询数据，直到评测结果插入
-func (svc *LocSubmitSvc) CheckResult(ctx context.Context) error {
-	return nil
+// CheckResult The front-end initiates the call, polling for evaluation results,
+// and CheckResult keeps querying the data from
+// the database until the evaluation results are inserted.
+func (svc *LocSubmitSvc) CheckResult(ctx context.Context, submitId uint64) (domain.Evaluation, error) {
+	// 查询数据库
+	return domain.Evaluation{}, nil
 }

@@ -6,7 +6,7 @@ type Submission struct {
 	UserId     uint64 `json:"userId"`
 	Code       string `json:"code"`
 	Language   string `json:"language"`
-	SubmitTime uint64 `json:"submitTime"`
+	SubmitTime int64  `json:"submitTime"`
 }
 
 type Evaluation struct {
