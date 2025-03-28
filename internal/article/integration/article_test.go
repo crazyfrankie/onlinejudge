@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/bytedance/sonic"
 	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 	"github.com/crazyfrankie/onlinejudge/ioc"
 	"gorm.io/gorm"
@@ -181,7 +182,7 @@ func (s *ArticleTestSuite) TestArticleHandler_Edit() {
 			// 执行
 			// 验证结果
 			tc.before(t)
-			reqBody, err := json.Marshal(tc.art)
+			reqBody, err := sonic.Marshal(tc.art)
 			assert.NoError(t, err)
 			req, err := http.NewRequest(http.MethodPost, "/articles/edit", bytes.NewBuffer(reqBody))
 			require.NoError(t, err)

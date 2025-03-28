@@ -2,11 +2,11 @@ package dao
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/bytedance/sonic"
 	_ "github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 
@@ -48,12 +48,12 @@ func NewProblemDao(db *gorm.DB) ProblemDao {
 func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Problem) error {
 	now := time.Now().UnixMilli()
 
-	testCasesJSON, err := json.Marshal(problem.TestCases)
+	testCasesJSON, err := sonic.Marshal(problem.TestCases)
 	if err != nil {
 		return err
 	}
 
-	promptJSON, err := json.Marshal(problem.Prompt)
+	promptJSON, err := sonic.Marshal(problem.Prompt)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (dao *GormProblemDao) UpdateProblem(ctx context.Context, id uint64, problem
 	}
 
 	var prompts []string
-	err := json.Unmarshal([]byte(pm.Prompt), &prompts)
+	err := sonic.Unmarshal([]byte(pm.Prompt), &prompts)
 	if err != nil {
 		return domain.Problem{}, err
 	}
@@ -247,7 +247,7 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 	}
 
 	var prompts []string
-	err = json.Unmarshal([]byte(problem.Prompt), &prompts)
+	err = sonic.Unmarshal([]byte(problem.Prompt), &prompts)
 	if err != nil {
 		return domain.Problem{}, err
 	}
@@ -280,7 +280,7 @@ func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) ([]domai
 	}
 
 	var testCases []domain.TestCase
-	err = json.Unmarshal([]byte(problem.TestCases), &testCases)
+	err = sonic.Unmarshal([]byte(problem.TestCases), &testCases)
 	if err != nil {
 		return testCases[:3], err
 	}
@@ -300,7 +300,7 @@ func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]do
 	}
 
 	var testCases []domain.TestCase
-	err = json.Unmarshal([]byte(problem.TestCases), &testCases)
+	err = sonic.Unmarshal([]byte(problem.TestCases), &testCases)
 	if err != nil {
 		return testCases, "", err
 	}

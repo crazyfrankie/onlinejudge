@@ -2,10 +2,10 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
@@ -30,7 +30,7 @@ func NewProblemCache(cmd redis.Cmdable) ProblemCache {
 func (cache *ProblemCe) Set(ctx context.Context, problem domain.Problem) error {
 	key := cache.key(problem.Id)
 
-	val, err := json.Marshal(problem)
+	val, err := sonic.Marshal(problem)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (cache *ProblemCe) Get(ctx context.Context, id uint64) (domain.Problem, err
 	}
 
 	var pm domain.Problem
-	err = json.Unmarshal([]byte(val), &pm)
+	err = sonic.Unmarshal([]byte(val), &pm)
 	return pm, err
 }
 

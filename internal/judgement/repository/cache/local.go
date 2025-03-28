@@ -2,11 +2,13 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/bytedance/sonic"
+	"github.com/redis/go-redis/v9"
+
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 )
 
 type LocalSubmitCache interface {
@@ -29,7 +31,7 @@ func NewLocalSubmitCache(cmd redis.Cmdable) LocalSubmitCache {
 func (cache *LocalSubmissionCache) Set(ctx context.Context, userId, problemId uint64, evals []domain.Evaluation) error {
 	key := cache.key(userId, problemId)
 
-	val, err := json.Marshal(evals)
+	val, err := sonic.Marshal(evals)
 	if err != nil {
 		return err
 	}
@@ -48,7 +50,7 @@ func (cache *LocalSubmissionCache) Get(ctx context.Context, userId, problemId ui
 		return evals, err
 	}
 
-	err = json.Unmarshal([]byte(val), &evals)
+	err = sonic.Unmarshal([]byte(val), &evals)
 	return evals, err
 }
 

@@ -2,12 +2,14 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/bytedance/sonic"
+	"github.com/redis/go-redis/v9"
+
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 )
 
 type SubmitCache interface {
@@ -29,7 +31,7 @@ func (cache *SubmissionCache) Set(ctx context.Context, userId uint64, hashKey st
 	cacheKey := fmt.Sprintf("%d:%s", userId, hashKey)
 
 	// 序列化
-	data, err := json.Marshal(evals)
+	data, err := sonic.Marshal(evals)
 	if err != nil {
 		return fmt.Errorf("failed to marshal evaluations: %w", err)
 	}
@@ -53,7 +55,7 @@ func (cache *SubmissionCache) Get(ctx context.Context, userId uint64, hashKey st
 
 	// 反序列化
 	var evals []domain.Evaluation
-	err = json.Unmarshal([]byte(data), &evals)
+	err = sonic.Unmarshal([]byte(data), &evals)
 	if err != nil {
 		// 处理反序列化错误
 		return nil, err

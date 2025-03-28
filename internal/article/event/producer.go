@@ -2,9 +2,9 @@ package event
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/IBM/sarama"
+	"github.com/bytedance/sonic"
 )
 
 type ArticleProducer struct {
@@ -20,7 +20,7 @@ func NewArticleProducer(SyncProducer sarama.SyncProducer) Producer {
 // ProduceReadEvent 如果说重试逻辑很复杂，使用装饰器
 // 如果逻辑很简单，直接在这里写
 func (a *ArticleProducer) ProduceReadEvent(ctx context.Context, evt ReadEvent) error {
-	data, err := json.Marshal(evt)
+	data, err := sonic.Marshal(evt)
 	if err != nil {
 		return err
 	}

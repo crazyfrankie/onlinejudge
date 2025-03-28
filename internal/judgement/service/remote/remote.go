@@ -14,7 +14,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
+
+	"github.com/bytedance/sonic"
 
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
@@ -160,7 +163,7 @@ func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases []domain2.Tes
 		// 设置提交代码以及单个测试用例
 		submit := svc.SetSubmission(langId, encodedCode, base64.StdEncoding.EncodeToString([]byte(tc.Input)), base64.StdEncoding.EncodeToString([]byte(tc.Output)))
 
-		jsonData, err := json.Marshal(submit)
+		jsonData, err := sonic.Marshal(submit)
 		if err != nil {
 			return result, fmt.Errorf("failed to marshal submission: %w", err)
 		}
@@ -391,10 +394,13 @@ func (svc *SubmissionSvc) GetEvaluation(eval map[string]interface{}) (domain.Eva
 		return domain.Evaluation{}, errors.New("invalid time format")
 	}
 
+	tm, _ := strconv.ParseInt(runTime, 10, 64)
+
 	evaluation := domain.Evaluation{
-		Status:  description,
-		RunMem:  int(runMem),
-		RunTime: runTime,
+		CpuTimeUsed:  tm,
+		RealTimeUsed: tm,
+		MemoryUsed:   int64(runMem),
+		StatusMsg:    description,
 	}
 	return evaluation, nil
 }

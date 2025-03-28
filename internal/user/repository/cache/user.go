@@ -2,8 +2,8 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"github.com/bytedance/sonic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -38,12 +38,12 @@ func (cache *RedisUserCache) Get(ctx context.Context, id uint64) (domain.User, e
 	}
 
 	var user domain.User
-	err = json.Unmarshal([]byte(val), &user)
+	err = sonic.Unmarshal([]byte(val), &user)
 	return user, err
 }
 
 func (cache *RedisUserCache) Set(ctx context.Context, user domain.User) error {
-	val, err := json.Marshal(user)
+	val, err := sonic.Marshal(user)
 	if err != nil {
 		return err
 	}
