@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"sync/atomic"
 
 	"github.com/bytedance/sonic"
@@ -30,12 +29,12 @@ var (
 )
 
 type SubmitService interface {
-	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
-	SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error)
+	RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.RemoteEvaluation, error)
+	SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.RemoteEvaluation, error)
 
-	GetEvaluation(eval map[string]interface{}) (domain.Evaluation, error)
+	GetEvaluation(eval map[string]interface{}) (domain.RemoteEvaluation, error)
 
-	GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.Evaluation) ([]domain.Evaluation, error)
+	GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error)
 	SetSubmission(id int8, code, stdin, stdout string) Submission
 
 	CodeFormat(language, way string, submission domain.Submission) (error, bool)
@@ -76,7 +75,7 @@ type Submission struct {
 	StdOut     string `json:"stdout"` // 接收多个期望输出
 }
 
-func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
+func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submission, language string) ([]domain.RemoteEvaluation, error) {
 	//先查缓存 如果有则直接返回
 	hash := sha256.Sum256([]byte(submission.Code))
 	hashString := hex.EncodeToString(hash[:])
@@ -127,8 +126,8 @@ func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submiss
 	return evals, err
 }
 
-func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.Evaluation, error) {
-	var evals []domain.Evaluation
+func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Submission, language string) ([]domain.RemoteEvaluation, error) {
+	var evals []domain.RemoteEvaluation
 
 	//判断语言类型
 	id, ok := svc.language[language]
@@ -157,7 +156,7 @@ func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Subm
 	return evals, err
 }
 
-func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.Evaluation) ([]domain.Evaluation, error) {
+func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error) {
 	// 逐个提交测试用例
 	for _, tc := range testCases {
 		// 设置提交代码以及单个测试用例
@@ -376,31 +375,28 @@ func (svc *SubmissionSvc) GetFileWithUser(userId, problemId uint64, suffix, way 
 	return fmt.Sprintf("user%dproblem:%d:%s.%s", userId, problemId, way, suffix)
 }
 
-func (svc *SubmissionSvc) GetEvaluation(eval map[string]interface{}) (domain.Evaluation, error) {
+func (svc *SubmissionSvc) GetEvaluation(eval map[string]interface{}) (domain.RemoteEvaluation, error) {
 	status, ok := eval["status"].(map[string]interface{})
 	if !ok {
-		return domain.Evaluation{}, errors.New("invalid status format")
+		return domain.RemoteEvaluation{}, errors.New("invalid status format")
 	}
 	description, ok := status["description"].(string)
 	if !ok {
-		return domain.Evaluation{}, errors.New("invalid description format")
+		return domain.RemoteEvaluation{}, errors.New("invalid description format")
 	}
 	runMem, ok := eval["memory"].(float64)
 	if !ok {
-		return domain.Evaluation{}, errors.New("invalid memory format")
+		return domain.RemoteEvaluation{}, errors.New("invalid memory format")
 	}
 	runTime, ok := eval["time"].(string)
 	if !ok {
-		return domain.Evaluation{}, errors.New("invalid time format")
+		return domain.RemoteEvaluation{}, errors.New("invalid time format")
 	}
 
-	tm, _ := strconv.ParseInt(runTime, 10, 64)
-
-	evaluation := domain.Evaluation{
-		CpuTimeUsed:  tm,
-		RealTimeUsed: tm,
-		MemoryUsed:   int64(runMem),
-		StatusMsg:    description,
+	evaluation := domain.RemoteEvaluation{
+		RunMem:  int64(runMem),
+		RunTime: runTime,
+		Msg:     description,
 	}
 	return evaluation, nil
 }

@@ -20,3 +20,9 @@ type Evaluation struct {
 	StatusMsg    string `json:"status_msg"`
 	State        string `json:"state"`
 }
+
+type RemoteEvaluation struct {
+	RunMem  int64  `json:"run_mem"`
+	RunTime string `json:"run_time"`
+	Msg     string `json:"msg"`
+}

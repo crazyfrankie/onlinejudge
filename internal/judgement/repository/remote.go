@@ -7,8 +7,8 @@ import (
 )
 
 type SubmitRepository interface {
-	StoreEvaluation(ctx context.Context, userId uint64, code string, evals []domain.Evaluation) error
-	AcquireEvaluation(ctx context.Context, userId uint64, hashKey string) ([]domain.Evaluation, error)
+	StoreEvaluation(ctx context.Context, userId uint64, code string, evals []domain.RemoteEvaluation) error
+	AcquireEvaluation(ctx context.Context, userId uint64, hashKey string) ([]domain.RemoteEvaluation, error)
 }
 
 type SubmissionRepo struct {
@@ -21,10 +21,10 @@ func NewSubmitRepository(cache cache.SubmitCache) SubmitRepository {
 	}
 }
 
-func (repo *SubmissionRepo) StoreEvaluation(ctx context.Context, userId uint64, hashKey string, evals []domain.Evaluation) error {
+func (repo *SubmissionRepo) StoreEvaluation(ctx context.Context, userId uint64, hashKey string, evals []domain.RemoteEvaluation) error {
 	return repo.cache.Set(ctx, userId, hashKey, evals)
 }
 
-func (repo *SubmissionRepo) AcquireEvaluation(ctx context.Context, userId uint64, hashKey string) ([]domain.Evaluation, error) {
+func (repo *SubmissionRepo) AcquireEvaluation(ctx context.Context, userId uint64, hashKey string) ([]domain.RemoteEvaluation, error) {
 	return repo.cache.Get(ctx, userId, hashKey)
 }

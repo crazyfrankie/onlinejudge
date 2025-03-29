@@ -13,8 +13,8 @@ import (
 )
 
 type SubmitCache interface {
-	Set(ctx context.Context, userId uint64, hashKey string, evals []domain.Evaluation) error
-	Get(ctx context.Context, userId uint64, hashKey string) ([]domain.Evaluation, error)
+	Set(ctx context.Context, userId uint64, hashKey string, evals []domain.RemoteEvaluation) error
+	Get(ctx context.Context, userId uint64, hashKey string) ([]domain.RemoteEvaluation, error)
 }
 
 type SubmissionCache struct {
@@ -27,7 +27,7 @@ func NewSubmitCache(cmd redis.Cmdable) SubmitCache {
 	}
 }
 
-func (cache *SubmissionCache) Set(ctx context.Context, userId uint64, hashKey string, evals []domain.Evaluation) error {
+func (cache *SubmissionCache) Set(ctx context.Context, userId uint64, hashKey string, evals []domain.RemoteEvaluation) error {
 	cacheKey := fmt.Sprintf("%d:%s", userId, hashKey)
 
 	// 序列化
@@ -41,7 +41,7 @@ func (cache *SubmissionCache) Set(ctx context.Context, userId uint64, hashKey st
 	return err
 }
 
-func (cache *SubmissionCache) Get(ctx context.Context, userId uint64, hashKey string) ([]domain.Evaluation, error) {
+func (cache *SubmissionCache) Get(ctx context.Context, userId uint64, hashKey string) ([]domain.RemoteEvaluation, error) {
 	cacheKey := fmt.Sprintf("%d:%s", userId, hashKey)
 
 	data, err := cache.cmd.Get(ctx, cacheKey).Result()
@@ -54,7 +54,7 @@ func (cache *SubmissionCache) Get(ctx context.Context, userId uint64, hashKey st
 	}
 
 	// 反序列化
-	var evals []domain.Evaluation
+	var evals []domain.RemoteEvaluation
 	err = sonic.Unmarshal([]byte(data), &evals)
 	if err != nil {
 		// 处理反序列化错误
