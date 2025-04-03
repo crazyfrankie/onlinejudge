@@ -302,13 +302,14 @@ func (dao *GormProblemDao) FindTestByIdLocal(ctx context.Context, id uint64) (do
 	}
 
 	var judge domain.LocalJudge
-	err = sonic.Unmarshal([]byte(problem.TestCases), judge)
+	var tc []domain.LocalTestCase
+	err = sonic.Unmarshal([]byte(problem.TestCases), &tc)
 	if err != nil {
 		fmt.Println(err)
 		return domain.LocalJudge{}, err
 	}
 	judge.Params = problem.Params
 	judge.TemplateCode = problem.TemplateCode
-
+	judge.TestCases = tc
 	return judge, nil
 }

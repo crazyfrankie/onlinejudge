@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"strings"
 	"text/template"
 	"time"
 
@@ -83,7 +84,7 @@ func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submissi
 		return 0, err
 	}
 	// 可执行文件名称
-	name := user.Name()[:len(user.Name())-2]
+	name := user.Name()[5 : len(user.Name())-3]
 	defer os.Remove(name)
 
 	// 创建评测实例
@@ -181,9 +182,10 @@ func (svc *LocSubmitSvc) parseTemplate(ts domain2.LocalJudge, userCode, targetFi
 		tcs = append(tcs, tc)
 	}
 
+	params := strings.Fields(ts.Params)
 	// 构建模板变量
 	data := TemplateData{
-		ParamNames: []string{ts.Params},
+		ParamNames: params,
 		TestCases:  tcs,
 		UserCode:   userCode,
 	}
