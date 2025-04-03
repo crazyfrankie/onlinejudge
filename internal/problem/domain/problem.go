@@ -1,19 +1,24 @@
 package domain
 
 type Problem struct {
-	Id         uint64     `json:"id"`
-	UserId     uint64     `json:"userId"`
-	Title      string     `json:"title"`
-	Tag        string     `json:"tag"`
-	Content    string     `json:"content"`
-	PassRate   string     `json:"passRate"`
-	Prompt     []string   `json:"prompt"`
-	TestCases  []TestCase `json:"testCases"`
-	FuncName   string     `json:"funcName"`
-	PreDefine  string     `json:"preDefine"`
-	MaxMem     int        `json:"maxMem"`
-	MaxRuntime int        `json:"maxRuntime"`
-	Difficulty uint8      `json:"difficulty"`
+	Id         uint64          `json:"id"`
+	UserId     uint64          `json:"userId"`
+	Title      string          `json:"title"`
+	Tag        string          `json:"tag"`
+	Content    string          `json:"content"`
+	PassRate   string          `json:"passRate"`
+	TestCases  []LocalTestCase `json:"testCases"`
+	FuncName   string          `json:"funcName"`
+	Params     string          `json:"params"`
+	PreDefine  string          `json:"preDefine"`
+	MaxMem     int             `json:"maxMem"`
+	MaxRuntime int             `json:"maxRuntime"`
+	Difficulty uint8           `json:"difficulty"`
+}
+
+type LocalTestCase struct {
+	Input  []string `json:"input"`
+	Output string   `json:"output"`
 }
 
 type RoughProblem struct {
@@ -37,4 +42,10 @@ type Tag struct {
 type TestCase struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
+}
+
+type LocalJudge struct {
+	TestCases    []LocalTestCase `json:"test_case"`
+	TemplateCode string          `json:"template_code"`
+	Params       string          `json:"params"`
 }

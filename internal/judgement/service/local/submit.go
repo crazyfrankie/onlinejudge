@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"strings"
 	"text/template"
 	"time"
 
@@ -42,7 +41,7 @@ func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.Pro
 
 //RunCode 运行前端提交的代码，并写入结果到数据库
 func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission) (uint64, error) {
-	ts, tmpl, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
+	ts, err := svc.pmRepo.FindTestByIdLocal(ctx, submission.ProblemID)
 	if err != nil {
 		return 0, err
 	}
@@ -67,7 +66,7 @@ func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submissi
 	}
 	defer os.Remove(output.Name())
 
-	err = svc.parseTemplate(ts, tmpl, submission.Code, user.Name())
+	err = svc.parseTemplate(ts, submission.Code, user.Name())
 	if err != nil {
 		return 0, err
 	}
@@ -84,7 +83,7 @@ func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submissi
 		return 0, err
 	}
 	// 可执行文件名称
-	name := user.Name()[:len(user.Name())-2] + ".exe"
+	name := user.Name()[:len(user.Name())-2]
 	defer os.Remove(name)
 
 	// 创建评测实例
@@ -170,13 +169,12 @@ func createJudge(execPath, userOut string) *judge.Judge {
 // Parsing the template
 // Perform template rendering
 // Write the Go file
-func (svc *LocSubmitSvc) parseTemplate(testCases []domain2.TestCase, tmplCode, userCode, targetFile string) error {
+func (svc *LocSubmitSvc) parseTemplate(ts domain2.LocalJudge, userCode, targetFile string) error {
 	// 构建测试用例
-	tcs := make([]TestCase, len(testCases))
-	for _, tc := range testCases {
-		inputs := strings.Fields(tc.Input)
+	tcs := make([]TestCase, len(ts.TestCases))
+	for _, tc := range ts.TestCases {
 		tc := TestCase{
-			Input:  inputs,
+			Input:  tc.Input,
 			Expect: tc.Output,
 		}
 
@@ -185,13 +183,13 @@ func (svc *LocSubmitSvc) parseTemplate(testCases []domain2.TestCase, tmplCode, u
 
 	// 构建模板变量
 	data := TemplateData{
-		ParamNames: []string{"[]int", "int"},
+		ParamNames: []string{ts.Params},
 		TestCases:  tcs,
 		UserCode:   userCode,
 	}
 
 	// 解析
-	tmpl, err := template.New("code").Parse(tmplCode)
+	tmpl, err := template.New("code").Parse(ts.TemplateCode)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,11 @@ import (
 	"gorm.io/plugin/prometheus"
 
 	"github.com/crazyfrankie/onlinejudge/config"
+
+	articledao "github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
+	judgedao "github.com/crazyfrankie/onlinejudge/internal/judgement/repository/dao"
+	problemdao "github.com/crazyfrankie/onlinejudge/internal/problem/repository/dao"
+	userdao "github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
 )
 
 func InitDB() *gorm.DB {
@@ -40,6 +45,9 @@ func InitDB() *gorm.DB {
 	sqlDB.SetMaxIdleConns(config.GetConf().MySQL.MaxIdleConns)                                    // 最大空闲连接数
 	sqlDB.SetMaxOpenConns(config.GetConf().MySQL.MaxOpenConns)                                    // 最大打开连接数
 	sqlDB.SetConnMaxLifetime(time.Duration(config.GetConf().MySQL.ConnMaxLifeTime) * time.Minute) // 连接的最大生命周期
+
+	db.AutoMigrate(&userdao.User{}, problemdao.Problem{}, problemdao.ProblemTag{},
+		problemdao.Tag{}, judgedao.Submission{}, judgedao.Evaluation{}, articledao.Article{}, articledao.Interactive{}, articledao.OnlineArticle{})
 
 	// prometheus 埋点
 	err = db.Use(prometheus.New(prometheus.Config{

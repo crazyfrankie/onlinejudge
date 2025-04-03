@@ -33,6 +33,7 @@ type ProblemDao interface {
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
 	FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 	FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, string, error)
+	FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error)
 }
 
 type GormProblemDao struct {
@@ -53,11 +54,6 @@ func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Pro
 		return err
 	}
 
-	promptJSON, err := sonic.Marshal(problem.Prompt)
-	if err != nil {
-		return err
-	}
-
 	tmpl := fmt.Sprintf(QuestionTemplate, problem.FuncName)
 	pm := Problem{
 		Title:        problem.Title,
@@ -65,8 +61,8 @@ func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Pro
 		Difficulty:   problem.Difficulty,
 		UserId:       problem.UserId,
 		PassRate:     problem.PassRate,
-		Prompt:       string(promptJSON),
 		TestCases:    string(testCasesJSON),
+		Params:       problem.Params,
 		PreDefine:    problem.PreDefine,
 		TemplateCode: tmpl,
 		Ctime:        now,
@@ -112,18 +108,11 @@ func (dao *GormProblemDao) UpdateProblem(ctx context.Context, id uint64, problem
 		return domain.Problem{}, err
 	}
 
-	var prompts []string
-	err := sonic.Unmarshal([]byte(pm.Prompt), &prompts)
-	if err != nil {
-		return domain.Problem{}, err
-	}
-
 	updatePm := domain.Problem{
 		Id:         pm.ID,
 		UserId:     pm.UserId,
 		Title:      pm.Title,
 		Content:    pm.Content,
-		Prompt:     prompts,
 		PassRate:   pm.PassRate,
 		MaxRuntime: pm.MaxRuntime,
 		MaxMem:     pm.MaxMem,
@@ -246,19 +235,12 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 		return domain.Problem{}, err
 	}
 
-	var prompts []string
-	err = sonic.Unmarshal([]byte(problem.Prompt), &prompts)
-	if err != nil {
-		return domain.Problem{}, err
-	}
-
 	pm := domain.Problem{
 		Id:         problem.ID,
 		UserId:     problem.UserId,
 		Title:      problem.Title,
 		Content:    problem.Content,
 		Tag:        tag,
-		Prompt:     prompts,
 		PassRate:   problem.PassRate,
 		MaxMem:     problem.MaxMem,
 		MaxRuntime: problem.MaxRuntime,
@@ -291,7 +273,7 @@ func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) ([]domai
 func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, string, error) {
 	var problem Problem
 
-	err := dao.db.WithContext(ctx).Where("id = ?", id).Select("template_code", "test_cases").First(&problem).Error
+	err := dao.db.WithContext(ctx).Where("id = ?", id).Select("template_code", "params", "test_cases").First(&problem).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return []domain.TestCase{}, "", ErrProblemNotFound
@@ -306,4 +288,27 @@ func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]do
 	}
 
 	return testCases, problem.TemplateCode, nil
+}
+
+func (dao *GormProblemDao) FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error) {
+	var problem Problem
+
+	err := dao.db.WithContext(ctx).Where("id = ?", id).Select("template_code", "params", "test_cases").First(&problem).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.LocalJudge{}, ErrProblemNotFound
+		}
+		return domain.LocalJudge{}, err
+	}
+
+	var judge domain.LocalJudge
+	err = sonic.Unmarshal([]byte(problem.TestCases), judge)
+	if err != nil {
+		fmt.Println(err)
+		return domain.LocalJudge{}, err
+	}
+	judge.Params = problem.Params
+	judge.TemplateCode = problem.TemplateCode
+
+	return judge, nil
 }

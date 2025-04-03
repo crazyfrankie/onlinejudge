@@ -5,6 +5,7 @@ package judgement
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/dao"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/local"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/remote"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/web"
@@ -16,8 +17,8 @@ import (
 )
 
 var LocalSet = wire.NewSet(
+	dao.NewSubmitDao,
 	cache.NewLocalSubmitCache,
-
 	repository.NewLocalSubmitRepo,
 
 	local.NewLocSubmitService,

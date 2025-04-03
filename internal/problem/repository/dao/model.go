@@ -7,8 +7,8 @@ type Problem struct {
 	Difficulty   uint8
 	UserId       uint64
 	PassRate     string
-	Prompt       string `gorm:"type:json"`
-	TestCases    string `gorm:"type:json"`
+	TestCases    string `gorm:"type:json" json:"test_case"`
+	Params       string
 	TemplateCode string
 	PreDefine    string
 	MaxMem       int
@@ -29,8 +29,16 @@ type ProblemTag struct {
 }
 
 type TestCase struct {
-	Input  string `json:"input"`
-	Output string `json:"output"`
+	// 输入参数的类型信息
+	InputTypes []string `json:"input_types"`
+	// 输入参数的序列化值
+	InputValues []string `json:"input_values"`
+	// 期望输出的类型
+	OutputType string `json:"output_type"`
+	// 期望输出的序列化值
+	OutputValue string `json:"output_value"`
+	// 预定义的辅助函数或结构体
+	Predefined string `json:"predefined"`
 }
 
 const (

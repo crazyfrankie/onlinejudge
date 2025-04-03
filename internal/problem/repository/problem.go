@@ -29,6 +29,7 @@ type ProblemRepository interface {
 	FindByTitle(ctx context.Context, id uint64, tag, title string) (domain.Problem, error)
 	FindById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 	FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, string, error)
+	FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error)
 }
 
 type CacheProblemRepo struct {
@@ -117,4 +118,8 @@ func (repo *CacheProblemRepo) FindById(ctx context.Context, id uint64) ([]domain
 
 func (repo *CacheProblemRepo) FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, string, error) {
 	return repo.dao.FindAllTestById(ctx, id)
+}
+
+func (repo *CacheProblemRepo) FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error) {
+	return repo.dao.FindTestByIdLocal(ctx, id)
 }

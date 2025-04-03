@@ -31,7 +31,7 @@ func main() {
 	app := ioc.InitApp()
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:8081",
+		Addr:    "0.0.0.0:8082",
 		Handler: app.Server,
 	}
 
@@ -48,7 +48,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	zap.L().Info("Server is running", zap.String("address", "http://localhost:8081"))
+	zap.L().Info("Server is running", zap.String("address", "http://localhost:8082"))
 
 	// 创建通道监听信号
 	quit := make(chan os.Signal, 1)

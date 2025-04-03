@@ -48,24 +48,19 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		type TestCaseReq struct {
-			Input  string `json:"input"`
-			Output string `json:"output"`
-		}
-
 		type Req struct {
-			UserId     uint64            `json:"userId"`
-			Title      string            `json:"title"`
-			Tag        string            `json:"tag"`
-			Content    string            `json:"content"`
-			Prompt     []string          `json:"prompt"`
-			TestCases  []domain.TestCase `json:"testCases"`
-			PassRate   string            `json:"passRate"`
-			FuncName   string            `json:"funcName"`
-			PreDefine  string            `json:"preDefine"`
-			MaxMem     int               `json:"maxMem"`
-			MaxRunTime int               `json:"maxRunTime"`
-			Difficulty uint8             `json:"difficulty"`
+			UserId     uint64                 `json:"user_id"`
+			Title      string                 `json:"title"`
+			Tag        string                 `json:"tag"`
+			Content    string                 `json:"content"`
+			TestCases  []domain.LocalTestCase `json:"test_case"`
+			PassRate   string                 `json:"pass_rate"`
+			FuncName   string                 `json:"func_name"`
+			Params     string                 `json:"params"`
+			PreDefine  string                 `json:"pre_define"`
+			MaxMem     int                    `json:"max_mem"`
+			MaxRunTime int                    `json:"max_run_time"`
+			Difficulty uint8                  `json:"difficulty"`
 		}
 
 		var req Req
@@ -79,17 +74,15 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 			Title:      req.Title,
 			Tag:        req.Tag,
 			Content:    req.Content,
-			Prompt:     make([]string, len(req.Prompt)),
-			TestCases:  make([]domain.TestCase, len(req.TestCases)),
 			PassRate:   req.PassRate,
+			TestCases:  req.TestCases,
 			MaxMem:     req.MaxMem,
 			FuncName:   req.FuncName,
+			Params:     req.Params,
 			PreDefine:  req.PreDefine,
 			MaxRuntime: req.MaxRunTime,
 			Difficulty: req.Difficulty,
 		}
-		copy(pm.Prompt, req.Prompt)
-		copy(pm.TestCases, req.TestCases)
 
 		err := ctl.svc.AddProblem(c.Request.Context(), pm)
 		if err != nil {
