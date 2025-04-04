@@ -76,6 +76,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/api/oauth/wechat/callback").
 			IgnorePaths("/api/user/test").
 			AdminPaths("/api/admin/problem").
+			AdminPaths("/api/admin/problem/create").
 			AdminPaths("/api/admin/problem/update").
 			AdminPaths("/api/admin/tags/create").
 			AdminPaths("/api/admin/tags/modify").
