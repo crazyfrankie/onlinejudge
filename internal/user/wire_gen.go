@@ -19,12 +19,13 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
+func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)
@@ -34,7 +35,7 @@ func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlMo
 	serviceService := smsModule.SmsSvc
 	codeService := service.NewCodeService(codeRepository, serviceService)
 	handler := mdlModule.Hdl
-	userHandler := web.NewUserHandler(userService, codeService, handler)
+	userHandler := web.NewUserHandler(l, userService, codeService, handler)
 	githubService := github.NewService()
 	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
 	wechatService := wechat.NewService()

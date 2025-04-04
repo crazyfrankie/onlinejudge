@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
@@ -17,13 +19,15 @@ import (
 )
 
 type UserHandler struct {
+	logger  *zap.Logger
 	userSvc service.UserService
 	codeSvc service.CodeService
 	ijwt.Handler
 }
 
-func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
+func NewUserHandler(logger *zap.Logger, userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
 	return &UserHandler{
+		logger:  logger,
 		userSvc: userSvc,
 		codeSvc: codeSvc,
 		Handler: jwtHdl,
@@ -97,8 +101,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		//maskedPhone := req.Phone[:3] + "****" + req.Phone[len(req.Phone)-4:]
-		//zap.L().Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", maskedPhone))
+		ctl.logger.Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", req.Phone))
 
 		response.Success(c, map[string]interface{}{
 			"id":    user.Id,

@@ -6,6 +6,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/middleware"
 	"github.com/crazyfrankie/onlinejudge/internal/sms"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web"
+	"go.uber.org/zap"
 
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
@@ -21,17 +22,7 @@ import (
 	ratelimit2 "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
-//func InitLogger() *zap.Logger {
-//	encodeConfig := zap.NewDevelopmentEncoderConfig()
-//	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encodeConfig), zapcore.AddSync(os.Stdout), zapcore.DebugLevel)
-//
-//	customCore := zapx.NewCustomCore(core)
-//	logger := zap.New(customCore)
-//
-//	return logger
-//}
-
-func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
+func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
 	wire.Build(
 		dao.NewUserDao,
 		cache.NewUserCache,
