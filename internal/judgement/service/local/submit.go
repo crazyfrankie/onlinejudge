@@ -40,7 +40,7 @@ func NewLocSubmitService(repo repository.LocalSubmitRepo, pmRepo repository2.Pro
 	}
 }
 
-//RunCode 运行前端提交的代码，并写入结果到数据库
+// RunCode 运行前端提交的代码，并写入结果到数据库
 func (svc *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission) (uint64, error) {
 	ts, err := svc.pmRepo.FindTestByIdLocal(ctx, submission.ProblemID)
 	if err != nil {
@@ -172,7 +172,7 @@ func createJudge(execPath, userOut string) *judge.Judge {
 // Write the Go file
 func (svc *LocSubmitSvc) parseTemplate(ts domain2.LocalJudge, userCode, targetFile string) error {
 	// 构建测试用例
-	tcs := make([]TestCase, len(ts.TestCases))
+	tcs := make([]TestCase, 0, len(ts.TestCases))
 	for _, tc := range ts.TestCases {
 		tc := TestCase{
 			Input:  tc.Input,
