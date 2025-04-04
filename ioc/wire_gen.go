@@ -18,15 +18,16 @@ import (
 
 // Injectors from wire.go:
 
-func  InitApp() *App {
+func InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
 	module := middleware.InitModule(cmdable)
 	handler := module.Hdl
 	v := GinMiddlewares(limiter, handler)
+	logger := InitLog()
 	db := InitDB()
 	smsModule := sms.NewModule(limiter)
-	userModule := user.InitModule(cmdable, db, limiter, module, smsModule)
+	userModule := user.InitModule(logger, cmdable, db, limiter, module, smsModule)
 	userHandler := userModule.Hdl
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl
@@ -36,7 +37,6 @@ func  InitApp() *App {
 	submissionHandler := judgementModule.RemHdl
 	oAuthGithubHandler := userModule.GithubHdl
 	client := InitKafka()
-	logger := InitLog()
 	articleModule := article.InitModule(db, cmdable, client, logger)
 	articleHandler := articleModule.Hdl
 	adminHandler := articleModule.AdminHdl

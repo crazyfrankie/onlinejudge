@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func InitRedis() *redis.Client {
+func InitRedis() redis.Cmdable {
 	client := redis.NewClient(&redis.Options{
 		Addr:         config.GetConf().Redis.Address,
 		Password:     "",
