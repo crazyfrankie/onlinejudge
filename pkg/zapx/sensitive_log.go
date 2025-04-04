@@ -5,7 +5,6 @@ import (
 )
 
 type CustomCore struct {
-	zapcore.LevelEnabler
 	zapcore.Core
 }
 
