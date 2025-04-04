@@ -89,6 +89,7 @@ func (d *SubmitDao) FindEvaluate(ctx context.Context, sid uint64) (domain.Evalua
 
 		err = d.db.WithContext(ctx).Model(&Evaluation{}).
 			Where("problem_id = ? AND submission_id = ?", sub.ProblemID, sid).
+			Order("utime DESC").
 			Find(&eva).Error
 		if err != nil {
 			return err
