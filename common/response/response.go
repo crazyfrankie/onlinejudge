@@ -48,4 +48,9 @@ func Error(ctx *gin.Context, err error) {
 
 		return
 	}
+
+	ctx.JSON(http.StatusOK, Response{
+		Code:    0,
+		Message: err.Error(),
+	})
 }
