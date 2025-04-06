@@ -12,3 +12,5 @@ sarama/
 .env
 
 Dockerfile
+
+opentelemetry/
