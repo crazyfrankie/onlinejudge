@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
@@ -18,12 +17,6 @@ import (
 )
 
 func main() {
-	err := godotenv.Load("config/.env")
-	if err != nil {
-		panic(err)
-	}
-
-	initLogger()
 	initPrometheus()
 
 	closeFunc := ioc.InitOTEL()
@@ -84,12 +77,4 @@ func initPrometheus() {
 			panic(err)
 		}
 	}()
-}
-
-func initLogger() {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-	zap.ReplaceGlobals(logger)
 }
