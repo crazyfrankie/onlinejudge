@@ -70,7 +70,7 @@ func main() {
 func initPrometheus() {
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(":8081", nil)
+		err := http.ListenAndServe("0.0.0.0:8081", nil)
 		if err != nil {
 			panic(err)
 		}
