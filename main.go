@@ -10,10 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
-
 	"github.com/crazyfrankie/onlinejudge/ioc"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -41,7 +39,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	zap.L().Info("Server is running", zap.String("address", "http://localhost:8082"))
+	log.Printf("Server is running address:%s", "http://localhost:8082")
 
 	// 创建通道监听信号
 	quit := make(chan os.Signal, 1)
@@ -51,14 +49,14 @@ func main() {
 
 	// 阻塞直到收到信号
 	<-quit
-	zap.L().Info("shutting down server")
+	log.Println("shutting down server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// 优雅地关闭服务器
 	if err := server.Shutdown(ctx); err != nil {
-		zap.L().Error("Server forced shutting down", zap.Error(err))
+		log.Fatalf("Server forced shutting down:%s", err)
 	}
 
 	// 关闭 OTEL 连接
@@ -66,7 +64,7 @@ func main() {
 	defer cancelFunc()
 	closeFunc(newCtx)
 
-	zap.L().Info("Server exited gracefully")
+	log.Println("Server exited gracefully")
 }
 
 func initPrometheus() {
