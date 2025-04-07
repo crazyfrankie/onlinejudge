@@ -115,7 +115,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 }
 
 func (h *OAuthWeChatHandler) VerifyState(c *gin.Context) error {
-	state := c.Query("state")
+	state := c.Query("jwt-state")
 	jwtState, err := c.Cookie("jwt-state")
 	if err != nil {
 		return fmt.Errorf("拿不到 state 的 cookie, %w", err)

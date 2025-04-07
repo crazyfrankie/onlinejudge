@@ -82,14 +82,14 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		code := c.Query("code")
 
-		//err := h.VerifyState(c)
-		//if err != nil {
-		//	response.Error(c, er.NewBizError(constant.ErrInternalServer))
-		//	return
-		//}
-		//
-		//var res github.Result
-		res, err := h.svc.VerifyCode(c.Request.Context(), code)
+		err := h.VerifyState(c)
+		if err != nil {
+			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			return
+		}
+
+		var res github.Result
+		res, err = h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
 			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
@@ -116,7 +116,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 }
 
 func (h *OAuthGithubHandler) VerifyState(c *gin.Context) error {
-	state := c.Query("state")
+	state := c.Query("jwt-state")
 	jwtState, err := c.Cookie("jwt-state")
 	if err != nil {
 		return fmt.Errorf("拿不到 state 的 cookie, %w", err)
