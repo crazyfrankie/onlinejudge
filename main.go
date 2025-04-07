@@ -2,29 +2,44 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/crazyfrankie/onlinejudge/ioc"
+	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/crazyfrankie/onlinejudge/ioc"
 )
 
 func main() {
-	initPrometheus()
+	g := &run.Group{}
 
 	closeFunc := ioc.InitOTEL()
-
 	app := ioc.InitApp()
+
+	g.Add(func() error {
+		http.Handle("/metrics", promhttp.Handler())
+		return http.ListenAndServe("0.0.0.0:8081", nil)
+	}, func(err error) {
+		// Prometheus 服务器通常不需要特殊关闭处理
+	})
 
 	server := &http.Server{
 		Addr:    "0.0.0.0:8082",
 		Handler: app.Server,
 	}
+	g.Add(func() error {
+		log.Println("Server is running at http://localhost:8082")
+		return server.ListenAndServe()
+	}, func(err error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("failed to shutdown main server: %v", err)
+		}
+	})
 
 	// start consumers
 	for _, consumer := range app.Consumers {
@@ -34,29 +49,11 @@ func main() {
 		}
 	}
 
-	go func() {
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("listen: %s\n", err)
-		}
-	}()
-	log.Printf("Server is running address:%s", "http://localhost:8082")
+	g.Add(run.SignalHandler(context.Background(), syscall.SIGINT, syscall.SIGTERM))
 
-	// 创建通道监听信号
-	quit := make(chan os.Signal, 1)
-
-	// 监听信号
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	// 阻塞直到收到信号
-	<-quit
-	log.Println("shutting down server")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// 优雅地关闭服务器
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced shutting down:%s", err)
+	// 运行所有服务
+	if err := g.Run(); err != nil {
+		log.Printf("program interrupted, err:%s", err)
 	}
 
 	// 关闭 OTEL 连接
@@ -65,14 +62,4 @@ func main() {
 	closeFunc(newCtx)
 
 	log.Println("Server exited gracefully")
-}
-
-func initPrometheus() {
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe("0.0.0.0:8081", nil)
-		if err != nil {
-			panic(err)
-		}
-	}()
 }
