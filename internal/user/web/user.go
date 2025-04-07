@@ -95,8 +95,8 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
-		if tokenErr != nil {
+		err = ctl.SetLoginToken(c, user.Role, user.Id)
+		if err != nil {
 			response.Error(c, err)
 			return
 		}
@@ -127,8 +127,8 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 			return
 		}
 
-		_, tokenErr := ctl.SetLoginToken(c, user.Role, user.Id)
-		if tokenErr != nil {
+		err = ctl.SetLoginToken(c, user.Role, user.Id)
+		if err != nil {
 			response.Error(c, err)
 			return
 		}
@@ -281,7 +281,7 @@ func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
 func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 只有这个接口拿出来的才是 refresh_token
-		refreshToken := ctl.ExtractToken(c)
+		refreshToken := ctl.ExtractRefreshToken(c)
 		var rc ijwt.RefreshClaims
 		token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
 			return ijwt.AtKey, nil

@@ -6,10 +6,11 @@ import (
 )
 
 type Handler interface {
-	SetLoginToken(ctx *gin.Context, role uint8, uid uint64) ([]string, error)
+	SetLoginToken(ctx *gin.Context, role uint8, uid uint64) error
 	AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error)
 	RefreshToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error)
 	ExtractToken(ctx *gin.Context) string
+	ExtractRefreshToken(ctx *gin.Context) string
 	CheckSession(ctx *gin.Context, ssid string) error
 	ClearToken(ctx *gin.Context) error
 }

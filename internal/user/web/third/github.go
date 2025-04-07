@@ -104,13 +104,13 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		user, err := h.userSvc.FindOrCreateByGithub(c.Request.Context(), info.Id)
 
-		tokens, err := h.Handler.SetLoginToken(c, 0, user.Id)
+		err = h.Handler.SetLoginToken(c, 0, user.Id)
 		if err != nil {
 			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
-		url := fmt.Sprintf("http://localhost:8081?access_token=%s&refresh_token=%s", tokens[0], tokens[1])
+		url := "http://localhost:8081"
 		c.Redirect(http.StatusFound, url)
 	}
 }

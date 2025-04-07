@@ -52,9 +52,9 @@ func (l *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 		}
 
 		// 提取并检查 token
-		tokenHeader := l.Handler.ExtractToken(c)
+		token := l.Handler.ExtractToken(c)
 
-		claims, err := ParseToken(tokenHeader)
+		claims, err := ParseToken(token)
 		if err != nil {
 			errCode := handleTokenError(err)
 			response.Error(c, errCode)

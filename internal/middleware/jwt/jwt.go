@@ -28,19 +28,22 @@ func NewRedisJWTHandler(cmd redis.Cmdable) Handler {
 	}
 }
 
-func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64) ([]string, error) {
+func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64) error {
 	ssid := uuid.New().String()
 	accessToken, err := h.AccessToken(ctx, role, uid, ssid)
 	if err != nil {
-		return []string{}, err
+		return err
 	}
 
 	refreshToken, err := h.RefreshToken(ctx, role, uid, ssid)
 	if err != nil {
-		return []string{}, err
+		return err
 	}
 
-	return []string{accessToken, refreshToken}, nil
+	ctx.SetCookie("access_token", accessToken, 900, "/", "", false, false)
+	ctx.SetCookie("refresh_token", refreshToken, 7*24*3600, "/", "", false, true)
+
+	return nil
 }
 
 func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error) {
@@ -56,7 +59,6 @@ func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, s
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(SecretKey)
-	ctx.Header("x-jwt-token", token)
 	return token, err
 }
 
@@ -73,23 +75,27 @@ func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, 
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(SecretKey)
-	ctx.Header("x-refresh-token", token)
 	return token, err
 }
 
 func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
-	tokenHeader := ctx.GetHeader("Authorization")
-	// 检查请求头中是否包含 Token
-	if tokenHeader == "" {
+	token, err := ctx.Cookie("access_token")
+	if err != nil {
 		return ""
 	}
-	// 如果有 Bearer 前缀，去掉它
-	if len(tokenHeader) > 7 && tokenHeader[:7] == "Bearer " {
-		return tokenHeader[7:]
-	}
-	return tokenHeader
+
+	return token
 }
-	
+
+func (h *RedisJWTHandler) ExtractRefreshToken(ctx *gin.Context) string {
+	token, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		return ""
+	}
+
+	return token
+}
+
 func (h *RedisJWTHandler) CheckSession(ctx *gin.Context, ssid string) error {
 	_, err := h.cmd.Exists(ctx.Request.Context(), fmt.Sprintf("user:ssid:%s", ssid)).Result()
 	return err
