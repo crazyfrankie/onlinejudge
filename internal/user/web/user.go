@@ -95,7 +95,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.SetLoginToken(c, user.Role, user.Id)
+		err = ctl.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, err)
 			return
@@ -127,7 +127,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.SetLoginToken(c, user.Role, user.Id)
+		err = ctl.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, err)
 			return
@@ -256,26 +256,6 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdateRole() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req UpdateRoleReq
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		claims := c.MustGet("claims")
-		claim := claims.(*ijwt.Claims)
-
-		err := ctl.userSvc.UpdateRole(c.Request.Context(), claim.Id, req.Role)
-		if err != nil {
-			response.Error(c, err)
-			return
-		}
-
-		response.Success(c, nil)
-	}
-}
-
 // TokenRefresh 可以同时刷新长短 toke，用 redis 来记录是否有，即 refresh_token 是一次性
 // 参考登录部分，比较 User-Agent 来增强安全性
 func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
@@ -298,7 +278,7 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 		}
 
 		// 设置新的 access_token
-		_, err = ctl.AccessToken(c, rc.Role, rc.Id, rc.SSId)
+		_, err = ctl.AccessToken(c, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return

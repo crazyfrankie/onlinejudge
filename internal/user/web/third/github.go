@@ -104,7 +104,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		user, err := h.userSvc.FindOrCreateByGithub(c.Request.Context(), info.Id)
 
-		err = h.Handler.SetLoginToken(c, 0, user.Id)
+		err = h.Handler.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return

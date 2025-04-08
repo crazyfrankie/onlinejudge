@@ -28,14 +28,14 @@ func NewRedisJWTHandler(cmd redis.Cmdable) Handler {
 	}
 }
 
-func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64) error {
+func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, uid uint64) error {
 	ssid := uuid.New().String()
-	accessToken, err := h.AccessToken(ctx, role, uid, ssid)
+	accessToken, err := h.AccessToken(ctx, uid, ssid)
 	if err != nil {
 		return err
 	}
 
-	refreshToken, err := h.RefreshToken(ctx, role, uid, ssid)
+	refreshToken, err := h.RefreshToken(ctx, uid, ssid)
 	if err != nil {
 		return err
 	}
@@ -46,9 +46,8 @@ func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, role uint8, uid uint64
 	return nil
 }
 
-func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error) {
+func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, id uint64, ssid string) (string, error) {
 	claims := Claims{
-		Role: role,
 		Id:   id,
 		SSId: ssid,
 		StandardClaims: jwt.StandardClaims{
@@ -62,9 +61,8 @@ func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, role uint8, id uint64, s
 	return token, err
 }
 
-func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, role uint8, id uint64, ssid string) (string, error) {
+func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, id uint64, ssid string) (string, error) {
 	claims := RefreshClaims{
-		Role: role,
 		Id:   id,
 		SSId: ssid,
 		StandardClaims: jwt.StandardClaims{

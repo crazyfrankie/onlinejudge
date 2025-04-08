@@ -78,14 +78,6 @@ func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl ijwt.Handler
 			IgnorePaths("/api/user/test").
 			Authn(),
 
-
-		// admin path
-		// AdminPaths("/api/admin/problem").
-		// AdminPaths("/api/admin/problem/create").
-		// AdminPaths("/api/admin/problem/update").
-		// AdminPaths("/api/admin/tags/create").
-		// AdminPaths("/api/admin/tags/modify").
-		// AdminPaths("/api/admin/tags").
 		auth.NewAuthzHandler(authz).Authz(),
 	}
 }

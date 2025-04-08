@@ -25,8 +25,13 @@ func NewAuthzHandler(auth Authorizer) *AuthzHandler {
 
 func (a *AuthzHandler) Authz() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		claims := c.MustGet("claims").(*jwt.Claims)
-		sub := strconv.FormatUint(claims.Id, 10)
+		claims, ok := c.Get("claims")
+		if !ok {
+			c.Next()
+			return
+		}
+		claim := claims.(*jwt.Claims)
+		sub := strconv.FormatUint(claim.Id, 10)
 		obj := c.FullPath()
 		act := "CALL"
 

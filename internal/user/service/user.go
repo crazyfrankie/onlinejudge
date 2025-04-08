@@ -32,7 +32,6 @@ type UserService interface {
 	UpdatePassword(ctx context.Context, uid uint64, password string) error
 	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error
 	UpdateEmail(ctx context.Context, uid uint64, email string) error
-	UpdateRole(ctx context.Context, uid uint64, role uint8) error
 	GenerateCode() (string, error)
 }
 
@@ -195,15 +194,6 @@ func (svc *UserSvc) UpdateBirthday(ctx context.Context, uid uint64, birth time.T
 
 func (svc *UserSvc) UpdateEmail(ctx context.Context, uid uint64, email string) error {
 	err := svc.repo.UpdateEmail(ctx, uid, email)
-	if err != nil {
-		return er.NewBizError(constant.ErrUserInternalServer)
-	}
-
-	return nil
-}
-
-func (svc *UserSvc) UpdateRole(ctx context.Context, uid uint64, role uint8) error {
-	err := svc.repo.UpdateRole(ctx, uid, role)
 	if err != nil {
 		return er.NewBizError(constant.ErrUserInternalServer)
 	}

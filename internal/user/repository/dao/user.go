@@ -27,7 +27,6 @@ type User struct {
 	WechatUnionID sql.NullString
 	WechatOpenID  sql.NullString `gorm:"unique"`
 	Birthday      sql.NullTime
-	Role          uint8
 	Ctime         int64
 	Uptime        int64
 }
@@ -46,7 +45,6 @@ type UserDao interface {
 	UpdateName(ctx context.Context, uid uint64, name string) (domain.User, error)
 	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) (domain.User, error)
 	UpdateEmail(ctx context.Context, uid uint64, email string) (domain.User, error)
-	UpdateRole(ctx context.Context, uid uint64, role uint8) (domain.User, error)
 }
 
 type GormUserDao struct {
@@ -62,7 +60,6 @@ func NewUserDao(db *gorm.DB) UserDao {
 func (dao *GormUserDao) Insert(ctx context.Context, user domain.User) error {
 	u := User{
 		Phone: user.Phone,
-		Role:  0,
 		Name:  user.Name,
 	}
 	now := time.Now().UnixMilli()
@@ -128,7 +125,6 @@ func (dao *GormUserDao) FindByName(ctx context.Context, name string) (domain.Use
 	u := domain.User{
 		Id:       user.Id,
 		Password: user.Password,
-		Role:     user.Role,
 	}
 	return u, nil
 }
@@ -146,7 +142,6 @@ func (dao *GormUserDao) FindByEmail(ctx context.Context, email string) (domain.U
 	u := domain.User{
 		Id:       user.Id,
 		Password: user.Password,
-		Role:     user.Role,
 	}
 	return u, nil
 }
@@ -164,7 +159,6 @@ func (dao *GormUserDao) FindById(ctx context.Context, id uint64) (domain.User, e
 		Email:    user.Email.String,
 		Phone:    user.Phone,
 		Birthday: user.Birthday.Time,
-		Role:     user.Role,
 	}
 	return u, nil
 }
@@ -187,7 +181,6 @@ func (dao *GormUserDao) FindByPhone(ctx context.Context, phone string) (domain.U
 		Password: user.Password,
 		Email:    user.Email.String,
 		Phone:    user.Phone,
-		Role:     user.Role,
 	}
 	return newUser, nil
 }
@@ -213,7 +206,6 @@ func (dao *GormUserDao) FindByWechat(ctx context.Context, openId string) (domain
 			OpenID:  user.WechatOpenID.String,
 			UnionID: user.WechatUnionID.String,
 		},
-		Role: user.Role,
 	}
 	return newUser, nil
 }
@@ -294,22 +286,6 @@ func (dao *GormUserDao) UpdateEmail(ctx context.Context, uid uint64, email strin
 			String: email,
 			Valid:  email != "",
 		},
-	})
-	if result.Error != nil {
-		return domain.User{}, result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return domain.User{}, errors.New("user not found or no updates made")
-	}
-
-	return dao.FindById(ctx, uid)
-}
-
-func (dao *GormUserDao) UpdateRole(ctx context.Context, uid uint64, role uint8) (domain.User, error) {
-	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
-		Role: role,
 	})
 	if result.Error != nil {
 		return domain.User{}, result.Error

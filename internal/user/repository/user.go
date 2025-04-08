@@ -30,7 +30,6 @@ type UserRepository interface {
 	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error
 	UpdateName(ctx context.Context, uid uint64, name string) error
 	UpdateEmail(ctx context.Context, uid uint64, email string) error
-	UpdateRole(ctx context.Context, uid uint64, role uint8) error
 }
 
 type CacheUserRepository struct {
@@ -179,17 +178,3 @@ func (ur *CacheUserRepository) UpdateEmail(ctx context.Context, uid uint64, emai
 	return nil
 }
 
-func (ur *CacheUserRepository) UpdateRole(ctx context.Context, uid uint64, role uint8) error {
-	updateUser, err := ur.dao.UpdateRole(ctx, uid, role)
-	if err != nil {
-		return err
-	}
-
-	// 删除缓存
-	cacheErr := ur.cache.Del(ctx, updateUser.Id)
-	if cacheErr != nil {
-		log.Printf("failed to update cache for user %d: %v", uid, cacheErr)
-	}
-
-	return nil
-}

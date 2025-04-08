@@ -1,8 +1,9 @@
 package ioc
 
 import (
-	"github.com/crazyfrankie/framework-plugin/rbac"
 	"gorm.io/gorm"
+
+	"github.com/crazyfrankie/framework-plugin/rbac"
 
 	"github.com/crazyfrankie/onlinejudge/internal/middleware/auth"
 )
