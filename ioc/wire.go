@@ -23,6 +23,7 @@ func InitApp() *App {
 		problem.InitModule,
 		judgement.InitModule,
 		article.InitModule,
+		InitAuthz,
 		InitSlideWindow,
 		GinMiddlewares,
 		InitWebServer,

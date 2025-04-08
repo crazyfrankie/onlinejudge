@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/crazyfrankie/onlinejudge/common/response"
@@ -37,7 +38,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	return server
 }
 
-func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc {
+func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl ijwt.Handler, authz auth.Authorizer) []gin.HandlerFunc {
 	response.InitCouter(prometheus.CounterOpts{
 		Namespace: "cfc_studio_frank",
 		Subsystem: "onlinejudge",
@@ -65,7 +66,7 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 
 		ratelimit.NewBuilder(limiter).Build(),
 
-		auth.NewLoginJWTMiddlewareBuilder(jwtHdl).
+		auth.NewAuthnHandler(cmd, jwtHdl).
 			IgnorePaths("/api/user/login").
 			IgnorePaths("/api/user/send-code").
 			IgnorePaths("/api/user/verify-code").
@@ -75,12 +76,16 @@ func GinMiddlewares(limiter rate.Limiter, jwtHdl ijwt.Handler) []gin.HandlerFunc
 			IgnorePaths("/api/oauth/github/callback").
 			IgnorePaths("/api/oauth/wechat/callback").
 			IgnorePaths("/api/user/test").
-			AdminPaths("/api/admin/problem").
-			AdminPaths("/api/admin/problem/create").
-			AdminPaths("/api/admin/problem/update").
-			AdminPaths("/api/admin/tags/create").
-			AdminPaths("/api/admin/tags/modify").
-			AdminPaths("/api/admin/tags").
-			CheckLogin(),
+			Authn(),
+
+
+		// admin path
+		// AdminPaths("/api/admin/problem").
+		// AdminPaths("/api/admin/problem/create").
+		// AdminPaths("/api/admin/problem/update").
+		// AdminPaths("/api/admin/tags/create").
+		// AdminPaths("/api/admin/tags/modify").
+		// AdminPaths("/api/admin/tags").
+		auth.NewAuthzHandler(authz).Authz(),
 	}
 }

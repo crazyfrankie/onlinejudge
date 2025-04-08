@@ -23,9 +23,10 @@ func InitApp() *App {
 	limiter := InitSlideWindow(cmdable)
 	module := middleware.InitModule(cmdable)
 	handler := module.Hdl
-	v := GinMiddlewares(limiter, handler)
-	logger := InitLog()
 	db := InitDB()
+	authorizer := InitAuthz(db)
+	v := GinMiddlewares(cmdable, limiter, handler, authorizer)
+	logger := InitLog()
 	smsModule := sms.NewModule(limiter)
 	userModule := user.InitModule(logger, cmdable, db, limiter, module, smsModule)
 	userHandler := userModule.Hdl
