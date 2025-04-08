@@ -271,7 +271,7 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.Handler.CheckSession(c, rc.SSId)
+		err = ctl.Handler.CheckSession(c, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return

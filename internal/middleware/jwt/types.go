@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 )
@@ -11,8 +12,12 @@ type Handler interface {
 	RefreshToken(ctx *gin.Context, id uint64, ssid string) (string, error)
 	ExtractToken(ctx *gin.Context) string
 	ExtractRefreshToken(ctx *gin.Context) string
-	CheckSession(ctx *gin.Context, ssid string) error
+	ParseToken(token string) (*Claims, error)
+	CheckSession(ctx *gin.Context, uid uint64, ssid string) error
 	ClearToken(ctx *gin.Context) error
+	TryRefresh(ctx *gin.Context) error
+	LogoutAllDevices(ctx *gin.Context) error
+	HandleTokenError(err error) *er.BizError
 }
 
 type Claims struct {
