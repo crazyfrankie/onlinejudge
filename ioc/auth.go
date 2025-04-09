@@ -10,7 +10,7 @@ import (
 )
 
 func InitAuthz(db *gorm.DB) auth.Authorizer {
-	a, err := rbac.NewAuthz(db, rbac.WithLoadTime(time.Second*30))
+	a, err := rbac.NewAuthz(db, rbac.WithLoadTime(time.Second*60))
 	if err != nil {
 		return nil
 	}
