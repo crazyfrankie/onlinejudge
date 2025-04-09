@@ -3,13 +3,13 @@ package web
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
+	"go.uber.org/zap"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
