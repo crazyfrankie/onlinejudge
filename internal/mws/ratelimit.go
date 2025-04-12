@@ -1,4 +1,4 @@
-package ratelimit
+package mws
 
 import (
 	_ "embed" // 导入 embed 包，用于在编译时将文件嵌入到 Go 二进制文件中

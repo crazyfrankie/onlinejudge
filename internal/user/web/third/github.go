@@ -14,24 +14,24 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
 )
 
 type OAuthGithubHandler struct {
-	svc     github.Service
-	userSvc service.UserService
-	ijwt.Handler
+	svc      github.Service
+	userSvc  service.UserService
+	jwt      auth.JWTHandler
 	stateKey []byte
 }
 
-func NewOAuthGithubHandler(svc github.Service, userSvc service.UserService, jwtHdl ijwt.Handler) *OAuthGithubHandler {
+func NewOAuthGithubHandler(svc github.Service, userSvc service.UserService, jwtHdl auth.JWTHandler) *OAuthGithubHandler {
 	return &OAuthGithubHandler{
 		svc:      svc,
 		userSvc:  userSvc,
-		Handler:  jwtHdl,
+		jwt:      jwtHdl,
 		stateKey: []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxF"),
 	}
 }
@@ -104,7 +104,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		user, err := h.userSvc.FindOrCreateByGithub(c.Request.Context(), info.Id)
 
-		err = h.Handler.SetLoginToken(c, user.Id)
+		err = h.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return

@@ -1,4 +1,4 @@
-package auth
+package mws
 
 import (
 	"github.com/gin-gonic/gin"
@@ -7,16 +7,16 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 )
 
 type AuthnHandler struct {
 	ignorePaths map[string]struct{}
 	cmd         redis.Cmdable
-	jwt         jwt.Handler
+	jwt         auth.JWTHandler
 }
 
-func NewAuthnHandler(cmd redis.Cmdable, jwt jwt.Handler) *AuthnHandler {
+func NewAuthnHandler(cmd redis.Cmdable, jwt auth.JWTHandler) *AuthnHandler {
 	return &AuthnHandler{
 		ignorePaths: make(map[string]struct{}),
 		cmd:         cmd,

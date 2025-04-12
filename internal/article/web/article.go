@@ -9,7 +9,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 )
 
 const (
@@ -69,7 +69,7 @@ func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := c.MustGet("claims")
-		claim := claims.(*jwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		artID := c.Param("id")
 
@@ -123,7 +123,7 @@ func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*jwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		var err error
 		if req.Like {

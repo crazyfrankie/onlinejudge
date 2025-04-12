@@ -1,6 +1,7 @@
-package auth
+package mws
 
 import (
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -8,7 +9,6 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
 )
 
 type Authorizer interface {
@@ -30,7 +30,7 @@ func (a *AuthzHandler) Authz() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		claim := claims.(*jwt.Claims)
+		claim := claims.(*auth.Claims)
 		sub := strconv.FormatUint(claim.Id, 10)
 		obj := c.FullPath()
 		act := "CALL"

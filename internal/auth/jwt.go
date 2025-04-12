@@ -1,4 +1,4 @@
-package jwt
+package auth
 
 import (
 	"crypto/sha1"
@@ -15,6 +15,35 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 )
+
+type JWTHandler interface {
+	SetLoginToken(ctx *gin.Context, uid uint64) error
+	AccessToken(ctx *gin.Context, id uint64, ssid string) (string, error)
+	RefreshToken(ctx *gin.Context, id uint64, ssid string) (string, error)
+	ExtractToken(ctx *gin.Context) string
+	ExtractRefreshToken(ctx *gin.Context) string
+	ParseToken(token string) (*Claims, error)
+	CheckSession(ctx *gin.Context, uid uint64, ssid string) error
+	ClearToken(ctx *gin.Context) error
+	TryRefresh(ctx *gin.Context) error
+	LogoutAllDevices(ctx *gin.Context) error
+	HandleTokenError(err error) *er.BizError
+}
+
+type Claims struct {
+	Id        uint64 `json:"id"`
+	UserAgent string `json:"userAgent"`
+	SSId      string
+	jwt.StandardClaims
+}
+
+type RefreshClaims struct {
+	Role      uint8
+	Id        uint64
+	UserAgent string
+	SSId      string
+	jwt.StandardClaims
+}
 
 var (
 	SecretKey = []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE")
@@ -36,7 +65,7 @@ type RedisJWTHandler struct {
 	cmd redis.Cmdable
 }
 
-func NewRedisJWTHandler(cmd redis.Cmdable) Handler {
+func NewRedisJWTHandler(cmd redis.Cmdable) JWTHandler {
 	return &RedisJWTHandler{
 		cmd: cmd,
 	}

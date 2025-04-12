@@ -3,7 +3,7 @@
 package user
 
 import (
-	"github.com/crazyfrankie/onlinejudge/internal/middleware"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/sms"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"go.uber.org/zap"
@@ -22,7 +22,7 @@ import (
 	ratelimit2 "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
-func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
+func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *auth.Module, smsModule *sms.Module) *Module {
 	wire.Build(
 		dao.NewUserDao,
 		cache.NewUserCache,
@@ -41,7 +41,7 @@ func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit
 		third.NewOAuthWeChatHandler,
 
 		wire.FieldsOf(new(*sms.Module), "SmsSvc"),
-		wire.FieldsOf(new(*middleware.Module), "Hdl"),
+		wire.FieldsOf(new(*auth.Module), "Hdl"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module)

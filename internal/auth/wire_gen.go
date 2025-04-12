@@ -4,19 +4,24 @@
 //go:build !wireinject
 // +build !wireinject
 
-package middleware
+package auth
 
 import (
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
 	"github.com/redis/go-redis/v9"
 )
 
 // Injectors from wire.go:
 
 func InitModule(cmd redis.Cmdable) *Module {
-	handler := jwt.NewRedisJWTHandler(cmd)
+	jwtHandler := NewRedisJWTHandler(cmd)
 	module := &Module{
-		Hdl: handler,
+		Hdl: jwtHandler,
 	}
 	return module
+}
+
+// wire.go:
+
+type Module struct {
+	Hdl JWTHandler
 }

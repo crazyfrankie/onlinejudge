@@ -14,16 +14,16 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
 )
 
 type OAuthWeChatHandler struct {
-	svc     wechat.Service
-	userSvc service.UserService
-	ijwt.Handler
+	svc      wechat.Service
+	userSvc  service.UserService
+	jwt      auth.JWTHandler
 	stateKey []byte
 }
 
@@ -32,10 +32,10 @@ type StateClaims struct {
 	jwt.StandardClaims
 }
 
-func NewOAuthWeChatHandler(svc wechat.Service, jwtHdl ijwt.Handler, userSvc service.UserService) *OAuthWeChatHandler {
+func NewOAuthWeChatHandler(svc wechat.Service, jwtHdl auth.JWTHandler, userSvc service.UserService) *OAuthWeChatHandler {
 	return &OAuthWeChatHandler{
 		svc:      svc,
-		Handler:  jwtHdl,
+		jwt:      jwtHdl,
 		userSvc:  userSvc,
 		stateKey: []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxF"),
 	}
@@ -103,7 +103,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 			UnionID: info.UnionID,
 		})
 
-		err = h.Handler.SetLoginToken(c, user.Id)
+		err = h.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
 			return

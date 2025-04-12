@@ -11,11 +11,9 @@ import (
 
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/auth"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/metrics"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/internal/mws"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
@@ -38,7 +36,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	return server
 }
 
-func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl ijwt.Handler, authz auth.Authorizer) []gin.HandlerFunc {
+func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl auth.JWTHandler, authz mws.Authorizer) []gin.HandlerFunc {
 	response.InitCouter(prometheus.CounterOpts{
 		Namespace: "cfc_studio_frank",
 		Subsystem: "onlinejudge",
@@ -55,7 +53,7 @@ func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl ijwt.Handler
 			MaxAge:           12 * time.Hour,
 		}),
 
-		(&metrics.MetricsBuilder{
+		(&mws.MetricsBuilder{
 			Namespace: "cfc_studio_frank",
 			Subsystem: "onlinejudge",
 			Name:      "gin_http",
@@ -64,9 +62,9 @@ func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl ijwt.Handler
 
 		otelgin.Middleware("onlinejudge"),
 
-		ratelimit.NewBuilder(limiter).Build(),
+		mws.NewBuilder(limiter).Build(),
 
-		auth.NewAuthnHandler(cmd, jwtHdl).
+		mws.NewAuthnHandler(cmd, jwtHdl).
 			IgnorePaths("/api/user/login").
 			IgnorePaths("/api/user/send-code").
 			IgnorePaths("/api/user/verify-code").
@@ -78,6 +76,6 @@ func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl ijwt.Handler
 			IgnorePaths("/api/user/test").
 			Authn(),
 
-		auth.NewAuthzHandler(authz).Authz(),
+		mws.NewAuthzHandler(authz).Authz(),
 	}
 }

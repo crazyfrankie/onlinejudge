@@ -1,15 +1,14 @@
 package ioc
 
 import (
+	"github.com/crazyfrankie/onlinejudge/internal/mws"
 	"gorm.io/gorm"
 	"time"
 
 	"github.com/crazyfrankie/framework-plugin/rbac"
-
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/auth"
 )
 
-func InitAuthz(db *gorm.DB) auth.Authorizer {
+func InitAuthz(db *gorm.DB) mws.Authorizer {
 	a, err := rbac.NewAuthz(db, rbac.WithLoadTime(time.Second*60))
 	if err != nil {
 		return nil

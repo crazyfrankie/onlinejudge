@@ -7,7 +7,7 @@
 package user
 
 import (
-	"github.com/crazyfrankie/onlinejudge/internal/middleware"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/sms"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
@@ -25,7 +25,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *middleware.Module, smsModule *sms.Module) *Module {
+func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *auth.Module, smsModule *sms.Module) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)
@@ -34,12 +34,12 @@ func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit
 	codeRepository := repository.NewCodeRepository(codeCache)
 	serviceService := smsModule.SmsSvc
 	codeService := service.NewCodeService(codeRepository, serviceService)
-	handler := mdlModule.Hdl
-	userHandler := web.NewUserHandler(l, userService, codeService, handler)
+	jwtHandler := mdlModule.Hdl
+	userHandler := web.NewUserHandler(l, userService, codeService, jwtHandler)
 	githubService := github.NewService()
-	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, handler)
+	oAuthGithubHandler := third.NewOAuthGithubHandler(githubService, userService, jwtHandler)
 	wechatService := wechat.NewService()
-	oAuthWeChatHandler := third.NewOAuthWeChatHandler(wechatService, handler, userService)
+	oAuthWeChatHandler := third.NewOAuthWeChatHandler(wechatService, jwtHandler, userService)
 	module := &Module{
 		Hdl:       userHandler,
 		GithubHdl: oAuthGithubHandler,

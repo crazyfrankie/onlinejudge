@@ -11,7 +11,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
-	"github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 )
 
 type AdminHandler struct {
@@ -43,7 +43,7 @@ func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(jwt.Claims)
+		claim := claims.(auth.Claims)
 
 		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
@@ -64,7 +64,7 @@ func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(jwt.Claims)
+		claim := claims.(auth.Claims)
 
 		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
@@ -81,7 +81,7 @@ func (ctl *AdminHandler) WithDraw() gin.HandlerFunc {
 		id := c.Query("id")
 
 		claims := c.MustGet("claims")
-		claim := claims.(jwt.Claims)
+		claim := claims.(auth.Claims)
 
 		Id, _ := strconv.Atoi(id)
 		err := ctl.svc.WithDraw(c.Request.Context(), domain.Article{
@@ -144,7 +144,7 @@ func (ctl *AdminHandler) List() gin.HandlerFunc {
 func (ctl *AdminHandler) Detail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := c.MustGet("claims")
-		claim := claims.(*jwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		artID := c.Param("id")
 

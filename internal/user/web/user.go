@@ -14,7 +14,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	ijwt "github.com/crazyfrankie/onlinejudge/internal/middleware/jwt"
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 )
 
@@ -22,15 +22,15 @@ type UserHandler struct {
 	logger  *zap.Logger
 	userSvc service.UserService
 	codeSvc service.CodeService
-	ijwt.Handler
+	jwt     auth.JWTHandler
 }
 
-func NewUserHandler(logger *zap.Logger, userSvc service.UserService, codeSvc service.CodeService, jwtHdl ijwt.Handler) *UserHandler {
+func NewUserHandler(logger *zap.Logger, userSvc service.UserService, codeSvc service.CodeService, jwtHdl auth.JWTHandler) *UserHandler {
 	return &UserHandler{
 		logger:  logger,
 		userSvc: userSvc,
 		codeSvc: codeSvc,
-		Handler: jwtHdl,
+		jwt:     jwtHdl,
 	}
 }
 
@@ -95,7 +95,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.SetLoginToken(c, user.Id)
+		err = ctl.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, err)
 			return
@@ -127,7 +127,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.SetLoginToken(c, user.Id)
+		err = ctl.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.Error(c, err)
 			return
@@ -140,7 +140,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := c.MustGet("claims")
-		claim := claims.(*ijwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		user, err := ctl.userSvc.GetInfo(c.Request.Context(), claim.Id)
 		if err != nil {
@@ -159,7 +159,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*ijwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
@@ -191,7 +191,7 @@ func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*ijwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		parsedDate, err := time.Parse("2006-01-02", req.Birthday)
 		err = ctl.userSvc.UpdateBirthday(c.Request.Context(), claim.Id, parsedDate)
@@ -218,7 +218,7 @@ func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*ijwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		err := ctl.userSvc.UpdateEmail(c.Request.Context(), claim.Id, req.Email)
 		if err != nil {
@@ -244,7 +244,7 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*ijwt.Claims)
+		claim := claims.(*auth.Claims)
 
 		err := ctl.userSvc.UpdateName(c.Request.Context(), claim.Id, req.Name)
 		if err != nil {
@@ -261,24 +261,24 @@ func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
 func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 只有这个接口拿出来的才是 refresh_token
-		refreshToken := ctl.ExtractRefreshToken(c)
-		var rc ijwt.RefreshClaims
+		refreshToken := ctl.jwt.ExtractRefreshToken(c)
+		var rc auth.RefreshClaims
 		token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
-			return ijwt.AtKey, nil
+			return auth.AtKey, nil
 		})
 		if err != nil || !token.Valid {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		err = ctl.Handler.CheckSession(c, rc.Id, rc.SSId)
+		err = ctl.jwt.CheckSession(c, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		// 设置新的 access_token
-		_, err = ctl.AccessToken(c, rc.Id, rc.SSId)
+		_, err = ctl.jwt.AccessToken(c, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -290,7 +290,7 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 
 func (ctl *UserHandler) Logout() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		err := ctl.Handler.ClearToken(c)
+		err := ctl.jwt.ClearToken(c)
 		if err != nil {
 			response.Error(c, err)
 			return
