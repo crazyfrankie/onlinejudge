@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"net/http"
 	"time"
 
@@ -43,10 +44,8 @@ func (ctl *UserHandler) RegisterRoute(r *gin.Engine) {
 		userGroup.POST("verify-code", ctl.VerificationCode())
 		userGroup.GET("info", ctl.GetUserInfo())
 		userGroup.POST("refresh-token", ctl.TokenRefresh())
-		userGroup.POST("name", ctl.UpdateName())
-		userGroup.POST("email", ctl.UpdateEmail())
-		userGroup.POST("password", ctl.UpdatePassword())
-		userGroup.POST("birthday", ctl.UpdateBirthday())
+		userGroup.PATCH("update", ctl.UpdateInfo())
+		userGroup.PATCH("update-pwd", ctl.UpdatePassword())
 	}
 }
 
@@ -177,76 +176,30 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 	}
 }
 
-func (ctl *UserHandler) UpdateBirthday() gin.HandlerFunc {
+func (ctl *UserHandler) UpdateInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UpdateBirthReq
+		var req UpdateInfoReq
 		if err := c.Bind(&req); err != nil {
 			return
 		}
 
+		claims := c.MustGet("claims").(*auth.Claims)
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
-
-		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
-
-		parsedDate, err := time.Parse("2006-01-02", req.Birthday)
-		err = ctl.userSvc.UpdateBirthday(c.Request.Context(), claim.Id, parsedDate)
+		bir, err := time.Parse(time.DateTime, req.Birthday)
 		if err != nil {
-			response.Error(c, err)
-			return
-		}
-
-		response.Success(c, nil)
-	}
-}
-
-func (ctl *UserHandler) UpdateEmail() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req UpdateEmailReq
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		validate := validator.New()
-		if err := validate.Struct(req); err != nil {
 			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
 			return
 		}
-
-		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
-
-		err := ctl.userSvc.UpdateEmail(c.Request.Context(), claim.Id, req.Email)
-		if err != nil {
-			response.Error(c, err)
-			return
-		}
-
-		response.Success(c, nil)
-	}
-}
-
-func (ctl *UserHandler) UpdateName() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req UpdateNameReq
-		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		validate := validator.New()
-		if err := validate.Struct(req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrUserInvalidParams))
-			return
-		}
-
-		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
-
-		err := ctl.userSvc.UpdateName(c.Request.Context(), claim.Id, req.Name)
+		err = ctl.userSvc.UpdateInfo(c.Request.Context(), domain.User{
+			Id:       claims.Id,
+			Name:     req.Name,
+			Email:    req.Email,
+			Birthday: bir,
+		})
 		if err != nil {
 			response.Error(c, err)
 			return

@@ -2,12 +2,10 @@ package repository
 
 import (
 	"context"
-	"log"
-	"time"
-
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
+	"log"
 )
 
 var (
@@ -27,9 +25,7 @@ type UserRepository interface {
 	FindByWechat(ctx context.Context, openId string) (domain.User, error)
 	FindByGithub(ctx context.Context, gitId string) (domain.User, error)
 	UpdatePassword(ctx context.Context, uid uint64, password string) error
-	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error
-	UpdateName(ctx context.Context, uid uint64, name string) error
-	UpdateEmail(ctx context.Context, uid uint64, email string) error
+	UpdateInfo(ctx context.Context, uid uint64, updates map[string]any) error
 }
 
 type CacheUserRepository struct {
@@ -132,49 +128,16 @@ func (ur *CacheUserRepository) UpdatePassword(ctx context.Context, uid uint64, p
 	return nil
 }
 
-func (ur *CacheUserRepository) UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error {
-	updateUser, err := ur.dao.UpdateBirthday(ctx, uid, birth)
+func (ur *CacheUserRepository) UpdateInfo(ctx context.Context, uid uint64, updates map[string]any) error {
+	err := ur.dao.UpdateInfo(ctx, uid, updates)
 	if err != nil {
 		return err
 	}
 
-	// 删除缓存
-	cacheErr := ur.cache.Del(ctx, updateUser.Id)
-	if cacheErr != nil {
-		log.Printf("failed to update cache for user %d: %v", uid, cacheErr)
-	}
-
-	return nil
-}
-
-func (ur *CacheUserRepository) UpdateName(ctx context.Context, uid uint64, name string) error {
-	updateUser, err := ur.dao.UpdateName(ctx, uid, name)
+	err = ur.cache.Del(ctx, uid)
 	if err != nil {
-		return err
-	}
-
-	// 删除缓存
-	cacheErr := ur.cache.Del(ctx, updateUser.Id)
-	if cacheErr != nil {
-		log.Printf("failed to update cache for user %d: %v", uid, cacheErr)
+		log.Printf("failed to update cache for user %d: %v", uid, err)
 	}
 
 	return nil
 }
-
-func (ur *CacheUserRepository) UpdateEmail(ctx context.Context, uid uint64, email string) error {
-	// 更新数据库
-	updateUser, err := ur.dao.UpdateEmail(ctx, uid, email)
-	if err != nil {
-		return err
-	}
-
-	// 删除缓存
-	cacheErr := ur.cache.Del(ctx, updateUser.Id)
-	if cacheErr != nil {
-		log.Printf("failed to update cache for user %d: %v", uid, cacheErr)
-	}
-
-	return nil
-}
-

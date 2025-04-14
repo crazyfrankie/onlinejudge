@@ -22,16 +22,10 @@ type UpdatePwdReq struct {
 	ConfirmPassword string `json:"confirmPassword" validate:"eqfield=Password"`
 }
 
-type UpdateBirthReq struct {
+type UpdateInfoReq struct {
+	Email    string `json:"email" validate:"required,email"`
 	Birthday string `json:"birthday"`
-}
-
-type UpdateEmailReq struct {
-	Email string `json:"email" validate:"required,email"`
-}
-
-type UpdateNameReq struct {
-	Name string `json:"name" validate:"required,min=3,max=20"`
+	Name     string `json:"name" validate:"required,min=3,max=20"`
 }
 
 type UpdateRoleReq struct {

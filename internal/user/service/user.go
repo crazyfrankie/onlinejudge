@@ -4,11 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
@@ -28,10 +27,8 @@ type UserService interface {
 	GetInfo(ctx context.Context, id uint64) (domain.User, error)
 	FindOrCreateByWechat(ctx context.Context, wechatInfo domain.WeChatInfo) (domain.User, error)
 	FindOrCreateByGithub(ctx context.Context, id int) (domain.User, error)
-	UpdateName(ctx context.Context, uid uint64, name string) error
 	UpdatePassword(ctx context.Context, uid uint64, password string) error
-	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error
-	UpdateEmail(ctx context.Context, uid uint64, email string) error
+	UpdateInfo(ctx context.Context, u domain.User) error
 	GenerateCode() (string, error)
 }
 
@@ -174,28 +171,12 @@ func (svc *UserSvc) UpdatePassword(ctx context.Context, uid uint64, password str
 	return nil
 }
 
-func (svc *UserSvc) UpdateName(ctx context.Context, uid uint64, name string) error {
-	err := svc.repo.UpdateName(ctx, uid, name)
+func (svc *UserSvc) UpdateInfo(ctx context.Context, u domain.User) error {
+	fds := updateFds(u)
+
+	err := svc.repo.UpdateInfo(ctx, u.Id, fds)
 	if err != nil {
-		return er.NewBizError(constant.ErrUserInternalServer)
-	}
-
-	return nil
-}
-
-func (svc *UserSvc) UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) error {
-	err := svc.repo.UpdateBirthday(ctx, uid, birth)
-	if err != nil {
-		return er.NewBizError(constant.ErrUserInternalServer)
-	}
-
-	return nil
-}
-
-func (svc *UserSvc) UpdateEmail(ctx context.Context, uid uint64, email string) error {
-	err := svc.repo.UpdateEmail(ctx, uid, email)
-	if err != nil {
-		return er.NewBizError(constant.ErrUserInternalServer)
+		return er.NewBizError(constant.ErrInternalServer)
 	}
 
 	return nil
@@ -215,4 +196,19 @@ func (svc *UserSvc) GenerateCode() (string, error) {
 	}
 
 	return sb.String(), nil
+}
+
+func updateFds(u domain.User) map[string]any {
+	res := make(map[string]any)
+	if u.Birthday != (time.Time{}) {
+		res["birthday"] = u.Birthday
+	}
+	if u.Email != "" {
+		res["email"] = u.Email
+	}
+	if u.Name != "" {
+		res["name"] = u.Name
+	}
+
+	return res
 }

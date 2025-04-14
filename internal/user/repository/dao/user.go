@@ -42,9 +42,7 @@ type UserDao interface {
 	FindByWechat(ctx context.Context, openId string) (domain.User, error)
 	FindByGithub(ctx context.Context, gitId string) (domain.User, error)
 	UpdatePassword(ctx context.Context, uid uint64, password string) (domain.User, error)
-	UpdateName(ctx context.Context, uid uint64, name string) (domain.User, error)
-	UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) (domain.User, error)
-	UpdateEmail(ctx context.Context, uid uint64, email string) (domain.User, error)
+	UpdateInfo(ctx context.Context, uid uint64, updates map[string]any) error
 }
 
 type GormUserDao struct {
@@ -244,56 +242,11 @@ func (dao *GormUserDao) UpdatePassword(ctx context.Context, uid uint64, password
 	return dao.FindById(ctx, uid)
 }
 
-func (dao *GormUserDao) UpdateName(ctx context.Context, uid uint64, name string) (domain.User, error) {
-	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
-		Name: name,
-	})
-	if result.Error != nil {
-		return domain.User{}, result.Error
+func (dao *GormUserDao) UpdateInfo(ctx context.Context, uid uint64, updates map[string]any) error {
+	err := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(updates).Error
+	if err != nil {
+		return err
 	}
 
-	if result.RowsAffected == 0 {
-		return domain.User{}, errors.New("user not found or no updates made")
-	}
-
-	return dao.FindById(ctx, uid)
-}
-
-func (dao *GormUserDao) UpdateBirthday(ctx context.Context, uid uint64, birth time.Time) (domain.User, error) {
-	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
-		Birthday: sql.NullTime{
-			Time:  birth,
-			Valid: true,
-		},
-	})
-	if result.Error != nil {
-		return domain.User{}, result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return domain.User{}, errors.New("user not found or no updates made")
-	}
-
-	return dao.FindById(ctx, uid)
-}
-
-func (dao *GormUserDao) UpdateEmail(ctx context.Context, uid uint64, email string) (domain.User, error) {
-	// 直接更新用户信息
-	result := dao.db.WithContext(ctx).Model(&User{}).Where("id = ?", uid).Updates(User{
-		Email: sql.NullString{
-			String: email,
-			Valid:  email != "",
-		},
-	})
-	if result.Error != nil {
-		return domain.User{}, result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return domain.User{}, errors.New("user not found or no updates made")
-	}
-
-	return dao.FindById(ctx, uid)
+	return nil
 }
