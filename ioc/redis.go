@@ -26,7 +26,7 @@ func InitRedis() redis.Cmdable {
 		panic(fmt.Sprintf("Failed to create Prometheus exporter: %v", err))
 	}
 
-	exporter, err := prometheus.New()
+	exporter, err := prometheus.New(prometheus.WithNamespace("cfc_studio_frank"))
 	if err != nil {
 		panic(err)
 	}
