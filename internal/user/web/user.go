@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"fmt"
-	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"net/http"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 )
 
