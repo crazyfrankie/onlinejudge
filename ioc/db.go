@@ -14,7 +14,6 @@ import (
 	"gorm.io/plugin/prometheus"
 
 	"github.com/crazyfrankie/onlinejudge/config"
-
 	articledao "github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 	judgedao "github.com/crazyfrankie/onlinejudge/internal/judgement/repository/dao"
 	problemdao "github.com/crazyfrankie/onlinejudge/internal/problem/repository/dao"
@@ -83,7 +82,7 @@ type Callbacks struct {
 
 func newCallbacks() *Callbacks {
 	vector := prometheus2.NewSummaryVec(prometheus2.SummaryOpts{
-		Namespace: "cfcstudio_frank",
+		Namespace: "cfc_studio_frank",
 		Subsystem: "onlinejudge",
 		Name:      "gorm_query_time",
 		Help:      "统计 GORM 的执行时间",

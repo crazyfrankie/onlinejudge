@@ -1,12 +1,13 @@
 package ioc
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/crazyfrankie/onlinejudge/config"
@@ -26,11 +27,16 @@ func InitRedis() redis.Cmdable {
 		panic(fmt.Sprintf("Failed to create Prometheus exporter: %v", err))
 	}
 
-	exporter, err := prometheus.New(prometheus.WithNamespace("cfc_studio_frank"))
+	exporter, err := otlpmetricgrpc.New(context.Background(),
+		otlpmetricgrpc.WithEndpoint("otel-collector:4317"),
+		otlpmetricgrpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
-	meterProvider := metric.NewMeterProvider(metric.WithReader(exporter))
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithReader(metric.NewPeriodicReader(exporter, metric.WithTimeout(time.Second*10))),
+	)
 	// metrics instrumentation.
 	if err := redisotel.InstrumentMetrics(client, redisotel.WithMeterProvider(meterProvider)); err != nil {
 		panic(fmt.Sprintf("Failed to instrument Redis metrics: %v", err))
