@@ -50,9 +50,6 @@ services:
     image: otel/opentelemetry-collector-contrib
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
-    ports:
-      - "4317:4317"  # OTLP gRPC 接口端口
-      - "8889:8889"  # Prometheus 导出器端口
     networks:
       - oj-net
 
