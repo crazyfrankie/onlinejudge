@@ -2,7 +2,7 @@ receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: "0.0.0.0:4317"  # OTLP gRPC 接口
+        endpoint: "otel-collecto:4317"
 
 exporters:
   prometheus:
