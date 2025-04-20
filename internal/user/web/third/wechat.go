@@ -51,19 +51,20 @@ func (h *OAuthWeChatHandler) RegisterRoute(r *gin.Engine) {
 
 func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/OAuth2/Wechat/AuthUrl"
 		state := uuid.New().String()
 		url, err := h.svc.AuthURL(c.Request.Context(), state)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
-		response.Success(c, url)
+		response.SuccessWithLog(c, url, name, success)
 	}
 }
 
@@ -84,17 +85,18 @@ func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
 
 func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/OAuth2/Wechat/CallBack"
 		code := c.Query("code")
 
 		err := h.VerifyState(c)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
 		info, err := h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
@@ -105,7 +107,7 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 
 		err = h.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 

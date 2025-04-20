@@ -27,7 +27,7 @@ func NewLogger(cfg zap.Config) *Logger {
 func (l *Logger) Error(ctx context.Context, name string, msg string, fields ...zap.Field) {
 	tid := extraceTraceId(ctx)
 
-	fields = append([]zap.Field{{Key: "name", String: name}, {Key: "trace_id", String: tid}}, fields...)
+	fields = append([]zap.Field{zap.String("name", name), zap.String("trace_id", tid)}, fields...)
 
 	l.Logger.Error(msg, fields...)
 }
@@ -35,7 +35,7 @@ func (l *Logger) Error(ctx context.Context, name string, msg string, fields ...z
 func (l *Logger) Info(ctx context.Context, name string, msg string, fields ...zap.Field) {
 	tid := extraceTraceId(ctx)
 
-	fields = append([]zap.Field{{Key: "name", String: name}, {Key: "trace_id", String: tid}}, fields...)
+	fields = append([]zap.Field{zap.String("name", name), zap.String("trace_id", tid)}, fields...)
 
 	l.Logger.Info(msg, fields...)
 }
@@ -43,7 +43,7 @@ func (l *Logger) Info(ctx context.Context, name string, msg string, fields ...za
 func (l *Logger) Debug(ctx context.Context, name string, msg string, fields ...zap.Field) {
 	tid := extraceTraceId(ctx)
 
-	fields = append([]zap.Field{{Key: "name", String: name}, {Key: "trace_id", String: tid}}, fields...)
+	fields = append([]zap.Field{zap.String("name", name), zap.String("trace_id", tid)}, fields...)
 
 	l.Logger.Debug(msg, fields...)
 }

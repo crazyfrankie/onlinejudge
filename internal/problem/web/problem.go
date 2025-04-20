@@ -2,11 +2,15 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/problem/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/problem/service"
+)
+
+const (
+	bizError = "biz error"
+	success  = "success handle"
 )
 
 type ProblemHandler struct {
@@ -48,6 +52,7 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/AddProblem"
 		type Req struct {
 			UserId     uint64                 `json:"user_id"`
 			Title      string                 `json:"title"`
@@ -65,7 +70,7 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
-			zap.L().Error("添加题目:绑定失败", zap.Error(err))
+			response.ErrorWithLog(c, name, "bind req error", err)
 			return
 		}
 
@@ -86,15 +91,17 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 
 		err := ctl.svc.AddProblem(c.Request.Context(), pm)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, nil)
+		response.SuccessWithLog(c, nil, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/ModifyProblem"
 		type Req struct {
 			Title      string `json:"title"`
 			Content    string `json:"content"`
@@ -103,6 +110,7 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
+			response.ErrorWithLog(c, name, "bind req error", err)
 			return
 		}
 
@@ -114,29 +122,30 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 			Difficulty: req.Difficulty,
 		})
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, pm)
-
+		response.SuccessWithLog(c, pm, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) GetAllProblems() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/GetAllProblems"
 		problems, err := ctl.svc.GetAllProblems(c.Request.Context())
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, problems)
+		response.SuccessWithLog(c, problems, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/AddTag"
 		type Req struct {
 			Tag string `json:"tag"`
 		}
@@ -148,27 +157,31 @@ func (ctl *ProblemHandler) AddTag() gin.HandlerFunc {
 		err := ctl.svc.AddTag(c.Request.Context(), req.Tag)
 
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, nil)
+		response.SuccessWithLog(c, nil, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) GetAllTags() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/GetAllTags"
 		tags, err := ctl.svc.FindAllTags(c.Request.Context())
 
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, tags)
+		response.SuccessWithLog(c, tags, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/ModifyTag"
 		type Req struct {
 			Id  uint64 `json:"id"`
 			Tag string `json:"tag"`
@@ -176,20 +189,23 @@ func (ctl *ProblemHandler) ModifyTag() gin.HandlerFunc {
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
+			response.ErrorWithLog(c, name, "bind req error", err)
 			return
 		}
 
 		err := ctl.svc.ModifyTag(c.Request.Context(), req.Id, req.Tag)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, nil)
+		response.SuccessWithLog(c, nil, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) GetProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/GetProblem"
 		type Req struct {
 			Id  uint64 `json:"id"`
 			Tag string `json:"tag"`
@@ -198,38 +214,44 @@ func (ctl *ProblemHandler) GetProblem() gin.HandlerFunc {
 		title := c.Param("name")
 
 		if err := c.Bind(&req); err != nil {
+			response.ErrorWithLog(c, name, "bind req error", err)
 			return
 		}
 
 		pm, err := ctl.svc.GetProblem(c.Request.Context(), req.Id, req.Tag, title)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, pm)
+		response.SuccessWithLog(c, pm, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) GetPmListByCategory() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/GetPmListByCategory"
 		tagName := c.Param("tag")
 
 		problems, err := ctl.svc.GetProblemsByTag(c.Request.Context(), tagName)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, problems)
+		response.SuccessWithLog(c, problems, name, success)
 	}
 }
 
 func (ctl *ProblemHandler) GetProblemSet() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Problem/GetProblemSet"
 		tags, err := ctl.svc.FindCountByTags(c.Request.Context())
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
+			return
 		}
 
-		response.Success(c, tags)
+		response.SuccessWithLog(c, tags, name, success)
 	}
 }

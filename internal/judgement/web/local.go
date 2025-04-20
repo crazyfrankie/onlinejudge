@@ -12,6 +12,11 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/local"
 )
 
+const (
+	bizError = "biz error"
+	success  = "success handle"
+)
+
 type SubmitResp struct {
 	SubmissionId uint64 `json:"submission_id"`
 }
@@ -36,12 +41,14 @@ func (ctl *LocalSubmitHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Judge/Local/RunCode"
 		type Req struct {
 			ProblemId uint64 `json:"problem_id"`
 			TypedCode string `json:"typed_code"`
 		}
 		var req Req
 		if err := c.Bind(&req); err != nil {
+			response.ErrorWithLog(c, name, "bind req error", err)
 			return
 		}
 
@@ -56,27 +63,29 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 			SubmitTime: time.Now().Unix(),
 		})
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, SubmitResp{
+		response.SuccessWithLog(c, SubmitResp{
 			SubmissionId: submitId,
-		})
+		}, name, success)
 	}
 }
 
 func (ctl *LocalSubmitHandler) Check() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Judge/Local/Check"
+
 		sid := c.Param("submissionId")
 		id, _ := strconv.ParseUint(sid, 10, 64)
 
 		res, err := ctl.svc.CheckResult(c.Request.Context(), id)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, res)
+		response.SuccessWithLog(c, res, name, success)
 	}
 }

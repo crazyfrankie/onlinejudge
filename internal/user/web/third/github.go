@@ -20,6 +20,11 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
 )
 
+const (
+	bizError = "biz error"
+	success  = "success handle"
+)
+
 type OAuthGithubHandler struct {
 	svc      github.Service
 	userSvc  service.UserService
@@ -46,20 +51,21 @@ func (h *OAuthGithubHandler) RegisterRoute(r *gin.Engine) {
 
 func (h *OAuthGithubHandler) GitAuthUrl() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/OAuth2/Github/GitAuthUrl"
 		state := uuid.New().String()
 
 		url, err := h.svc.AuthUrl(c.Request.Context(), state)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
 		if err := h.SetCookie(c, state); err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
-		response.Success(c, url)
+		response.SuccessWithLog(c, url, name, success)
 	}
 }
 
@@ -80,25 +86,26 @@ func (h *OAuthGithubHandler) SetCookie(c *gin.Context, state string) error {
 
 func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/OAuth2/Github/CallBack"
 		code := c.Query("code")
 
 		err := h.VerifyState(c)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrInternalServer))
 			return
 		}
 
 		var res github.Result
 		res, err = h.svc.VerifyCode(c.Request.Context(), code)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
 		var info domain.GithubInfo
 		info, err = h.svc.AcquireUserInfo(c.Request.Context(), res.AccessToken)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 
@@ -106,7 +113,7 @@ func (h *OAuthGithubHandler) CallBack() gin.HandlerFunc {
 
 		err = h.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
-			response.Error(c, er.NewBizError(constant.ErrUserInternalServer))
+			response.ErrorWithLog(c, name, bizError, er.NewBizError(constant.ErrUserInternalServer))
 			return
 		}
 

@@ -8,8 +8,8 @@ package ratelimit
 import (
 	"context"
 	"fmt"
-	
-	"github.com/crazyfrankie/onlinejudge/internal/sms/service"
+
+	"github.com/crazyfrankie/onlinejudge/internal/sm/service/sms/service"
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 

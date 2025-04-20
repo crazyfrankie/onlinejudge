@@ -14,6 +14,11 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
 )
 
+const (
+	bizError = "biz error"
+	success  = "success handle"
+)
+
 type AdminHandler struct {
 	svc service.ArticleService
 }
@@ -36,9 +41,10 @@ func (ctl *AdminHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/Admin/Edit"
 		var req ArticleReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
+			response.ErrorWithLog(c, name, bizError, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
@@ -47,19 +53,20 @@ func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 
 		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, id)
+		response.SuccessWithLog(c, id, name, success)
 	}
 }
 
 func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/Admin/Publish"
 		var req ArticleReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
+			response.ErrorWithLog(c, name, bizError, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
@@ -68,16 +75,17 @@ func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 
 		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, id)
+		response.SuccessWithLog(c, id, name, success)
 	}
 }
 
 func (ctl *AdminHandler) WithDraw() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/Admin/WithDraw"
 		id := c.Query("id")
 
 		claims := c.MustGet("claims")
@@ -91,11 +99,11 @@ func (ctl *AdminHandler) WithDraw() gin.HandlerFunc {
 			},
 		})
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		response.Success(c, nil)
+		response.SuccessWithLog(c, nil, name, success)
 	}
 }
 
@@ -114,15 +122,16 @@ func (ctl *AdminHandler) WithDraw() gin.HandlerFunc {
 
 func (ctl *AdminHandler) List() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/Admin/List"
 		var req ListReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
+			response.ErrorWithLog(c, name, bizError, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
 		res, err := ctl.svc.List(c.Request.Context(), req.Offset, req.Limit)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
@@ -137,12 +146,13 @@ func (ctl *AdminHandler) List() gin.HandlerFunc {
 			})
 		}
 
-		response.Success(c, resp)
+		response.SuccessWithLog(c, resp, name, success)
 	}
 }
 
 func (ctl *AdminHandler) Detail() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/Admin/Detail"
 		claims := c.MustGet("claims")
 		claim := claims.(*auth.Claims)
 
@@ -158,7 +168,7 @@ func (ctl *AdminHandler) Detail() gin.HandlerFunc {
 
 		err = eg.Wait()
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
@@ -171,6 +181,6 @@ func (ctl *AdminHandler) Detail() gin.HandlerFunc {
 			Status:  art.Status.ToUint8(),
 		}
 
-		response.Success(c, resp)
+		response.SuccessWithLog(c, resp, name, success)
 	}
 }

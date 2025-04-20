@@ -1,9 +1,7 @@
 package web
 
 import (
-	"errors"
-	"net/http"
-
+	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/gin-gonic/gin"
 
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
@@ -30,6 +28,7 @@ func (ctl *SubmissionHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Judge/Remote/RunCode"
 		type Req struct {
 			UserId    uint64 `json:"userId"`
 			ProblemId uint64 `json:"problemId"`
@@ -39,40 +38,7 @@ func (ctl *SubmissionHandler) RunCode() gin.HandlerFunc {
 
 		var req Req
 		if err := c.Bind(&req); err != nil {
-			return
-		}
-
-		result, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
-			UserId:    req.UserId,
-			ProblemID: req.ProblemId,
-			Code:      req.Code,
-		}, req.Language)
-
-		switch {
-		case errors.Is(err, remote.ErrSyntax):
-			c.JSON(http.StatusBadRequest, GetResponse(WithStatus(http.StatusBadRequest), WithMsg("your code not fit format")))
-			return
-
-		case err != nil:
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system errors")))
-			return
-		}
-
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(result)))
-	}
-}
-
-func (ctl *SubmissionHandler) SubmitCode() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		type Req struct {
-			UserId    uint64 `json:"userId"`
-			ProblemId uint64 `json:"problemId"`
-			Code      string `json:"code"`
-			Language  string `json:"language"`
-		}
-
-		var req Req
-		if err := c.Bind(&req); err != nil {
+			response.ErrorWithLog(c, name, "bind req error", err)
 			return
 		}
 
@@ -82,10 +48,41 @@ func (ctl *SubmissionHandler) SubmitCode() gin.HandlerFunc {
 			Code:      req.Code,
 		}, req.Language)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, GetResponse(WithStatus(http.StatusInternalServerError), WithMsg("system errors")))
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
-		c.JSON(http.StatusOK, GetResponse(WithStatus(http.StatusOK), WithData(result)))
+		response.SuccessWithLog(c, result, name, success)
+	}
+}
+
+func (ctl *SubmissionHandler) SubmitCode() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name := "onlinejudge/Judge/Remote/SubmitCode"
+
+		type Req struct {
+			UserId    uint64 `json:"userId"`
+			ProblemId uint64 `json:"problemId"`
+			Code      string `json:"code"`
+			Language  string `json:"language"`
+		}
+
+		var req Req
+		if err := c.Bind(&req); err != nil {
+			response.ErrorWithLog(c, name, "bind req error", err)
+			return
+		}
+
+		result, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
+			UserId:    req.UserId,
+			ProblemID: req.ProblemId,
+			Code:      req.Code,
+		}, req.Language)
+		if err != nil {
+			response.ErrorWithLog(c, name, bizError, err)
+			return
+		}
+
+		response.SuccessWithLog(c, result, name, success)
 	}
 }

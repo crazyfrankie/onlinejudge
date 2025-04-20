@@ -42,15 +42,16 @@ func (ctl *ArticleHandler) RegisterRoute(r *gin.Engine) {
 
 func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/PubList"
 		var req ListReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
+			response.ErrorWithLog(c, name, bizError, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
 		res, err := ctl.svc.PubList(c.Request.Context(), req.Offset, req.Limit)
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
@@ -65,12 +66,14 @@ func (ctl *ArticleHandler) PubList() gin.HandlerFunc {
 			})
 		}
 
-		response.Success(c, resp)
+		response.SuccessWithLog(c, resp, name, success)
 	}
 }
 
 func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/PubDetail"
+
 		claims := c.MustGet("claims")
 		claim := claims.(*auth.Claims)
 
@@ -92,7 +95,7 @@ func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 
 		err = eg.Wait()
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 			return
 		}
 
@@ -113,15 +116,16 @@ func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 			Liked:      inter.Liked,
 		}
 
-		response.Success(c, resp)
+		response.SuccessWithLog(c, resp, name, success)
 	}
 }
 
 func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/Article/Like"
 		var req LikeReq
 		if err := c.ShouldBind(&req); err != nil {
-			response.Error(c, errors.NewBizError(constant.ErrArticleInvalidParams))
+			response.ErrorWithLog(c, name, bizError, errors.NewBizError(constant.ErrArticleInvalidParams))
 			return
 		}
 
@@ -136,9 +140,9 @@ func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 		}
 
 		if err != nil {
-			response.Error(c, err)
+			response.ErrorWithLog(c, name, bizError, err)
 		}
 
-		response.Success(c, nil)
+		response.SuccessWithLog(c, nil, name, success)
 	}
 }
