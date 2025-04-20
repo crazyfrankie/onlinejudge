@@ -11,10 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
-	smsSvc "github.com/crazyfrankie/onlinejudge/internal/sms/service"
-	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
+	"github.com/crazyfrankie/onlinejudge/internal/sm/repository"
+	svc "github.com/crazyfrankie/onlinejudge/internal/sm/service/sms/service"
 )
 
 const (
@@ -36,10 +38,10 @@ type CodeService interface {
 
 type CodeSvc struct {
 	repo repository.CodeRepository
-	sms  smsSvc.Service
+	sms  svc.Service
 }
 
-func NewCodeService(r repository.CodeRepository, sms smsSvc.Service) CodeService {
+func NewCodeService(r repository.CodeRepository, sms svc.Service) CodeService {
 	return &CodeSvc{
 		repo: r,
 		sms:  sms,
@@ -47,23 +49,20 @@ func NewCodeService(r repository.CodeRepository, sms smsSvc.Service) CodeService
 }
 
 func (svc *CodeSvc) Send(ctx context.Context, biz, receiver string) error {
-	// 生成一个验证码
-	code := svc.GenerateCode()
+	ctx, span := otel.Tracer("onlinejudge/user/service").Start(ctx, "CodeService/Verify")
+	defer span.End()
 
-	// 加密
+	code := svc.GenerateCode()
 	enCode := svc.GenerateHMAC(code, secretKey)
 
-	// 塞进去 Redis
 	err := svc.repo.Store(ctx, biz, receiver, enCode)
 	if err != nil {
 		if errors.Is(err, ErrSendTooMany) {
 			return er.NewBizError(constant.ErrUserForbidden)
-		} else {
-			return er.NewBizError(constant.ErrCodeInternalServer)
 		}
+		return er.NewBizError(constant.ErrCodeInternalServer)
 	}
 
-	// 发送出去
 	err = svc.sms.Send(ctx, codeTplId, []string{code}, receiver)
 	if err != nil {
 		return er.NewBizError(constant.ErrCodeInternalServer)
@@ -73,6 +72,9 @@ func (svc *CodeSvc) Send(ctx context.Context, biz, receiver string) error {
 }
 
 func (svc *CodeSvc) Verify(ctx context.Context, biz, phone, inputCode string) error {
+	ctx, span := otel.Tracer("onlinejudge/user/service").Start(ctx, "CodeService/Verify")
+	defer span.End()
+
 	// 拿到 code 后加密再去跟 redis 中的 code 进行对比
 	enCode := svc.GenerateHMAC(inputCode, secretKey)
 

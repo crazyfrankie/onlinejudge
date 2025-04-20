@@ -9,15 +9,16 @@ import (
 
 	"github.com/crazyfrankie/onlinejudge/internal/article/repository"
 	"github.com/crazyfrankie/onlinejudge/pkg/saramax"
+	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 )
 
 type ArticleConsumer struct {
 	client sarama.Client
 	repo   *repository.InteractiveArtRepository
-	l      *zap.Logger
+	l      *zapx.Logger
 }
 
-func NewArticleConsumer(client sarama.Client, repo *repository.InteractiveArtRepository, l *zap.Logger) Consumer {
+func NewArticleConsumer(client sarama.Client, repo *repository.InteractiveArtRepository, l *zapx.Logger) Consumer {
 	return &ArticleConsumer{
 		client: client,
 		repo:   repo,
@@ -32,9 +33,9 @@ func (a *ArticleConsumer) Start() error {
 	}
 
 	go func() {
-		err := cg.Consume(context.Background(), []string{"article_read"}, saramax.NewHandler[ReadEvent](a.l, a.Consume))
+		err := cg.Consume(context.Background(), []string{"article_read"}, saramax.NewHandler[ReadEvent](a.l.Logger, a.Consume))
 		if err != nil {
-			a.l.Error("退出消费循环异常", zap.Error(err))
+			a.l.Logger.Error("退出消费循环异常", zap.Error(err))
 		}
 	}()
 

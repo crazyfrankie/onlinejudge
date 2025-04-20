@@ -1,12 +1,9 @@
-//go:build wireinject
-
 package article
 
 import (
 	"github.com/IBM/sarama"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	"github.com/crazyfrankie/onlinejudge/internal/article/event"
@@ -15,6 +12,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
 	"github.com/crazyfrankie/onlinejudge/internal/article/web"
+	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 )
 
 func NewSyncProducer(client sarama.Client) sarama.SyncProducer {
@@ -26,7 +24,7 @@ func NewSyncProducer(client sarama.Client) sarama.SyncProducer {
 	return res
 }
 
-func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *Module {
+func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zapx.Logger) *Module {
 	wire.Build(
 		dao.NewArticleDao,
 		dao.NewInteractiveDao,

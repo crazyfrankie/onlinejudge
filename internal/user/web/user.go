@@ -15,18 +15,20 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
+	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 )
 
 type UserHandler struct {
-	logger  *zap.Logger
+	logger  *zapx.Logger
 	userSvc service.UserService
-	codeSvc service.CodeService
+	codeSvc sm.SmSvc
 	jwt     auth.JWTHandler
 }
 
-func NewUserHandler(logger *zap.Logger, userSvc service.UserService, codeSvc service.CodeService, jwtHdl auth.JWTHandler) *UserHandler {
+func NewUserHandler(logger *zapx.Logger, userSvc service.UserService, codeSvc sm.SmSvc, jwtHdl auth.JWTHandler) *UserHandler {
 	return &UserHandler{
 		logger:  logger,
 		userSvc: userSvc,
@@ -74,8 +76,10 @@ func (ctl *UserHandler) SendVerificationCode() gin.HandlerFunc {
 
 func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		name := "onlinejudge/User/VerificationCode"
 		var req VerifyCodeReq
 		if err := c.Bind(&req); err != nil {
+			ctl.logger.Error(c.Request.Context(), name, "bind req error", zap.Error(err))
 			return
 		}
 
@@ -84,23 +88,27 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 
 		err := ctl.codeSvc.Verify(ctx, req.Biz, req.Phone, req.Code)
 		if err != nil {
+			ctl.logger.Error(c.Request.Context(), name, "verify code error", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
 		user, err := ctl.userSvc.FindOrCreateUser(c.Request.Context(), req.Phone)
 		if err != nil {
+			ctl.logger.Error(c.Request.Context(), name, "find or create user error", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
 		err = ctl.jwt.SetLoginToken(c, user.Id)
 		if err != nil {
+			ctl.logger.Error(c.Request.Context(), name, "set login token error", zap.Error(err))
 			response.Error(c, err)
 			return
 		}
 
-		ctl.logger.Info(fmt.Sprintf("%s:用户处理成功", req.Biz), zap.String("phone", req.Phone))
+		ctl.logger.Info(c.Request.Context(), name, fmt.Sprintf("%s:用户处理成功", req.Biz),
+			zap.String("phone", req.Phone))
 
 		response.Success(c, map[string]interface{}{
 			"id":    user.Id,

@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
+	"github.com/crazyfrankie/onlinejudge/internal/sm/repository/cache"
 )
 
 var (

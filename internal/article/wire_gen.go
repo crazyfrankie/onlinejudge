@@ -14,24 +14,24 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/article/repository/dao"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
 	"github.com/crazyfrankie/onlinejudge/internal/article/web"
+	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zap.Logger) *Module {
+func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zapx.Logger) *Module {
 	gormArticleDao := dao.NewArticleDao(db)
 	articleRepository := repository.NewArticleRepository(gormArticleDao)
 	syncProducer := NewSyncProducer(client)
 	producer := event.NewArticleProducer(syncProducer)
-	articleService := service.NewArticleService(articleRepository, l, producer)
+	articleService := service.NewArticleService(articleRepository, producer)
 	interactiveDao := dao.NewInteractiveDao(db)
 	interactiveCache := cache.NewInteractiveCache(cmd)
 	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
 	interactiveService := service.NewInteractiveService(interactiveArtRepository)
-	articleHandler := web.NewArticleHandler(articleService, interactiveService)
+	articleHandler := web.NewArticleHandler(articleService, interactiveService, l)
 	adminHandler := web.NewAdminHandler(articleService)
 	consumer := event.NewArticleConsumer(client, interactiveArtRepository, l)
 	module := &Module{

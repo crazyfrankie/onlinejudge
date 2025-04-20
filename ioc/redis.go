@@ -33,9 +33,11 @@ func InitRedis() redis.Cmdable {
 	if err != nil {
 		panic(err)
 	}
-
+ 
 	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(exporter, metric.WithTimeout(time.Second*10))),
+		metric.WithReader(metric.NewPeriodicReader(exporter,
+			metric.WithTimeout(time.Second*10),
+			metric.WithInterval(time.Second*30))),
 	)
 	// metrics instrumentation.
 	if err := redisotel.InstrumentMetrics(client, redisotel.WithMeterProvider(meterProvider)); err != nil {

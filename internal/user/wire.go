@@ -3,36 +3,32 @@
 package user
 
 import (
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
-	"github.com/crazyfrankie/onlinejudge/internal/sms"
-	"github.com/crazyfrankie/onlinejudge/internal/user/web"
-	"go.uber.org/zap"
-
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
+	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/github"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
+	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	ratelimit2 "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 )
 
-func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *auth.Module, smsModule *sms.Module) *Module {
+func InitModule(l *zapx.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *auth.Module, smsModule *sm.Module) *Module {
 	wire.Build(
 		dao.NewUserDao,
 		cache.NewUserCache,
-		cache.NewRedisCodeCache,
 
-		repository.NewCodeRepository,
 		repository.NewUserRepository,
 
 		service.NewUserService,
-		service.NewCodeService,
 		github.NewService,
 		wechat.NewService,
 
@@ -40,7 +36,7 @@ func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit
 		third.NewOAuthGithubHandler,
 		third.NewOAuthWeChatHandler,
 
-		wire.FieldsOf(new(*sms.Module), "SmsSvc"),
+		wire.FieldsOf(new(*sm.Module), "Sm"),
 		wire.FieldsOf(new(*auth.Module), "Hdl"),
 		wire.Struct(new(Module), "*"),
 	)

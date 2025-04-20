@@ -6,8 +6,6 @@ import (
 	"log"
 	"strconv"
 
-	"go.uber.org/zap"
-
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
@@ -30,14 +28,12 @@ type ArticleService interface {
 
 type articleService struct {
 	repo     *repository.ArticleRepository
-	logger   *zap.Logger
 	producer event.Producer
 }
 
-func NewArticleService(repo *repository.ArticleRepository, logger *zap.Logger, producer event.Producer) ArticleService {
+func NewArticleService(repo *repository.ArticleRepository, producer event.Producer) ArticleService {
 	return &articleService{
 		repo:     repo,
-		logger:   logger,
 		producer: producer,
 	}
 }

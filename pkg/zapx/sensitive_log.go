@@ -1,8 +1,61 @@
 package zapx
 
 import (
+	"context"
+
+	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+type Logger struct {
+	*zap.Logger
+}
+
+func NewLogger(cfg zap.Config) *Logger {
+	l, err := cfg.Build(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+		return NewCustomCore(core)
+	}))
+	if err != nil {
+		return nil
+	}
+	zap.RedirectStdLog(l)
+
+	return &Logger{Logger: l}
+}
+
+func (l *Logger) Error(ctx context.Context, name string, msg string, fields ...zap.Field) {
+	tid := extraceTraceId(ctx)
+
+	fields = append([]zap.Field{{Key: "name", String: name}, {Key: "trace_id", String: tid}}, fields...)
+
+	l.Logger.Error(msg, fields...)
+}
+
+func (l *Logger) Info(ctx context.Context, name string, msg string, fields ...zap.Field) {
+	tid := extraceTraceId(ctx)
+
+	fields = append([]zap.Field{{Key: "name", String: name}, {Key: "trace_id", String: tid}}, fields...)
+
+	l.Logger.Info(msg, fields...)
+}
+
+func (l *Logger) Debug(ctx context.Context, name string, msg string, fields ...zap.Field) {
+	tid := extraceTraceId(ctx)
+
+	fields = append([]zap.Field{{Key: "name", String: name}, {Key: "trace_id", String: tid}}, fields...)
+
+	l.Logger.Debug(msg, fields...)
+}
+
+func extraceTraceId(ctx context.Context) string {
+	spanCtx := oteltrace.SpanContextFromContext(ctx)
+	if !spanCtx.IsValid() {
+		return ""
+	}
+
+	return spanCtx.TraceID().String()
+}
 
 type CustomCore struct {
 	zapcore.Core

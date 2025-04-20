@@ -8,7 +8,7 @@ package user
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
-	"github.com/crazyfrankie/onlinejudge/internal/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/dao"
@@ -18,22 +18,19 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/user/web"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
 	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitModule(l *zap.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *auth.Module, smsModule *sms.Module) *Module {
+func InitModule(l *zapx.Logger, cmd redis.Cmdable, db *gorm.DB, limiter ratelimit.Limiter, mdlModule *auth.Module, smsModule *sm.Module) *Module {
 	userDao := dao.NewUserDao(db)
 	userCache := cache.NewUserCache(cmd)
 	userRepository := repository.NewUserRepository(userDao, userCache)
 	userService := service.NewUserService(userRepository)
-	codeCache := cache.NewRedisCodeCache(cmd)
-	codeRepository := repository.NewCodeRepository(codeCache)
-	serviceService := smsModule.SmsSvc
-	codeService := service.NewCodeService(codeRepository, serviceService)
+	codeService := smsModule.Sm
 	jwtHandler := mdlModule.Hdl
 	userHandler := web.NewUserHandler(l, userService, codeService, jwtHandler)
 	githubService := github.NewService()
