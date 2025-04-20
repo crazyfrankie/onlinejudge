@@ -1,3 +1,5 @@
+//go:build wireinject
+
 package sm
 
 import (
@@ -28,7 +30,7 @@ func InitSMS(limiter ratelimit2.Limiter) service.Service {
 	return metricService
 }
 
-func NewModule(cmd redis.Cmdable, limiter ratelimit2.Limiter) *Module {
+func InitModule(cmd redis.Cmdable, limiter ratelimit2.Limiter) *Module {
 	wire.Build(
 		cache.NewRedisCodeCache,
 		repository.NewCodeRepository,

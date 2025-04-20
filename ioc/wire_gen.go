@@ -11,7 +11,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
-	"github.com/crazyfrankie/onlinejudge/internal/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
 	"github.com/google/wire"
 )
@@ -27,8 +27,8 @@ func InitApp() *App {
 	authorizer := InitAuthz(db)
 	v := GinMiddlewares(cmdable, limiter, jwtHandler, authorizer)
 	logger := InitLog()
-	smsModule := sms.NewModule(limiter)
-	userModule := user.InitModule(logger, cmdable, db, limiter, module, smsModule)
+	smModule := sm.InitModule(cmdable, limiter)
+	userModule := user.InitModule(logger, cmdable, db, limiter, module, smModule)
 	userHandler := userModule.Hdl
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl

@@ -7,7 +7,7 @@ import (
 	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
-	"github.com/crazyfrankie/onlinejudge/internal/sms"
+	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
 	"github.com/google/wire"
 )
@@ -18,7 +18,7 @@ func InitApp() *App {
 	wire.Build(
 		BaseSet,
 		auth.InitModule,
-		sms.NewModule,
+		sm.InitModule,
 		user.InitModule,
 		problem.InitModule,
 		judgement.InitModule,

@@ -21,7 +21,7 @@ import (
 
 // Injectors from wire.go:
 
-func NewModule(cmd redis.Cmdable, limiter ratelimit.Limiter) *Module {
+func InitModule(cmd redis.Cmdable, limiter ratelimit.Limiter) *Module {
 	codeCache := cache.NewRedisCodeCache(cmd)
 	codeRepository := repository.NewCodeRepository(codeCache)
 	serviceService := InitSMS(limiter)
