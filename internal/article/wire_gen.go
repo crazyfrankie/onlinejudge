@@ -31,7 +31,7 @@ func InitModule(db *gorm.DB, cmd redis.Cmdable, client sarama.Client, l *zapx.Lo
 	interactiveCache := cache.NewInteractiveCache(cmd)
 	interactiveArtRepository := repository.NewInteractiveArtRepository(interactiveDao, interactiveCache)
 	interactiveService := service.NewInteractiveService(interactiveArtRepository)
-	articleHandler := web.NewArticleHandler(articleService, interactiveService, l)
+	articleHandler := web.NewArticleHandler(articleService, interactiveService)
 	adminHandler := web.NewAdminHandler(articleService)
 	consumer := event.NewArticleConsumer(client, interactiveArtRepository, l)
 	module := &Module{

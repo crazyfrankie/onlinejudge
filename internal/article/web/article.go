@@ -1,7 +1,6 @@
 package web
 
 import (
-	"github.com/crazyfrankie/onlinejudge/pkg/zapx"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 
@@ -20,14 +19,12 @@ const (
 type ArticleHandler struct {
 	svc      service.ArticleService
 	interSvc *service.InteractiveService
-	logger   *zapx.Logger
 }
 
-func NewArticleHandler(svc service.ArticleService, interSvc *service.InteractiveService, logger *zapx.Logger) *ArticleHandler {
+func NewArticleHandler(svc service.ArticleService, interSvc *service.InteractiveService) *ArticleHandler {
 	return &ArticleHandler{
 		svc:      svc,
 		interSvc: interSvc,
-		logger:   logger,
 	}
 }
 

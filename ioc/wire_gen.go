@@ -26,9 +26,8 @@ func InitApp() *App {
 	db := InitDB()
 	authorizer := InitAuthz(db)
 	v := GinMiddlewares(cmdable, limiter, jwtHandler, authorizer)
-	logger := InitLog()
 	smModule := sm.InitModule(cmdable, limiter)
-	userModule := user.InitModule(logger, cmdable, db, limiter, module, smModule)
+	userModule := user.InitModule(cmdable, db, limiter, module, smModule)
 	userHandler := userModule.Hdl
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl
@@ -38,6 +37,7 @@ func InitApp() *App {
 	submissionHandler := judgementModule.RemHdl
 	oAuthGithubHandler := userModule.GithubHdl
 	client := InitKafka()
+	logger := InitLog()
 	articleModule := article.InitModule(db, cmdable, client, logger)
 	articleHandler := articleModule.Hdl
 	adminHandler := articleModule.AdminHdl

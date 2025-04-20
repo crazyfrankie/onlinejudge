@@ -21,6 +21,8 @@ func NewLogger(cfg zap.Config) *Logger {
 	}
 	zap.RedirectStdLog(l)
 
+	l = l.WithOptions(zap.AddCallerSkip(1))
+
 	return &Logger{Logger: l}
 }
 
