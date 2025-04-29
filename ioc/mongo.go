@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"go.mongodb.org/mongo-driver/v2/bson"
 	snowflake "github.com/crazyfrankie/snow-flake"
 	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -48,5 +49,17 @@ func InitCollections(db *mongo.Database) error {
 		return err
 	}
 
-	return nil
+	err = db.CreateCollection(ctx, "article_chunks")
+	if err != nil {
+		return err
+	}
+
+	// 创建分片相关索引
+	_, err = db.Collection("article_chunks").Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "article_id", Value: 1}, {Key: "order", Value: 1}},
+		},
+	})
+
+	return err
 }

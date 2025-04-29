@@ -14,3 +14,5 @@ sarama/
 Dockerfile
 
 opentelemetry/
+
+k8s-*.yaml
