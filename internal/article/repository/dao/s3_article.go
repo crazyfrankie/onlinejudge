@@ -48,7 +48,12 @@ func (o *OSSArticleDao) Sync(ctx context.Context, art Article) (uint64, error) {
 		}
 
 		art.ID = id
-		publishArt := OnlineArticle(art)
+		publishArt := OnlineArticle{
+			ID:       art.ID,
+			Title:    art.Title,
+			AuthorID: art.AuthorID,
+			Status:   art.Status,
+		}
 		now := time.Now().UnixMilli()
 		publishArt.Ctime = now
 		publishArt.Utime = now

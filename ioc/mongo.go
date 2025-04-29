@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson"
 	snowflake "github.com/crazyfrankie/snow-flake"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/event"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
