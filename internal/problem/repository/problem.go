@@ -27,9 +27,7 @@ type ProblemRepository interface {
 	FindCountInTag(ctx context.Context) ([]domain.TagWithCount, error)
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, id uint64, tag, title string) (domain.Problem, error)
-	FindById(ctx context.Context, id uint64) ([]domain.TestCase, error)
-	FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, string, error)
-	FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error)
+	FindTestById(ctx context.Context, id uint64) (domain.TestCase, error)
 }
 
 type CacheProblemRepo struct {
@@ -112,14 +110,6 @@ func (repo *CacheProblemRepo) FindByTitle(ctx context.Context, id uint64, tag, t
 	return pm, nil
 }
 
-func (repo *CacheProblemRepo) FindById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+func (repo *CacheProblemRepo) FindTestById(ctx context.Context, id uint64) (domain.TestCase, error) {
 	return repo.dao.FindTestById(ctx, id)
-}
-
-func (repo *CacheProblemRepo) FindAllById(ctx context.Context, id uint64) ([]domain.TestCase, string, error) {
-	return repo.dao.FindAllTestById(ctx, id)
-}
-
-func (repo *CacheProblemRepo) FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error) {
-	return repo.dao.FindTestByIdLocal(ctx, id)
 }

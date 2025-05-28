@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 
 	"github.com/bytedance/sonic"
@@ -34,7 +35,7 @@ type SubmitService interface {
 
 	GetEvaluation(eval map[string]interface{}) (domain.RemoteEvaluation, error)
 
-	GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error)
+	GetResult(ctx context.Context, testCases domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error)
 	SetSubmission(id int8, code, stdin, stdout string) Submission
 
 	CodeFormat(language, way string, submission domain.Submission) (error, bool)
@@ -102,7 +103,7 @@ func (svc *SubmissionSvc) RunCode(ctx context.Context, submission domain.Submiss
 	encodedCode := base64.StdEncoding.EncodeToString([]byte(submission.Code))
 
 	// 获取测试用例
-	testCases, err := svc.pmRepo.FindById(ctx, submission.ProblemID)
+	testCases, err := svc.pmRepo.FindTestById(ctx, submission.ProblemID)
 	if err != nil {
 		return evals, fmt.Errorf("failed to get test cases: %w", err)
 	}
@@ -145,7 +146,7 @@ func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Subm
 	encodedCode := base64.StdEncoding.EncodeToString([]byte(submission.Code))
 
 	// 获取测试用例
-	testCases, _, err := svc.pmRepo.FindAllById(ctx, submission.ProblemID)
+	testCases, err := svc.pmRepo.FindTestById(ctx, submission.ProblemID)
 	if err != nil {
 		return evals, fmt.Errorf("failed to get test cases: %w", err)
 	}
@@ -156,11 +157,13 @@ func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Subm
 	return evals, err
 }
 
-func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error) {
+func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error) {
+	inputs := strings.Split(testCases.Input, " ")
+	outputs := strings.Split(testCases.Output, " ")
 	// 逐个提交测试用例
-	for _, tc := range testCases {
+	for i := 0; i < len(inputs); i++ {
 		// 设置提交代码以及单个测试用例
-		submit := svc.SetSubmission(langId, encodedCode, base64.StdEncoding.EncodeToString([]byte(tc.Input)), base64.StdEncoding.EncodeToString([]byte(tc.Output)))
+		submit := svc.SetSubmission(langId, encodedCode, base64.StdEncoding.EncodeToString([]byte(inputs[i])), base64.StdEncoding.EncodeToString([]byte(outputs[i])))
 
 		jsonData, err := sonic.Marshal(submit)
 		if err != nil {

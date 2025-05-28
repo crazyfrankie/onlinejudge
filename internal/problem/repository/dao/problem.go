@@ -31,9 +31,7 @@ type ProblemDao interface {
 	FindCountInTag(ctx context.Context) ([]domain.TagWithCount, error)
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
-	FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
-	FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, string, error)
-	FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error)
+	FindTestById(ctx context.Context, id uint64) (domain.TestCase, error)
 }
 
 type GormProblemDao struct {
@@ -47,26 +45,29 @@ func NewProblemDao(db *gorm.DB) ProblemDao {
 }
 
 func (dao *GormProblemDao) CreateProblem(ctx context.Context, problem domain.Problem) error {
-	now := time.Now().UnixMilli()
+	now := time.Now().Unix()
 
-	testCasesJSON, err := sonic.Marshal(problem.TestCases)
+	inputs, err := sonic.MarshalString(problem.Input)
 	if err != nil {
 		return err
 	}
 
-	tmpl := fmt.Sprintf(QuestionTemplate, problem.FuncName)
+	outputs, err := sonic.MarshalString(problem.Input)
+	if err != nil {
+		return err
+	}
+
 	pm := Problem{
-		Title:        problem.Title,
-		Content:      problem.Content,
-		Difficulty:   problem.Difficulty,
-		UserId:       problem.UserId,
-		PassRate:     problem.PassRate,
-		TestCases:    string(testCasesJSON),
-		Params:       problem.Params,
-		PreDefine:    problem.PreDefine,
-		TemplateCode: tmpl,
-		Ctime:        now,
-		Uptime:       now,
+		Title:          problem.Title,
+		Content:        problem.Content,
+		Difficulty:     problem.Difficulty,
+		FullTemplate:   problem.FullTemplate,
+		TypeDefinition: problem.TypeDefinition,
+		Func:           problem.Func,
+		Inputs:         inputs,
+		Outputs:        outputs,
+		Ctime:          now,
+		Utime:          now,
 	}
 
 	err = dao.db.WithContext(ctx).Create(&pm).Error
@@ -110,10 +111,9 @@ func (dao *GormProblemDao) UpdateProblem(ctx context.Context, id uint64, problem
 
 	updatePm := domain.Problem{
 		Id:         pm.ID,
-		UserId:     pm.UserId,
 		Title:      pm.Title,
 		Content:    pm.Content,
-		PassRate:   pm.PassRate,
+		PassRate:   fmt.Sprintf("%.2f%", float64(pm.TotalPass/pm.TotalSubmit)),
 		MaxRuntime: pm.MaxRuntime,
 		MaxMem:     pm.MaxMem,
 		Difficulty: pm.Difficulty,
@@ -237,11 +237,10 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 
 	pm := domain.Problem{
 		Id:         problem.ID,
-		UserId:     problem.UserId,
 		Title:      problem.Title,
 		Content:    problem.Content,
 		Tag:        tag,
-		PassRate:   problem.PassRate,
+		PassRate:   fmt.Sprintf("%.2f%", float64(problem.TotalPass/problem.TotalSubmit)),
 		MaxMem:     problem.MaxMem,
 		MaxRuntime: problem.MaxRuntime,
 		Difficulty: problem.Difficulty,
@@ -250,66 +249,19 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 	return pm, nil
 }
 
-func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
+func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) (domain.TestCase, error) {
 	var problem Problem
 
 	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []domain.TestCase{}, ErrProblemNotFound
+			return domain.TestCase{}, ErrProblemNotFound
 		}
-		return []domain.TestCase{}, err
+		return domain.TestCase{}, err
 	}
 
-	var testCases []domain.TestCase
-	err = sonic.Unmarshal([]byte(problem.TestCases), &testCases)
-	if err != nil {
-		return testCases[:3], err
-	}
-
-	return testCases[:3], nil
-}
-
-func (dao *GormProblemDao) FindAllTestById(ctx context.Context, id uint64) ([]domain.TestCase, string, error) {
-	var problem Problem
-
-	err := dao.db.WithContext(ctx).Where("id = ?", id).Select("template_code", "params", "test_cases").First(&problem).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return []domain.TestCase{}, "", ErrProblemNotFound
-		}
-		return []domain.TestCase{}, "", err
-	}
-
-	var testCases []domain.TestCase
-	err = sonic.Unmarshal([]byte(problem.TestCases), &testCases)
-	if err != nil {
-		return testCases, "", err
-	}
-
-	return testCases, problem.TemplateCode, nil
-}
-
-func (dao *GormProblemDao) FindTestByIdLocal(ctx context.Context, id uint64) (domain.LocalJudge, error) {
-	var problem Problem
-
-	err := dao.db.WithContext(ctx).Where("id = ?", id).Select("template_code", "params", "test_cases").First(&problem).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return domain.LocalJudge{}, ErrProblemNotFound
-		}
-		return domain.LocalJudge{}, err
-	}
-
-	var judge domain.LocalJudge
-	var tc []domain.LocalTestCase
-	err = sonic.Unmarshal([]byte(problem.TestCases), &tc)
-	if err != nil {
-		fmt.Println(err)
-		return domain.LocalJudge{}, err
-	}
-	judge.Params = problem.Params
-	judge.TemplateCode = problem.TemplateCode
-	judge.TestCases = tc
-	return judge, nil
+	return domain.TestCase{
+		Input:  problem.Inputs,
+		Output: problem.Outputs,
+	}, nil
 }

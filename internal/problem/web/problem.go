@@ -47,25 +47,24 @@ func (ctl *ProblemHandler) RegisterRoute(r *gin.Engine) {
 		tagGroup.GET("", ctl.GetAllTags())
 		tagGroup.PUT("modify", ctl.ModifyTag())
 	}
-
 }
 
 func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := "onlinejudge/Problem/AddProblem"
 		type Req struct {
-			UserId     uint64                 `json:"user_id"`
-			Title      string                 `json:"title"`
-			Tag        string                 `json:"tag"`
-			Content    string                 `json:"content"`
-			TestCases  []domain.LocalTestCase `json:"test_case"`
-			PassRate   string                 `json:"pass_rate"`
-			FuncName   string                 `json:"func_name"`
-			Params     string                 `json:"params"`
-			PreDefine  string                 `json:"pre_define"`
-			MaxMem     int                    `json:"max_mem"`
-			MaxRunTime int                    `json:"max_run_time"`
-			Difficulty uint8                  `json:"difficulty"`
+			UserId         uint64   `json:"user_id"`
+			Title          string   `json:"title"`
+			Tag            string   `json:"tag"`
+			Content        string   `json:"content"`
+			FullTemplate   string   `json:"fullTemplate"`
+			TypeDefinition string   `json:"typeDefinition"`
+			Func           string   `json:"func"`
+			Inputs         []string `json:"inputs"`
+			Outputs        []string `json:"outputs"`
+			MaxMem         int      `json:"max_mem"`
+			MaxRunTime     int      `json:"max_run_time"`
+			Difficulty     string   `json:"difficulty"`
 		}
 
 		var req Req
@@ -75,18 +74,18 @@ func (ctl *ProblemHandler) AddProblem() gin.HandlerFunc {
 		}
 
 		pm := domain.Problem{
-			UserId:     req.UserId,
-			Title:      req.Title,
-			Tag:        req.Tag,
-			Content:    req.Content,
-			PassRate:   req.PassRate,
-			TestCases:  req.TestCases,
-			MaxMem:     req.MaxMem,
-			FuncName:   req.FuncName,
-			Params:     req.Params,
-			PreDefine:  req.PreDefine,
-			MaxRuntime: req.MaxRunTime,
-			Difficulty: req.Difficulty,
+			UserId:         req.UserId,
+			Title:          req.Title,
+			Tag:            req.Tag,
+			Content:        req.Content,
+			FullTemplate:   req.FullTemplate,
+			TypeDefinition: req.TypeDefinition,
+			Func:           req.Func,
+			Input:          req.Inputs,
+			Output:         req.Outputs,
+			MaxMem:         req.MaxMem,
+			MaxRuntime:     req.MaxRunTime,
+			Difficulty:     req.Difficulty,
 		}
 
 		err := ctl.svc.AddProblem(c.Request.Context(), pm)
@@ -105,7 +104,7 @@ func (ctl *ProblemHandler) ModifyProblem() gin.HandlerFunc {
 		type Req struct {
 			Title      string `json:"title"`
 			Content    string `json:"content"`
-			Difficulty uint8  `json:"difficulty"`
+			Difficulty string `json:"difficulty"`
 		}
 
 		var req Req
