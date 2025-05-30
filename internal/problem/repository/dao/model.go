@@ -1,7 +1,7 @@
 package dao
 
 type Problem struct {
-	ID             int64  `gorm:"primaryKey,autoIncrement"`
+	ID             uint64 `gorm:"primaryKey,autoIncrement"`
 	Title          string `gorm:"type:varchar(128)"`
 	Content        string
 	FullTemplate   string

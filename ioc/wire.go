@@ -17,6 +17,7 @@ var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)
 func InitApp() *App {
 	wire.Build(
 		BaseSet,
+		InitJudgeClient,
 		auth.InitModule,
 		sm.InitModule,
 		user.InitModule,

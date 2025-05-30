@@ -31,6 +31,7 @@ type ProblemDao interface {
 	FindCountInTag(ctx context.Context) ([]domain.TagWithCount, error)
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
+	FindProblemByID(ctx context.Context, id uint64) (domain.Problem, error)
 	FindTestById(ctx context.Context, id uint64) (domain.TestCase, error)
 }
 
@@ -247,6 +248,32 @@ func (dao *GormProblemDao) FindByTitle(ctx context.Context, tag, title string) (
 	}
 
 	return pm, nil
+}
+
+func (dao *GormProblemDao) FindProblemByID(ctx context.Context, id uint64) (domain.Problem, error) {
+	var pm Problem
+	err := dao.db.WithContext(ctx).Model(&Problem{}).Where("id = ?", id).Find(&pm).Error
+	if err != nil {
+		return domain.Problem{}, err
+	}
+
+	var input []string
+	_ = sonic.UnmarshalString(pm.Inputs, &input)
+	var output []string
+	_ = sonic.UnmarshalString(pm.Outputs, &output)
+
+	return domain.Problem{
+		Id:             pm.ID,
+		Title:          pm.Title,
+		Content:        pm.Content,
+		Input:          input,
+		Output:         output,
+		FullTemplate:   pm.FullTemplate,
+		TypeDefinition: pm.TypeDefinition,
+		Func:           pm.Func,
+		MaxMem:         pm.MaxMem,
+		MaxRuntime:     pm.MaxRuntime,
+	}, nil
 }
 
 func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) (domain.TestCase, error) {

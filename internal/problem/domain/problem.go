@@ -1,7 +1,7 @@
 package domain
 
 type Problem struct {
-	Id             int64    `json:"id"`
+	Id             uint64   `json:"id"`
 	UserId         uint64   `json:"userId"`
 	Title          string   `json:"title"`
 	Tag            string   `json:"tag"`

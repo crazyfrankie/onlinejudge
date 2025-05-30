@@ -22,6 +22,7 @@ type Config struct {
 	Redis  Redis  `yaml:"redis"`
 	WeChat WeChat `yaml:"wechat"`
 	Kafka  Kafka  `yaml:"kafka"`
+	Judge  Judge  `yaml:"judge"`
 }
 
 type MySQL struct {
@@ -43,6 +44,10 @@ type WeChat struct {
 }
 
 type Kafka struct {
+	Addr string `yaml:"addr"`
+}
+
+type Judge struct {
 	Addr string `yaml:"addr"`
 }
 

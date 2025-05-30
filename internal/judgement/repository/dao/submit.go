@@ -13,6 +13,7 @@ type SubmissionDao interface {
 	CreateSubmit(ctx context.Context, sub domain.Submission) (uint64, error)
 	CreateEvaluate(ctx context.Context, eva domain.Evaluation) error
 	UpdateEvaluate(ctx context.Context, pid, sid uint64, state string) error
+	UpdateResult(ctx context.Context, pid, sid uint64, res map[string]any) error
 	FindEvaluate(ctx context.Context, sid uint64) (domain.Evaluation, error)
 }
 
@@ -54,7 +55,7 @@ func (d *SubmitDao) CreateEvaluate(ctx context.Context, eva domain.Evaluation) e
 		RealTimeUsed: eva.RealTimeUsed,
 		MemoryUsed:   eva.MemoryUsed,
 		StatusMsg:    eva.StatusMsg,
-		State:        st.toUint8(eva.State),
+		State:        st.ToUint8(eva.State),
 		Ctime:        now,
 		Utime:        now,
 	}).Error
@@ -69,12 +70,19 @@ func (d *SubmitDao) UpdateEvaluate(ctx context.Context, pid, sid uint64, state s
 	var st State
 	err := d.db.WithContext(ctx).Model(&Evaluation{}).
 		Where("problem_id = ? AND submission_id = ?", pid, sid).
-		Update("state", st.toUint8(state)).Error
+		Update("state", st.ToUint8(state)).Error
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (d *SubmitDao) UpdateResult(ctx context.Context, pid, sid uint64, res map[string]any) error {
+	err := d.db.WithContext(ctx).Model(&Evaluation{}).
+		Where("problem_id = ? AND submission_id = ?", pid, sid).
+		Updates(res).Error
+	return err
 }
 
 func (d *SubmitDao) FindEvaluate(ctx context.Context, sid uint64) (domain.Evaluation, error) {
@@ -110,6 +118,6 @@ func (d *SubmitDao) FindEvaluate(ctx context.Context, sid uint64) (domain.Evalua
 		RealTimeUsed: eva.RealTimeUsed,
 		MemoryUsed:   eva.MemoryUsed,
 		StatusMsg:    eva.StatusMsg,
-		State:        State(eva.State).toString(),
+		State:        State(eva.State).ToString(),
 	}, err
 }

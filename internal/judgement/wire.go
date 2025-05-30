@@ -3,6 +3,7 @@
 package judgement
 
 import (
+	"github.com/crazyfrankie/go-judge/pkg/rpc"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/dao"
@@ -36,7 +37,7 @@ var RemoteSet = wire.NewSet(
 	web.NewSubmissionHandler,
 )
 
-func InitJudgeKey(cmd redis.Cmdable, db *gorm.DB) string {
+func InitJudgeKey() string {
 	key, ok := os.LookupEnv("RAPIDAPI_KEY")
 	if !ok {
 		panic("environment variable rapidapiKey not found")
@@ -45,7 +46,7 @@ func InitJudgeKey(cmd redis.Cmdable, db *gorm.DB) string {
 	return key
 }
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, module *problem.Module) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, module *problem.Module, judge rpc.JudgeServiceClient) *Module {
 	wire.Build(
 		LocalSet,
 		RemoteSet,

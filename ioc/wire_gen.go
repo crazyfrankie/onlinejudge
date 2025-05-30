@@ -32,7 +32,8 @@ func InitApp() *App {
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl
 	oAuthWeChatHandler := userModule.WeChatHdl
-	judgementModule := judgement.InitModule(cmdable, db, problemModule)
+	judgeServiceClient := InitJudgeClient()
+	judgementModule := judgement.InitModule(cmdable, db, problemModule, judgeServiceClient)
 	localSubmitHandler := judgementModule.LocHdl
 	submissionHandler := judgementModule.RemHdl
 	oAuthGithubHandler := userModule.GithubHdl

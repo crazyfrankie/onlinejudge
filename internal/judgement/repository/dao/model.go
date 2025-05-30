@@ -34,7 +34,7 @@ const (
 	FAILED  = "FAILEd"
 )
 
-func (s State) toUint8(state string) int8 {
+func (s State) ToUint8(state string) int8 {
 	switch state {
 	case PENGIND:
 		return 0
@@ -47,7 +47,7 @@ func (s State) toUint8(state string) int8 {
 	return -1
 }
 
-func (s State) toString() string {
+func (s State) ToString() string {
 	switch s {
 	case 0:
 		return PENGIND

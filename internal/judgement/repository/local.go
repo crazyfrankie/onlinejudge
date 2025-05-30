@@ -12,6 +12,7 @@ type LocalSubmitRepo interface {
 	CreateSubmit(ctx context.Context, sub domain.Submission) (uint64, error)
 	CreateEvaluate(ctx context.Context, eva domain.Evaluation) error
 	UpdateEvaluate(ctx context.Context, pid, sid uint64, state string) error
+	UpdateResult(ctx context.Context, pid, sid uint64, res map[string]any) error
 	FindEvaluate(ctx context.Context, sid uint64) (domain.Evaluation, error)
 }
 
@@ -41,4 +42,8 @@ func (r *LocalSubmissionRepo) UpdateEvaluate(ctx context.Context, pid, sid uint6
 
 func (r *LocalSubmissionRepo) FindEvaluate(ctx context.Context, sid uint64) (domain.Evaluation, error) {
 	return r.dao.FindEvaluate(ctx, sid)
+}
+
+func (r *LocalSubmissionRepo) UpdateResult(ctx context.Context, pid, sid uint64, res map[string]any) error {
+	return r.dao.UpdateResult(ctx, pid, sid, res)
 }

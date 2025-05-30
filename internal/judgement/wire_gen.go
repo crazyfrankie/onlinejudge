@@ -7,6 +7,7 @@
 package judgement
 
 import (
+	"github.com/crazyfrankie/go-judge/pkg/rpc"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/cache"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/dao"
@@ -22,16 +23,16 @@ import (
 
 // Injectors from wire.go:
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, module *problem.Module) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, module *problem.Module, judge rpc.JudgeServiceClient) *Module {
 	localSubmitCache := cache.NewLocalSubmitCache(cmd)
 	submitDao := dao.NewSubmitDao(db)
 	localSubmitRepo := repository.NewLocalSubmitRepo(localSubmitCache, submitDao)
 	problemRepository := module.Repo
-	locSubmitService := local.NewLocSubmitService(localSubmitRepo, problemRepository)
+	locSubmitService := local.NewLocSubmitService(localSubmitRepo, problemRepository, judge)
 	localSubmitHandler := web.NewLocalSubmitHandler(locSubmitService)
 	submitCache := cache.NewSubmitCache(cmd)
 	submitRepository := repository.NewSubmitRepository(submitCache)
-	string2 := InitJudgeKey(cmd, db)
+	string2 := InitJudgeKey()
 	submitService := remote.NewSubmitService(submitRepository, problemRepository, string2)
 	submissionHandler := web.NewSubmissionHandler(submitService)
 	judgementModule := &Module{
@@ -47,7 +48,7 @@ var LocalSet = wire.NewSet(dao.NewSubmitDao, cache.NewLocalSubmitCache, reposito
 
 var RemoteSet = wire.NewSet(cache.NewSubmitCache, repository.NewSubmitRepository, remote.NewSubmitService, web.NewSubmissionHandler)
 
-func InitJudgeKey(cmd redis.Cmdable, db *gorm.DB) string {
+func InitJudgeKey() string {
 	key, ok := os.LookupEnv("RAPIDAPI_KEY")
 	if !ok {
 		panic("environment variable rapidapiKey not found")
