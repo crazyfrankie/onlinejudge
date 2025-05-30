@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 
 	"github.com/bytedance/sonic"
@@ -35,7 +34,7 @@ type SubmitService interface {
 
 	GetEvaluation(eval map[string]interface{}) (domain.RemoteEvaluation, error)
 
-	GetResult(ctx context.Context, testCases domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error)
+	GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error)
 	SetSubmission(id int8, code, stdin, stdout string) Submission
 
 	CodeFormat(language, way string, submission domain.Submission) (error, bool)
@@ -157,13 +156,11 @@ func (svc *SubmissionSvc) SubmitCode(ctx context.Context, submission domain.Subm
 	return evals, err
 }
 
-func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error) {
-	inputs := strings.Split(testCases.Input, " ")
-	outputs := strings.Split(testCases.Output, " ")
+func (svc *SubmissionSvc) GetResult(ctx context.Context, testCases []domain2.TestCase, langId int8, encodedCode string, result []domain.RemoteEvaluation) ([]domain.RemoteEvaluation, error) {
 	// 逐个提交测试用例
-	for i := 0; i < len(inputs); i++ {
+	for i := 0; i < len(testCases); i++ {
 		// 设置提交代码以及单个测试用例
-		submit := svc.SetSubmission(langId, encodedCode, base64.StdEncoding.EncodeToString([]byte(inputs[i])), base64.StdEncoding.EncodeToString([]byte(outputs[i])))
+		submit := svc.SetSubmission(langId, encodedCode, base64.StdEncoding.EncodeToString([]byte(testCases[i].Input)), base64.StdEncoding.EncodeToString([]byte(testCases[i].Output)))
 
 		jsonData, err := sonic.Marshal(submit)
 		if err != nil {

@@ -32,7 +32,7 @@ type ProblemDao interface {
 	FindProblemsByName(ctx context.Context, name string) ([]domain.RoughProblem, error)
 	FindByTitle(ctx context.Context, tag, title string) (domain.Problem, error)
 	FindProblemByID(ctx context.Context, id uint64) (domain.Problem, error)
-	FindTestById(ctx context.Context, id uint64) (domain.TestCase, error)
+	FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error)
 }
 
 type GormProblemDao struct {
@@ -276,19 +276,29 @@ func (dao *GormProblemDao) FindProblemByID(ctx context.Context, id uint64) (doma
 	}, nil
 }
 
-func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) (domain.TestCase, error) {
+func (dao *GormProblemDao) FindTestById(ctx context.Context, id uint64) ([]domain.TestCase, error) {
 	var problem Problem
 
 	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&problem).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return domain.TestCase{}, ErrProblemNotFound
+			return []domain.TestCase{}, ErrProblemNotFound
 		}
-		return domain.TestCase{}, err
+		return []domain.TestCase{}, err
 	}
 
-	return domain.TestCase{
-		Input:  problem.Inputs,
-		Output: problem.Outputs,
-	}, nil
+	var inputs []string
+	_ = sonic.UnmarshalString(problem.Inputs, &inputs)
+	var outputs []string
+	_ = sonic.UnmarshalString(problem.Inputs, &outputs)
+
+	res := make([]domain.TestCase, 0, len(inputs))
+	for i := 0; i < len(inputs); i++ {
+		res = append(res, domain.TestCase{
+			Input:  inputs[i],
+			Output: outputs[i],
+		})
+	}
+
+	return res, nil
 }
