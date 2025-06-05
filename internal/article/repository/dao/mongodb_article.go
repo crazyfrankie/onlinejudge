@@ -3,11 +3,13 @@ package dao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	snowflake "github.com/crazyfrankie/snow-flake"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type MongoArticleDao struct {
@@ -26,85 +28,24 @@ func NewMongoArticleDao(db *mongo.Database, node *snowflake.Node) *MongoArticleD
 	}
 }
 
-// splitContent 将内容分片
-func splitContent(content string) []string {
-	if len(content) <= ChunkSize {
-		return []string{content}
-	}
-
-	var chunks []string
-	for len(content) > 0 {
-		if len(content) <= ChunkSize {
-			chunks = append(chunks, content)
-			break
-		}
-		chunks = append(chunks, content[:ChunkSize])
-		content = content[ChunkSize:]
-	}
-	return chunks
-}
-
-func (m *MongoArticleDao) Create(ctx context.Context, art Article) (int64, error) {
-	now := time.Now().UnixMilli()
+func (m *MongoArticleDao) Create(ctx context.Context, art MongoArticle) (int64, error) {
+	now := time.Now().Unix()
 	art.Ctime = now
 	art.Utime = now
 	id := m.Node.GenerateCode()
 	art.ID = uint64(id)
 
-	// 检查内容大小是否需要分片
-	contentChunks := splitContent(art.Content)
-	if len(contentChunks) > 1 {
-		// 需要分片存储
-		art.ChunkCount = len(contentChunks)
-		art.Content = "" // 清空主文档的内容
-
-		// 开启事务
-		session, err := m.col.Database().Client().StartSession()
-		if err != nil {
-			return 0, err
-		}
-		defer session.EndSession(ctx)
-
-		_, err = session.WithTransaction(ctx, func(ctx context.Context) (interface{}, error) {
-			// 1. 插入主文档
-			if _, err := m.col.InsertOne(ctx, art); err != nil {
-				return nil, err
-			}
-
-			// 2. 插入分片
-			var chunks []interface{}
-			for i, content := range contentChunks {
-				chunk := ArticleChunk{
-					ID:        uint64(m.Node.GenerateCode()),
-					ArticleID: art.ID,
-					Content:   content,
-					Order:     i,
-					Ctime:     now,
-					Utime:     now,
-				}
-				chunks = append(chunks, chunk)
-			}
-
-			_, err := m.chunkCol.InsertMany(ctx, chunks)
-			return nil, err
-		})
-
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		// 不需要分片，直接存储
-		art.ChunkCount = 0
-		_, err := m.col.InsertOne(ctx, art)
-		if err != nil {
-			return 0, err
-		}
+	// 不需要分片，直接存储
+	art.ChunkCount = 0
+	_, err := m.col.InsertOne(ctx, art)
+	if err != nil {
+		return 0, err
 	}
 
-	return int64(id), nil
+	return id, nil
 }
 
-func (m *MongoArticleDao) UpdateById(ctx context.Context, art Article) error {
+func (m *MongoArticleDao) UpdateById(ctx context.Context, art MongoArticle) error {
 	// 操作制作库
 	filter := bson.M{"id": art.ID, "author_id": art.AuthorID}
 	update := bson.D{
@@ -113,7 +54,7 @@ func (m *MongoArticleDao) UpdateById(ctx context.Context, art Article) error {
 			Value: bson.M{
 				"title":   art.Title,
 				"content": art.Content,
-				"utime":   time.Now().UnixMilli(),
+				"utime":   time.Now().Unix(),
 				"status":  art.Status,
 			}},
 	}
@@ -130,77 +71,155 @@ func (m *MongoArticleDao) UpdateById(ctx context.Context, art Article) error {
 	return nil
 }
 
-func (m *MongoArticleDao) Sync(ctx context.Context, art Article) (int64, error) {
-	var (
-		id  = int64(art.ID)
-		err error
-	)
-
-	// 开启事务
+func (m *MongoArticleDao) Sync(ctx context.Context, art MongoArticle) (int64, error) {
 	session, err := m.col.Database().Client().StartSession()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("start session failed: %w", err)
 	}
 	defer session.EndSession(ctx)
 
-	_, err = session.WithTransaction(ctx, func(ctx context.Context) (any, error) {
+	id := int64(art.ID)
+	_, err = session.WithTransaction(ctx, func(sessCtx context.Context) (any, error) {
 		// 处理制作库
+		var err error
 		if id > 0 {
-			err = m.UpdateById(ctx, art)
+			err = m.UpdateById(sessCtx, art)
 		} else {
-			id, err = m.Create(ctx, art)
+			id, err = m.Create(sessCtx, art)
 			art.ID = uint64(id)
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		// 同步到线上库
-		now := time.Now().UnixMilli()
-		art.Utime = now
-
-		// 如果是分片文章，需要先获取完整内容
-		if art.ChunkCount > 0 {
-			chunks, err := m.chunkCol.Find(ctx, bson.M{"article_id": art.ID})
-			if err != nil {
+		// 分片处理
+		now := time.Now().Unix()
+		contentChunks := splitContent(art.Content)
+		abstract := art.Content
+		if len(contentChunks) > 1 {
+			abstract = GenerateAbstract(contentChunks[0], 50)
+			if err := m.replaceChunks(sessCtx, art.ID, contentChunks, now); err != nil {
 				return nil, err
 			}
-			defer chunks.Close(ctx)
-
-			// 组装内容
-			var contents = make([]string, art.ChunkCount)
-			for chunks.Next(ctx) {
-				var chunk ArticleChunk
-				if err := chunks.Decode(&chunk); err != nil {
-					return nil, err
-				}
-				contents[chunk.Order] = chunk.Content
-			}
-
-			// 组装完整内容
-			art.Content = ""
-			for _, content := range contents {
-				art.Content += content
-			}
 		}
 
-		// 同步到线上库，使用 upsert 语义
-		filter := bson.M{"id": art.ID}
-		update := bson.D{
-			{Key: "$set", Value: OnlineArticle{
-				ID:       art.ID,
-				Title:    art.Title,
-				Content:  art.Content,
-				AuthorID: art.AuthorID,
-				Status:   art.Status,
-				Ctime:    art.Ctime,
-				Utime:    art.Utime,
-			}},
-			{Key: "$setOnInsert", Value: bson.D{{Key: "ctime", Value: now}}},
-		}
-		_, err = m.liveCol.UpdateOne(ctx, filter, update)
+		// 同步线上库
+		_, err = m.liveCol.UpdateOne(
+			sessCtx,
+			bson.M{"id": art.ID},
+			bson.D{
+				{"$set", bson.M{
+					"title":    art.Title,
+					"abstract": abstract,
+					"chunked":  len(contentChunks) > 1,
+					"utime":    now,
+				}},
+				{"$setOnInsert", bson.M{"ctime": now}},
+			},
+			options.UpdateOne().SetUpsert(true),
+		)
 		return nil, err
 	})
 
 	return id, err
+}
+
+func (m *MongoArticleDao) replaceChunks(ctx context.Context, articleID uint64, chunks []string, now int64) error {
+	models := []mongo.WriteModel{
+		mongo.NewDeleteManyModel().SetFilter(bson.M{"article_id": articleID}),
+	}
+	for i, chunk := range chunks {
+		models = append(models, mongo.NewInsertOneModel().SetDocument(ArticleChunk{
+			ID:        m.Node.GenerateCode(),
+			ArticleID: articleID,
+			Content:   chunk,
+			Order:     i,
+			Ctime:     now,
+			Utime:     now,
+		}))
+	}
+	_, err := m.chunkCol.BulkWrite(ctx, models)
+	return err
+}
+
+func (m *MongoArticleDao) GetArticleByID(ctx context.Context, id int64) (MongoArticle, error) {
+	filter := bson.M{"id": id}
+	cursor, err := m.liveCol.Find(ctx, filter)
+	if err != nil {
+		return MongoArticle{}, err
+	}
+	var res MongoArticle
+	if err := cursor.All(ctx, &res); err != nil {
+		return MongoArticle{}, err
+	}
+	// 查询经过分片后的结果
+	chunks, err := m.chunkCol.Find(ctx, bson.M{"article_id": id})
+	if err != nil {
+		return MongoArticle{}, err
+	}
+	defer chunks.Close(ctx)
+
+	// 组装内容
+	var contents = make([]string, res.ChunkCount)
+	for chunks.Next(ctx) {
+		var chunk ArticleChunk
+		if err := chunks.Decode(&chunk); err != nil {
+			return MongoArticle{}, err
+		}
+		contents[chunk.Order] = chunk.Content
+	}
+
+	res.Content = ""
+	for _, content := range contents {
+		res.Content += content
+	}
+
+	return res, nil
+}
+
+func (m *MongoArticleDao) GetArticleList(ctx context.Context, page int, limit int) ([]MongoArticle, error) {
+	offset := (page - 1) * limit
+
+	opts := options.Find().
+		SetSort(bson.D{{"utime", -1}}).
+		SetSkip(int64(offset)).
+		SetLimit(int64(limit))
+	cursor, err := m.liveCol.Find(ctx, bson.M{}, opts)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]MongoArticle, limit)
+	if err := cursor.All(ctx, &res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+// splitContent 将内容分片
+func splitContent(content string) []string {
+	runes := []rune(content)
+	if len(runes) <= ChunkSize {
+		return []string{content}
+	}
+
+	var chunks []string
+	for len(runes) > 0 {
+		if len(runes) <= ChunkSize {
+			chunks = append(chunks, string(runes))
+			break
+		}
+		// 按字符数切分
+		chunks = append(chunks, string(runes[:ChunkSize]))
+		runes = runes[ChunkSize:]
+	}
+	return chunks
+}
+
+func GenerateAbstract(text string, maxChars int) string {
+	runes := []rune(text)
+	if len(runes) <= maxChars {
+		return text
+	}
+	return string(runes[:maxChars]) + "…"
 }

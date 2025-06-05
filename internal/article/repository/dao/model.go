@@ -5,7 +5,7 @@ const ChunkSize = 1 * 1024 * 1024 // 1MB
 
 // ArticleChunk 文章分片
 type ArticleChunk struct {
-	ID        uint64 `bson:"id,omitempty"`         // 分片ID
+	ID        int64  `bson:"id,omitempty"`         // 分片ID
 	ArticleID uint64 `bson:"article_id,omitempty"` // 文章ID
 	Content   string `bson:"content,omitempty"`    // 分片内容
 	Order     int    `bson:"order,omitempty"`      // 分片顺序
@@ -13,16 +13,27 @@ type ArticleChunk struct {
 	Utime     int64  `bson:"utime,omitempty"`
 }
 
-// Article 制作库
-type Article struct {
+type MongoArticle struct {
 	ID         uint64 `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
 	Title      string `gorm:"type:varchar(1024)" bson:"title,omitempty"`
 	Content    string `gorm:"type:BLOB" bson:"content,omitempty"`
 	AuthorID   uint64 `gorm:"index:aid_ctime" bson:"author_id,omitempty"`
 	Status     uint8  `bson:"status,omitempty"`
+	Abstract   string `bson:"abstract,omitempty"`
 	Ctime      int64  `gorm:"index:aid_ctime" bson:"ctime,omitempty"`
 	Utime      int64  `bson:"utime,omitempty"`
 	ChunkCount int    `bson:"chunk_count,omitempty"` // 分片数量，0表示未分片
+}
+
+// Article 制作库
+type Article struct {
+	ID       uint64 `gorm:"primaryKey,autoIncrement" bson:"id,omitempty"`
+	Title    string `gorm:"type:varchar(1024)" bson:"title,omitempty"`
+	Content  string `gorm:"type:BLOB" bson:"content,omitempty"`
+	AuthorID uint64 `gorm:"index:aid_ctime" bson:"author_id,omitempty"`
+	Status   uint8  `bson:"status,omitempty"`
+	Ctime    int64  `gorm:"index:aid_ctime" bson:"ctime,omitempty"`
+	Utime    int64  `bson:"utime,omitempty"`
 }
 
 // OnlineArticle 线上库
