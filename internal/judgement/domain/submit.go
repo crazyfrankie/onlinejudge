@@ -5,6 +5,7 @@ type Submission struct {
 	ProblemID  uint64 `json:"problemID"`
 	UserId     uint64 `json:"userId"`
 	Code       string `json:"code"`
+	CodeHash   string `json:"codeHash"`
 	Language   string `json:"language"`
 	SubmitTime int64  `json:"submitTime"`
 }

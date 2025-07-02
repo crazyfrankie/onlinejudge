@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"gorm.io/gorm/clause"
 	"time"
 
 	"gorm.io/gorm"
@@ -31,14 +32,24 @@ func (d *SubmitDao) CreateSubmit(ctx context.Context, sub domain.Submission) (ui
 		ProblemID:  sub.ProblemID,
 		UserId:     sub.UserId,
 		Code:       sub.Code,
+		CodeHash:   sub.CodeHash,
 		Language:   sub.Language,
 		SubmitTime: sub.SubmitTime,
 		Ctime:      now,
 		Uptime:     now,
 	}
-	err := d.db.WithContext(ctx).Create(submit).Error
+	err := d.db.WithContext(ctx).Model(&Submission{}).Clauses(clause.OnConflict{
+		// Columns 哪些列冲突
+		Columns: []clause.Column{{Name: "uid"}, {Name: "problem_id"}, {Name: "language"}, {Name: "code_hash"}},
+		// 如果是更新，则更新以下字段
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"state": "PENDING",
+		}),
+		// DoNothing: 数据冲突了啥也不干
+		// Where: 数据冲突了，并且符合 WHERE 条件的就会执行更新
+	}).Create(submit).Error
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	return submit.Id, nil

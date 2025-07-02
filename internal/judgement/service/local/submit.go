@@ -2,9 +2,12 @@ package local
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository/dao"
 	"strconv"
+	"strings"
 
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/repository"
@@ -42,6 +45,7 @@ func (l *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission
 		return 0, err
 	}
 
+	submission.CodeHash = hashCode(submission.Code)
 	var submitID uint64
 	submitID, err = l.repo.CreateSubmit(ctx, submission)
 	if err != nil {
@@ -113,4 +117,53 @@ func getLanguage(s string) rpc.Language {
 		lang = rpc.Language_python
 	}
 	return lang
+}
+
+func hashCode(code string) string {
+	preprocessed := preprocessCode(code)
+	sum := sha256.Sum256([]byte(preprocessed))
+	return fmt.Sprintf("%x", sum)
+}
+
+func preprocessCode(code string) string {
+	var buf strings.Builder
+	inBlockComment := false
+
+	for _, line := range strings.Split(code, "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		// 空行直接跳过
+		if trimmed == "" {
+			continue
+		}
+
+		// 处理多行注释（/* ... */）
+		if strings.Contains(trimmed, "/*") {
+			inBlockComment = true
+		}
+		if inBlockComment {
+			if strings.Contains(trimmed, "*/") {
+				inBlockComment = false
+			}
+			continue
+		}
+
+		// 单行注释过滤（C/Java）
+		if idx := strings.Index(trimmed, "//"); idx != -1 {
+			trimmed = trimmed[:idx]
+			trimmed = strings.TrimSpace(trimmed)
+		}
+
+		// Python 注释（#）
+		if idx := strings.Index(trimmed, "#"); idx != -1 {
+			trimmed = trimmed[:idx]
+			trimmed = strings.TrimSpace(trimmed)
+		}
+
+		if trimmed != "" {
+			buf.WriteString(trimmed)
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
 }

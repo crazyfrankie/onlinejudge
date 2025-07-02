@@ -45,6 +45,7 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 		type Req struct {
 			ProblemId uint64 `json:"problem_id"`
 			TypedCode string `json:"typed_code"`
+			Language  string `json:"language"`
 		}
 		var req Req
 		if err := c.Bind(&req); err != nil {
@@ -59,7 +60,7 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 			ProblemID:  req.ProblemId,
 			UserId:     claim.Id,
 			Code:       req.TypedCode,
-			Language:   "golang",
+			Language:   req.Language,
 			SubmitTime: time.Now().Unix(),
 		})
 		if err != nil {
