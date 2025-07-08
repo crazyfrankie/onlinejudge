@@ -10,6 +10,7 @@ import (
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/crazyfrankie/onlinejudge/config"
 	"github.com/crazyfrankie/onlinejudge/ioc"
 )
 
@@ -21,17 +22,17 @@ func main() {
 
 	g.Add(func() error {
 		http.Handle("/metrics", promhttp.Handler())
-		return http.ListenAndServe("0.0.0.0:8081", nil)
+		return http.ListenAndServe("0.0.0.0"+config.GetConf().Server.Metrics, nil)
 	}, func(err error) {
 		// Prometheus 服务器通常不需要特殊关闭处理
 	})
 
 	server := &http.Server{
-		Addr:    "0.0.0.0:8082",
+		Addr:    "0.0.0.0" + config.GetConf().Server.Addr,
 		Handler: app.Server,
 	}
 	g.Add(func() error {
-		log.Println("Server is running at http://localhost:8082")
+		log.Printf("Server is running at http://localhost%s\n", config.GetConf().Server.Addr)
 		return server.ListenAndServe()
 	}, func(err error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

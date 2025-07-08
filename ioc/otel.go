@@ -47,7 +47,7 @@ func newPropagator() propagation.TextMapPropagator {
 }
 
 func newTraceProvider(res *resource.Resource) (*trace.TracerProvider, error) {
-	exporter, err := zipkin.New("http://zipkin:9411/api/v2/spans")
+	exporter, err := zipkin.New("http://localhost:9411/api/v2/spans")
 	if err != nil {
 		return nil, err
 	}

@@ -79,6 +79,8 @@ func (l *LocSubmitSvc) RunCode(ctx context.Context, submission domain.Submission
 		return 0, err
 	}
 
+	fmt.Println(res)
+
 	//评测结果存入数据库
 	var state dao.State
 	err = l.repo.UpdateResult(ctx, submission.ProblemID, submitID, map[string]any{

@@ -49,7 +49,7 @@ func (d *SubmitDao) CreateSubmit(ctx context.Context, sub domain.Submission) (ui
 		// Where: 数据冲突了，并且符合 WHERE 条件的就会执行更新
 	}).Create(submit).Error
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return submit.Id, nil

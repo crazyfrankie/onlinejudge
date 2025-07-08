@@ -18,11 +18,17 @@ var (
 
 type Config struct {
 	Env    string
+	Server Server `yaml:"server"`
 	MySQL  MySQL  `yaml:"mysql"`
 	Redis  Redis  `yaml:"redis"`
 	WeChat WeChat `yaml:"wechat"`
 	Kafka  Kafka  `yaml:"kafka"`
 	Judge  Judge  `yaml:"judge"`
+}
+
+type Server struct {
+	Addr    string `yaml:"addr"`
+	Metrics string `yaml:"metrics"`
 }
 
 type MySQL struct {

@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5
 	github.com/crazyfrankie/framework-plugin v0.0.8
 	github.com/crazyfrankie/gem v0.0.5
-	github.com/crazyfrankie/go-judge v0.1.2
+	github.com/crazyfrankie/go-judge v0.1.3
 	github.com/crazyfrankie/snow-flake v1.0.1
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0

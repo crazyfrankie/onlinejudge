@@ -9,4 +9,4 @@ scrape_configs:
     scrape_interval: 5s
     scrape_timeout: 3s
     static_configs:
-      - targets: ["onlinejudge:8081"]
+      - targets: ["onlinejudge:8085"]
