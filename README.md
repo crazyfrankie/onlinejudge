@@ -4,6 +4,9 @@
 ## 项目概述
 该系统实现了完整的代码评测流程，包括用户代码提交、并发运行、结果比对、超时检测和反馈展示。支持本地和远程评测模式，保障了系统的灵活性和可扩展性。
 
+## 评测机实现
+[go-judge](https://github.com/crazyfrankie/go-judge)
+
 ## 技术栈
 - 后端框架：Gin + GORM
 - 数据存储：MySQL + Redis + MongoDB
