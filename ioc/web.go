@@ -3,6 +3,7 @@ package ioc
 import (
 	"time"
 
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/mws"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
@@ -36,7 +36,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	return server
 }
 
-func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl auth.JWTHandler, authz mws.Authorizer) []gin.HandlerFunc {
+func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwt token.Token, authz mws.Authorizer) []gin.HandlerFunc {
 	response.InitCouter(prometheus.CounterOpts{
 		Namespace: "cfc_studio_frank",
 		Subsystem: "onlinejudge",
@@ -48,7 +48,7 @@ func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl auth.JWTHand
 			AllowOrigins:     []string{"http://localhost:8081"},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-			ExposeHeaders:    []string{"Content-Length", "x-jwt-token", "x-refresh-token"},
+			ExposeHeaders:    []string{"Content-Length", "x-token-token", "x-refresh-token"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
 		}),
@@ -64,7 +64,7 @@ func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwtHdl auth.JWTHand
 
 		mws.NewBuilder(limiter).Build(),
 
-		mws.NewAuthnHandler(cmd, jwtHdl).
+		mws.NewAuthnHandler(cmd, jwt).
 			IgnorePaths("/api/user/login").
 			IgnorePaths("/api/user/send-code").
 			IgnorePaths("/api/user/verify-code").

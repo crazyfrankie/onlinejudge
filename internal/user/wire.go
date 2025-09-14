@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository"
 	"github.com/crazyfrankie/onlinejudge/internal/user/repository/cache"
@@ -20,7 +20,7 @@ import (
 	ratelimit2 "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
-func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlModule *auth.Module, smsModule *sm.Module) *Module {
+func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, smsModule *sm.Module, token token.Token) *Module {
 	wire.Build(
 		dao.NewUserDao,
 		cache.NewUserCache,
@@ -36,7 +36,6 @@ func InitModule(cmd redis.Cmdable, db *gorm.DB, limiter ratelimit2.Limiter, mdlM
 		third.NewOAuthWeChatHandler,
 
 		wire.FieldsOf(new(*sm.Module), "Sm"),
-		wire.FieldsOf(new(*auth.Module), "Hdl"),
 		wire.Struct(new(Module), "*"),
 	)
 	return new(Module)

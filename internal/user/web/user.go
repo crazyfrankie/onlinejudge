@@ -8,13 +8,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
+	tokenimpl "github.com/crazyfrankie/onlinejudge/infra/impl/token"
 	"github.com/crazyfrankie/onlinejudge/internal/sm"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
@@ -28,14 +29,14 @@ const (
 type UserHandler struct {
 	userSvc service.UserService
 	codeSvc sm.SmSvc
-	jwt     auth.JWTHandler
+	token   token.Token
 }
 
-func NewUserHandler(userSvc service.UserService, codeSvc sm.SmSvc, jwtHdl auth.JWTHandler) *UserHandler {
+func NewUserHandler(userSvc service.UserService, codeSvc sm.SmSvc, token token.Token) *UserHandler {
 	return &UserHandler{
 		userSvc: userSvc,
 		codeSvc: codeSvc,
-		jwt:     jwtHdl,
+		token:   token,
 	}
 }
 
@@ -101,7 +102,7 @@ func (ctl *UserHandler) VerificationCode() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.jwt.SetLoginToken(c, user.Id)
+		err = ctl.token.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.ErrorWithLog(c, name, bizError, err)
 			return
@@ -133,7 +134,7 @@ func (ctl *UserHandler) IdentifierLogin() gin.HandlerFunc {
 			return
 		}
 
-		err = ctl.jwt.SetLoginToken(c, user.Id)
+		err = ctl.token.SetLoginToken(c, user.Id)
 		if err != nil {
 			response.ErrorWithLog(c, name, bizError, err)
 			return
@@ -147,7 +148,7 @@ func (ctl *UserHandler) GetUserInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := "onlinejudge/User/GetUserInfo"
 		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
+		claim := claims.(*token.Claims)
 
 		user, err := ctl.userSvc.GetInfo(c.Request.Context(), claim.Id)
 		if err != nil {
@@ -168,7 +169,7 @@ func (ctl *UserHandler) UpdatePassword() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
+		claim := claims.(*token.Claims)
 
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
@@ -194,7 +195,7 @@ func (ctl *UserHandler) UpdateInfo() gin.HandlerFunc {
 			return
 		}
 
-		claims := c.MustGet("claims").(*auth.Claims)
+		claims := c.MustGet("claims").(*token.Claims)
 		validate := validator.New()
 		if err := validate.Struct(req); err != nil {
 			response.ErrorWithLog(c, name, bizError, errors.NewBizError(constant.ErrUserInvalidParams))
@@ -226,24 +227,24 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := "onlinejudge/User/TokenRefresh"
 		// 只有这个接口拿出来的才是 refresh_token
-		refreshToken := ctl.jwt.ExtractRefreshToken(c)
-		var rc auth.RefreshClaims
-		token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
-			return auth.AtKey, nil
+		refreshToken := ctl.token.ExtractRefreshToken(c)
+		var rc token.RefreshClaims
+		tk, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
+			return tokenimpl.AtKey, nil
 		})
-		if err != nil || !token.Valid {
+		if err != nil || !tk.Valid {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		err = ctl.jwt.CheckSession(c, rc.Id, rc.SSId)
+		err = ctl.token.CheckSession(c, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
 		// 设置新的 access_token
-		_, err = ctl.jwt.AccessToken(c, rc.Id, rc.SSId)
+		_, err = ctl.token.AccessToken(c, rc.Id, rc.SSId)
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -256,7 +257,7 @@ func (ctl *UserHandler) TokenRefresh() gin.HandlerFunc {
 func (ctl *UserHandler) Logout() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := "onlinejudge/User/Logout"
-		err := ctl.jwt.ClearToken(c)
+		err := ctl.token.ClearToken(c)
 		if err != nil {
 			response.ErrorWithLog(c, name, bizError, err)
 			return

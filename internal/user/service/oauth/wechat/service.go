@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/crazyfrankie/onlinejudge/config"
-	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"net/http"
 	"net/url"
+
+	"github.com/crazyfrankie/onlinejudge/config"
+	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 )
 
 var (

@@ -65,7 +65,7 @@ func InitDB() *gorm.DB {
 	callbacks := newCallbacks()
 	callbacks.registerAll(db)
 
-	err = db.Use(tracing.NewPlugin(tracing.WithDBName("onlinejudge"), tracing.WithQueryFormatter(func(query string) string {
+	err = db.Use(tracing.NewPlugin(tracing.WithDBSystem("onlinejudge"), tracing.WithQueryFormatter(func(query string) string {
 		log.Println(query)
 		return query
 	}), tracing.WithoutMetrics()))

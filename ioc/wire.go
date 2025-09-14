@@ -4,7 +4,6 @@ package ioc
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/article"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/sm"
@@ -12,13 +11,12 @@ import (
 	"github.com/google/wire"
 )
 
-var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)
+var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog, InitToken)
 
 func InitApp() *App {
 	wire.Build(
 		BaseSet,
 		InitJudgeClient,
-		auth.InitModule,
 		sm.InitModule,
 		user.InitModule,
 		problem.InitModule,
@@ -31,7 +29,6 @@ func InitApp() *App {
 
 		NewConsumers,
 
-		wire.FieldsOf(new(*auth.Module), "Hdl"),
 		wire.FieldsOf(new(*user.Module), "Hdl"),
 		wire.FieldsOf(new(*user.Module), "GithubHdl"),
 		wire.FieldsOf(new(*user.Module), "WeChatHdl"),

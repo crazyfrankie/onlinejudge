@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement/service/local"
 )
@@ -54,7 +54,7 @@ func (ctl *LocalSubmitHandler) RunCode() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim, _ := claims.(*auth.Claims)
+		claim, _ := claims.(*token.Claims)
 
 		submitId, err := ctl.svc.RunCode(c.Request.Context(), domain.Submission{
 			ProblemID:  req.ProblemId,

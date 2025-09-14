@@ -8,7 +8,6 @@ package ioc
 
 import (
 	"github.com/crazyfrankie/onlinejudge/internal/article"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/sm"
@@ -21,13 +20,12 @@ import (
 func InitApp() *App {
 	cmdable := InitRedis()
 	limiter := InitSlideWindow(cmdable)
-	module := auth.InitModule(cmdable)
-	jwtHandler := module.Hdl
+	token := InitToken(cmdable)
 	db := InitDB()
 	authorizer := InitAuthz(db)
-	v := GinMiddlewares(cmdable, limiter, jwtHandler, authorizer)
-	smModule := sm.InitModule(cmdable, limiter)
-	userModule := user.InitModule(cmdable, db, limiter, module, smModule)
+	v := GinMiddlewares(cmdable, limiter, token, authorizer)
+	module := sm.InitModule(cmdable, limiter)
+	userModule := user.InitModule(cmdable, db, limiter, module, token)
 	userHandler := userModule.Hdl
 	problemModule := problem.InitModule(cmdable, db)
 	problemHandler := problemModule.Hdl
@@ -54,4 +52,4 @@ func InitApp() *App {
 
 // wire.go:
 
-var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog)
+var BaseSet = wire.NewSet(InitDB, InitRedis, InitKafka, InitLog, InitToken)

@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+	
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"

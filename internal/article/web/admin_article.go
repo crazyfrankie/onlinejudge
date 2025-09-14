@@ -3,6 +3,7 @@ package web
 import (
 	"strconv"
 
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/response"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 )
 
 const (
@@ -49,7 +49,7 @@ func (ctl *AdminHandler) Edit() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(auth.Claims)
+		claim := claims.(*token.Claims)
 
 		id, err := ctl.svc.SaveDraft(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
@@ -71,7 +71,7 @@ func (ctl *AdminHandler) Publish() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(auth.Claims)
+		claim := claims.(*token.Claims)
 
 		id, err := ctl.svc.Publish(c.Request.Context(), req.toDomain(claim.Id))
 		if err != nil {
@@ -89,7 +89,7 @@ func (ctl *AdminHandler) WithDraw() gin.HandlerFunc {
 		id := c.Query("id")
 
 		claims := c.MustGet("claims")
-		claim := claims.(auth.Claims)
+		claim := claims.(*token.Claims)
 
 		Id, _ := strconv.Atoi(id)
 		err := ctl.svc.WithDraw(c.Request.Context(), domain.Article{
@@ -154,7 +154,7 @@ func (ctl *AdminHandler) Detail() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name := "onlinejudge/Article/Admin/Detail"
 		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
+		claim := claims.(*token.Claims)
 
 		artID := c.Param("id")
 

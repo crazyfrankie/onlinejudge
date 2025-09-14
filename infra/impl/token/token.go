@@ -1,4 +1,4 @@
-package auth
+package token
 
 import (
 	"crypto/sha1"
@@ -8,42 +8,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 )
-
-type JWTHandler interface {
-	SetLoginToken(ctx *gin.Context, uid uint64) error
-	AccessToken(ctx *gin.Context, id uint64, ssid string) (string, error)
-	RefreshToken(ctx *gin.Context, id uint64, ssid string) (string, error)
-	ExtractToken(ctx *gin.Context) string
-	ExtractRefreshToken(ctx *gin.Context) string
-	ParseToken(token string) (*Claims, error)
-	CheckSession(ctx *gin.Context, uid uint64, ssid string) error
-	ClearToken(ctx *gin.Context) error
-	TryRefresh(ctx *gin.Context) error
-	LogoutAllDevices(ctx *gin.Context) error
-	HandleTokenError(err error) *er.BizError
-}
-
-type Claims struct {
-	Id        uint64 `json:"id"`
-	UserAgent string `json:"userAgent"`
-	SSId      string
-	jwt.StandardClaims
-}
-
-type RefreshClaims struct {
-	Role      uint8
-	Id        uint64
-	UserAgent string
-	SSId      string
-	jwt.StandardClaims
-}
 
 var (
 	SecretKey = []byte("KsS2X1CgFT4bi3BRRIxLk5jjiUBj8wxE")
@@ -65,7 +37,7 @@ type RedisJWTHandler struct {
 	cmd redis.Cmdable
 }
 
-func NewRedisJWTHandler(cmd redis.Cmdable) JWTHandler {
+func NewRedisJWTHandler(cmd redis.Cmdable) token.Token {
 	return &RedisJWTHandler{
 		cmd: cmd,
 	}
@@ -104,51 +76,33 @@ func (h *RedisJWTHandler) SetLoginToken(ctx *gin.Context, uid uint64) error {
 }
 
 func (h *RedisJWTHandler) AccessToken(ctx *gin.Context, id uint64, ssid string) (string, error) {
-	claims := Claims{
+	claims := &token.Claims{
 		Id:   id,
 		SSId: ssid,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Minute * 15).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 15)),
 			Issuer:    "github.com/crazyfrankie/onlinejudge",
 		},
 		UserAgent: ctx.GetHeader("User-Agent"),
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token, err := tokenClaims.SignedString(SecretKey)
-	return token, err
+	tk, err := tokenClaims.SignedString(SecretKey)
+	return tk, err
 }
 
 func (h *RedisJWTHandler) RefreshToken(ctx *gin.Context, id uint64, ssid string) (string, error) {
-	claims := RefreshClaims{
+	claims := &token.RefreshClaims{
 		Id:   id,
 		SSId: ssid,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 24 * 7).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)),
 			Issuer:    "github.com/crazyfrankie/onlinejudge",
 		},
 		UserAgent: ctx.GetHeader("User-Agent"),
 	}
 	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token, err := tokenClaims.SignedString(SecretKey)
-	return token, err
-}
-
-func (h *RedisJWTHandler) ExtractToken(ctx *gin.Context) string {
-	token, err := ctx.Cookie("access_token")
-	if err != nil {
-		return ""
-	}
-
-	return token
-}
-
-func (h *RedisJWTHandler) ExtractRefreshToken(ctx *gin.Context) string {
-	token, err := ctx.Cookie("refresh_token")
-	if err != nil {
-		return ""
-	}
-
-	return token
+	tk, err := tokenClaims.SignedString(SecretKey)
+	return tk, err
 }
 
 func (h *RedisJWTHandler) CheckSession(ctx *gin.Context, uid uint64, ssid string) error {
@@ -172,7 +126,7 @@ func (h *RedisJWTHandler) CheckSession(ctx *gin.Context, uid uint64, ssid string
 }
 
 func (h *RedisJWTHandler) TryRefresh(ctx *gin.Context) error {
-	refreshToken := h.ExtractRefreshToken(ctx)
+	refreshToken := extractRefreshToken(ctx)
 	if refreshToken == "" {
 		return nil
 	}
@@ -213,7 +167,7 @@ func (h *RedisJWTHandler) ClearToken(ctx *gin.Context) error {
 	ctx.SetCookie("access_token", "", 900, "/", "", false, false)
 	ctx.SetCookie("refresh_token", "", 7*24*3600, "/", "", false, true)
 
-	claim := ctx.MustGet("claims").(*Claims)
+	claim := ctx.MustGet("claims").(*token.Claims)
 
 	device := hashUA(ctx.GetHeader("User-Agent"))
 	key := fmt.Sprintf(ssKey, claim.Id, claim.SSId, device)
@@ -229,7 +183,7 @@ func (h *RedisJWTHandler) ClearToken(ctx *gin.Context) error {
 }
 
 func (h *RedisJWTHandler) LogoutAllDevices(ctx *gin.Context) error {
-	claim := ctx.MustGet("claims").(*Claims)
+	claim := ctx.MustGet("claims").(*token.Claims)
 
 	deviceSetKey := fmt.Sprintf("user:%d:devices", claim.Id)
 	sessions, err := h.cmd.SMembers(ctx.Request.Context(), deviceSetKey).Result()
@@ -247,29 +201,19 @@ func (h *RedisJWTHandler) LogoutAllDevices(ctx *gin.Context) error {
 	return err
 }
 
-func (h *RedisJWTHandler) ParseToken(token string) (*Claims, error) {
-	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+func (h *RedisJWTHandler) ParseToken(tk string) (*token.Claims, error) {
+	t, err := jwt.Parse(tk, func(token *jwt.Token) (interface{}, error) {
 		return SecretKey, nil
 	})
 	if err != nil {
-		var ve *jwt.ValidationError
-		if errors.As(err, &ve) {
-			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return nil, ErrTokenInvalid
-			} else if ve.Errors&(jwt.ValidationErrorExpired) != 0 {
-				return nil, ErrTokenExpired
-			} else if ve.Errors&(jwt.ValidationErrorNotValidYet) != 0 {
-				return nil, ErrLoginYet
-			}
-		}
 		return nil, err
 	}
-	if tokenClaims != nil {
-		if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
-			return claims, nil
-		}
+	claims, ok := t.Claims.(*token.Claims)
+	if !ok {
+		return nil, ErrTokenInvalid
 	}
-	return nil, ErrTokenInvalid
+
+	return claims, nil
 }
 
 func (h *RedisJWTHandler) HandleTokenError(err error) *er.BizError {
@@ -292,4 +236,13 @@ func (h *RedisJWTHandler) HandleTokenError(err error) *er.BizError {
 func hashUA(ua string) string {
 	sum := sha1.Sum([]byte(ua))
 	return hex.EncodeToString(sum[:])
+}
+
+func extractRefreshToken(ctx *gin.Context) string {
+	tk, err := ctx.Cookie("refresh_token")
+	if err != nil {
+		return ""
+	}
+
+	return tk
 }

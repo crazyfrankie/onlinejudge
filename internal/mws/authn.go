@@ -7,16 +7,16 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 )
 
 type AuthnHandler struct {
 	ignorePaths map[string]struct{}
 	cmd         redis.Cmdable
-	jwt         auth.JWTHandler
+	jwt         token.Token
 }
 
-func NewAuthnHandler(cmd redis.Cmdable, jwt auth.JWTHandler) *AuthnHandler {
+func NewAuthnHandler(cmd redis.Cmdable, jwt token.Token) *AuthnHandler {
 	return &AuthnHandler{
 		ignorePaths: make(map[string]struct{}),
 		cmd:         cmd,
@@ -36,9 +36,8 @@ func (a *AuthnHandler) Authn() gin.HandlerFunc {
 			return
 		}
 
-		token := a.jwt.ExtractToken(c)
-
-		claims, err := a.jwt.ParseToken(token)
+		tk := extractToken(c)
+		claims, err := a.jwt.ParseToken(tk)
 		if err != nil {
 			errCode := a.jwt.HandleTokenError(err)
 			response.Error(c, errCode)
@@ -68,4 +67,13 @@ func (a *AuthnHandler) Authn() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func extractToken(ctx *gin.Context) string {
+	tk, err := ctx.Cookie("access_token")
+	if err != nil {
+		return ""
+	}
+
+	return tk
 }

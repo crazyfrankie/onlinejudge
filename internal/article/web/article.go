@@ -7,9 +7,9 @@ import (
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/crazyfrankie/onlinejudge/internal/article/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/article/service"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 )
 
 const (
@@ -72,7 +72,7 @@ func (ctl *ArticleHandler) PubDetail() gin.HandlerFunc {
 		name := "onlinejudge/Article/PubDetail"
 
 		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
+		claim := claims.(*token.Claims)
 
 		artID := c.Param("id")
 
@@ -127,7 +127,7 @@ func (ctl *ArticleHandler) Like() gin.HandlerFunc {
 		}
 
 		claims := c.MustGet("claims")
-		claim := claims.(*auth.Claims)
+		claim := claims.(*token.Claims)
 
 		var err error
 		if req.Like {

@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	er "github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/crazyfrankie/onlinejudge/internal/auth"
 	"github.com/crazyfrankie/onlinejudge/internal/user/domain"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service"
 	"github.com/crazyfrankie/onlinejudge/internal/user/service/oauth/wechat"
@@ -23,16 +23,16 @@ import (
 type OAuthWeChatHandler struct {
 	svc      wechat.Service
 	userSvc  service.UserService
-	jwt      auth.JWTHandler
+	jwt      token.Token
 	stateKey []byte
 }
 
 type StateClaims struct {
 	State string
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 }
 
-func NewOAuthWeChatHandler(svc wechat.Service, jwtHdl auth.JWTHandler, userSvc service.UserService) *OAuthWeChatHandler {
+func NewOAuthWeChatHandler(svc wechat.Service, jwtHdl token.Token, userSvc service.UserService) *OAuthWeChatHandler {
 	return &OAuthWeChatHandler{
 		svc:      svc,
 		jwt:      jwtHdl,
@@ -71,15 +71,15 @@ func (h *OAuthWeChatHandler) AuthUrl() gin.HandlerFunc {
 func (h *OAuthWeChatHandler) SetCookie(c *gin.Context, state string) error {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, StateClaims{
 		State: state,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Minute * 10).Unix(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 10)),
 		},
 	})
 	tokenStr, err := token.SignedString(h.stateKey)
 	if err != nil {
 		return err
 	}
-	c.SetCookie("jwt-state", tokenStr, 600, "/oauth/wechat/callback", "", false, true)
+	c.SetCookie("token-state", tokenStr, 600, "/oauth/wechat/callback", "", false, true)
 	return nil
 }
 
@@ -117,8 +117,8 @@ func (h *OAuthWeChatHandler) CallBack() gin.HandlerFunc {
 }
 
 func (h *OAuthWeChatHandler) VerifyState(c *gin.Context) error {
-	state := c.Query("jwt-state")
-	jwtState, err := c.Cookie("jwt-state")
+	state := c.Query("token-state")
+	jwtState, err := c.Cookie("token-state")
 	if err != nil {
 		return fmt.Errorf("拿不到 state 的 cookie, %w", err)
 	}

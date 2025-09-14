@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/crazyfrankie/onlinejudge/internal/sm/service/sms/service"
 )
@@ -15,7 +15,7 @@ type SMSService struct {
 }
 
 type Claims struct {
-	jwt.StandardClaims
+	jwt.RegisteredClaims
 	// 真正要用的 tplId
 	tplId string
 }
