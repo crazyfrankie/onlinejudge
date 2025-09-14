@@ -1,12 +1,12 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/joho/godotenv"
 	"github.com/kr/pretty"
 	"github.com/spf13/viper"
 )

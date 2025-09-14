@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/crazyfrankie/onlinejudge/infra/contract/ratelimit"
 )
 
 //go:embed slide_window.lua
@@ -21,7 +23,7 @@ type RedisSlideWindowLimiter struct {
 	// interval 内允许 rate 个请求
 }
 
-func NewRedisSlideWindowLimiter(cmd redis.Cmdable, interval time.Duration, rate int) Limiter {
+func NewRedisSlideWindowLimiter(cmd redis.Cmdable, interval time.Duration, rate int) ratelimit.Limiter {
 	return &RedisSlideWindowLimiter{
 		cmd:      cmd,
 		interval: interval,

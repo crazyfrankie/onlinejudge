@@ -3,7 +3,6 @@ package ioc
 import (
 	"time"
 
-	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,13 +10,14 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/crazyfrankie/onlinejudge/common/response"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/token"
 	"github.com/crazyfrankie/onlinejudge/internal/article"
 	"github.com/crazyfrankie/onlinejudge/internal/judgement"
 	"github.com/crazyfrankie/onlinejudge/internal/mws"
 	"github.com/crazyfrankie/onlinejudge/internal/problem"
 	"github.com/crazyfrankie/onlinejudge/internal/user"
 	"github.com/crazyfrankie/onlinejudge/internal/user/web/third"
-	rate "github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
 )
 
 func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem.Handler, oauthHdl *third.OAuthWeChatHandler, localHdl *judgement.LocHandler, remoteHdl *judgement.RemHandler, gitHdl *third.OAuthGithubHandler, artHdl *article.Handler, adminHdl *article.AdminHandler) *gin.Engine {
@@ -36,7 +36,7 @@ func InitWebServer(mdl []gin.HandlerFunc, userHdl *user.Handler, proHdl *problem
 	return server
 }
 
-func GinMiddlewares(cmd redis.Cmdable, limiter rate.Limiter, jwt token.Token, authz mws.Authorizer) []gin.HandlerFunc {
+func GinMiddlewares(cmd redis.Cmdable, limiter ratelimit.Limiter, jwt token.Token, authz mws.Authorizer) []gin.HandlerFunc {
 	response.InitCouter(prometheus.CounterOpts{
 		Namespace: "cfc_studio_frank",
 		Subsystem: "onlinejudge",
