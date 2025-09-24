@@ -3,13 +3,14 @@ package mws
 import (
 	_ "embed" // 导入 embed 包，用于在编译时将文件嵌入到 Go 二进制文件中
 	"fmt"
+	"log"
+
+	"github.com/gin-gonic/gin"
+
 	"github.com/crazyfrankie/onlinejudge/common/constant"
 	"github.com/crazyfrankie/onlinejudge/common/errors"
 	"github.com/crazyfrankie/onlinejudge/common/response"
-	"github.com/gin-gonic/gin"
-	"log"
-
-	"github.com/crazyfrankie/onlinejudge/pkg/ratelimit"
+	"github.com/crazyfrankie/onlinejudge/infra/contract/ratelimit"
 )
 
 type Builder struct {
